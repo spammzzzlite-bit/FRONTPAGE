@@ -15,7 +15,11 @@ import {
   Sparkles,
   Search,
 } from "lucide-react";
-import { useRecordings, deleteRecording, updateRecordingStatus } from "@/frontend/store/recordingsStore";
+import {
+  useRecordings,
+  deleteRecording,
+  updateRecordingStatus,
+} from "@/frontend/store/recordingsStore";
 import { useProjects } from "@/frontend/store/store";
 import { PageHeader } from "./_app.projects";
 import { EmptyState } from "@/frontend/components/EmptyState";
@@ -36,7 +40,7 @@ function RecordingsPage() {
   const navigate = useNavigate();
 
   const filteredRecordings = recordings.filter((r) =>
-    r.sessionName.toLowerCase().includes(searchQuery.toLowerCase())
+    r.sessionName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -133,7 +137,9 @@ function StatusBadge({ status }: { status: RecordingSession["status"] }) {
     failed: "bg-red-500/10 text-red-500 border-red-500/20",
   };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${styles[status]}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${styles[status]}`}
+    >
       {status}
     </span>
   );
@@ -158,20 +164,36 @@ function RecordingPanel({ recording }: { recording: RecordingSession }) {
 
         <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-bg-hover)] p-4 sm:grid-cols-4">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">Status</p>
-            <div className="mt-1"><StatusBadge status={recording.status} /></div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">
+              Status
+            </p>
+            <div className="mt-1">
+              <StatusBadge status={recording.status} />
+            </div>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">Duration</p>
-            <p className="mt-1 text-sm font-medium text-[var(--c-text)]">{(recording.duration / 1000).toFixed(1)}s</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">
+              Duration
+            </p>
+            <p className="mt-1 text-sm font-medium text-[var(--c-text)]">
+              {(recording.duration / 1000).toFixed(1)}s
+            </p>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">Events</p>
-            <p className="mt-1 text-sm font-medium text-[var(--c-text)]">{recording.events.length}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">
+              Events
+            </p>
+            <p className="mt-1 text-sm font-medium text-[var(--c-text)]">
+              {recording.events.length}
+            </p>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">Browser</p>
-            <p className="mt-1 text-sm font-medium text-[var(--c-text)]">{recording.browserInfo.name} {recording.browserInfo.version}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-text-muted)]">
+              Browser
+            </p>
+            <p className="mt-1 text-sm font-medium text-[var(--c-text)]">
+              {recording.browserInfo.name} {recording.browserInfo.version}
+            </p>
           </div>
         </div>
       </div>
@@ -199,7 +221,9 @@ function RecordingPanel({ recording }: { recording: RecordingSession }) {
               <div className="flex-1 rounded-lg border border-[var(--c-border)] bg-[var(--c-bg-card)] p-3 text-sm">
                 <div className="flex items-start justify-between">
                   <p className="font-medium capitalize text-[var(--c-text)]">{event.type} Event</p>
-                  <span className="font-mono text-[10px] text-[var(--c-text-muted)]">+{event.timestamp}ms</span>
+                  <span className="font-mono text-[10px] text-[var(--c-text-muted)]">
+                    +{event.timestamp}ms
+                  </span>
                 </div>
                 {event.target && (
                   <div className="mt-2 rounded bg-[var(--c-bg-hover)] p-2 font-mono text-[11px] text-[var(--c-text-muted)] break-all">
@@ -208,7 +232,10 @@ function RecordingPanel({ recording }: { recording: RecordingSession }) {
                 )}
                 {event.value && (
                   <p className="mt-2 text-sm text-[var(--c-text)]">
-                    Typed: <span className="font-mono bg-[var(--c-bg-hover)] px-1 py-0.5 rounded">"{event.value}"</span>
+                    Typed:{" "}
+                    <span className="font-mono bg-[var(--c-bg-hover)] px-1 py-0.5 rounded">
+                      "{event.value}"
+                    </span>
                   </p>
                 )}
                 {event.url && (
@@ -227,12 +254,19 @@ function RecordingPanel({ recording }: { recording: RecordingSession }) {
 
 function EventIcon({ type }: { type: RecordingEvent["type"] }) {
   switch (type) {
-    case "click": return <MousePointer2 className="h-2.5 w-2.5" />;
-    case "input": return <Keyboard className="h-2.5 w-2.5" />;
-    case "navigate": return <Globe className="h-2.5 w-2.5" />;
-    case "screenshot": return <Camera className="h-2.5 w-2.5" />;
-    case "network": return <Network className="h-2.5 w-2.5" />;
-    case "assert": return <TestTube className="h-2.5 w-2.5" />;
-    default: return <PlayCircle className="h-2.5 w-2.5" />;
+    case "click":
+      return <MousePointer2 className="h-2.5 w-2.5" />;
+    case "input":
+      return <Keyboard className="h-2.5 w-2.5" />;
+    case "navigate":
+      return <Globe className="h-2.5 w-2.5" />;
+    case "screenshot":
+      return <Camera className="h-2.5 w-2.5" />;
+    case "network":
+      return <Network className="h-2.5 w-2.5" />;
+    case "assert":
+      return <TestTube className="h-2.5 w-2.5" />;
+    default:
+      return <PlayCircle className="h-2.5 w-2.5" />;
   }
 }

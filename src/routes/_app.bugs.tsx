@@ -246,7 +246,9 @@ function BugCard({
           {bug.created_at ? new Date(bug.created_at).toLocaleString() : new Date().toLocaleString()}
         </div>
         <div className="mt-2 flex flex-wrap gap-1">
-          <span className={`rounded-sm px-[6px] py-[2px] font-mono text-[9px] uppercase tracking-wider ${bug.severity === "blocker" || bug.severity === "critical" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}>
+          <span
+            className={`rounded-sm px-[6px] py-[2px] font-mono text-[9px] uppercase tracking-wider ${bug.severity === "blocker" || bug.severity === "critical" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
+          >
             {bug.severity || "major"}
           </span>
           {bug.environment && (

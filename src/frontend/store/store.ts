@@ -284,15 +284,54 @@ export const workspacesStore = createStore<Workspace[]>("ai-test-gen.workspaces"
 ]);
 export const useWorkspaces = workspacesStore.useStore;
 
-export const workspaceMembersStore = createStore<WorkspaceMember[]>("ai-test-gen.workspaceMembers", [
-  { id: "wm1", workspaceId: DEFAULT_WORKSPACE_ID, userId: "p1", role: "Owner", joinedAt: Date.now() },
-  { id: "wm2", workspaceId: DEFAULT_WORKSPACE_ID, userId: "p2", role: "Admin", joinedAt: Date.now() },
-  { id: "wm3", workspaceId: DEFAULT_WORKSPACE_ID, userId: "p3", role: "Editor", joinedAt: Date.now() },
-  { id: "wm4", workspaceId: DEFAULT_WORKSPACE_ID, userId: "p4", role: "Editor", joinedAt: Date.now() },
-  { id: "wm5", workspaceId: DEFAULT_WORKSPACE_ID, userId: "p5", role: "Viewer", joinedAt: Date.now() },
-  // And a member for the mock agent user
-  { id: "wm-agent", workspaceId: DEFAULT_WORKSPACE_ID, userId: "agent-user-id-007", role: "Owner", joinedAt: Date.now() },
-]);
+export const workspaceMembersStore = createStore<WorkspaceMember[]>(
+  "ai-test-gen.workspaceMembers",
+  [
+    {
+      id: "wm1",
+      workspaceId: DEFAULT_WORKSPACE_ID,
+      userId: "p1",
+      role: "Owner",
+      joinedAt: Date.now(),
+    },
+    {
+      id: "wm2",
+      workspaceId: DEFAULT_WORKSPACE_ID,
+      userId: "p2",
+      role: "Admin",
+      joinedAt: Date.now(),
+    },
+    {
+      id: "wm3",
+      workspaceId: DEFAULT_WORKSPACE_ID,
+      userId: "p3",
+      role: "Editor",
+      joinedAt: Date.now(),
+    },
+    {
+      id: "wm4",
+      workspaceId: DEFAULT_WORKSPACE_ID,
+      userId: "p4",
+      role: "Editor",
+      joinedAt: Date.now(),
+    },
+    {
+      id: "wm5",
+      workspaceId: DEFAULT_WORKSPACE_ID,
+      userId: "p5",
+      role: "Viewer",
+      joinedAt: Date.now(),
+    },
+    // And a member for the mock agent user
+    {
+      id: "wm-agent",
+      workspaceId: DEFAULT_WORKSPACE_ID,
+      userId: "agent-user-id-007",
+      role: "Owner",
+      joinedAt: Date.now(),
+    },
+  ],
+);
 export const useWorkspaceMembers = workspaceMembersStore.useStore;
 
 /**
@@ -302,10 +341,12 @@ export const useWorkspaceMembers = workspaceMembersStore.useStore;
 export function useCurrentRole(): WorkspaceRole {
   const { user } = useAuth();
   const [members] = useWorkspaceMembers();
-  
+
   if (!user) return "Viewer";
-  
-  const member = members.find(m => m.userId === user.id && m.workspaceId === DEFAULT_WORKSPACE_ID);
+
+  const member = members.find(
+    (m) => m.userId === user.id && m.workspaceId === DEFAULT_WORKSPACE_ID,
+  );
   return member ? member.role : "Viewer";
 }
 
@@ -582,7 +623,14 @@ export type TestCaseAuthorStatus = "draft" | "ready" | "approved";
 /** Preserved for backwards-compat with old localStorage data; new code should use authorStatus + lastRunStatus */
 export type TestCaseStatus = "draft" | "ready" | "approved" | "passed" | "failed" | "skipped";
 /** Classification of the test case (STLC category) */
-export type TestCaseType = "functional" | "regression" | "smoke" | "performance" | "security" | "integration" | "e2e";
+export type TestCaseType =
+  | "functional"
+  | "regression"
+  | "smoke"
+  | "performance"
+  | "security"
+  | "integration"
+  | "e2e";
 export type TestCase = {
   id: string;
   suiteId: string;
@@ -600,7 +648,6 @@ export type TestCase = {
   lastRunId?: string;
   tags: string[];
   createdAt: number;
-<<<<<<< HEAD
   /** STLC test case classification */
   type?: TestCaseType;
   /** Assigned team member / profile */
@@ -609,10 +656,8 @@ export type TestCase = {
   requirementId?: string;
   /** Link to the Chrome extension recording session that generated this test case */
   sourceRecordingId?: string;
-=======
   module_name?: string;
   project_id?: string;
->>>>>>> 0cedd18eaad7aa09ebac9d8cb5671f5e5f2abe8c
 };
 export const testCasesStore = createStore<TestCase[]>("ai-test-gen.testcases", []);
 export const useTestCases = testCasesStore.useStore;
@@ -632,15 +677,12 @@ export function createTestCase(suiteId: string, data: Partial<TestCase>): TestCa
     lastRunId: data.lastRunId,
     tags: data.tags || [],
     createdAt: Date.now(),
-<<<<<<< HEAD
     type: data.type,
     assignedTo: data.assignedTo,
     requirementId: data.requirementId,
     sourceRecordingId: data.sourceRecordingId,
-=======
     module_name: data.module_name,
     project_id: data.project_id,
->>>>>>> 0cedd18eaad7aa09ebac9d8cb5671f5e5f2abe8c
   };
   testCasesStore.set((prev) => [tc, ...prev]);
   // Also add to suite's testCaseIds
@@ -700,7 +742,7 @@ export const useRuns = runsStore.useStore;
 function seededRandom(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
     hash |= 0; // Convert to 32-bit integer
   }
   return ((hash & 0x7fffffff) % 10000) / 10000;
@@ -797,9 +839,10 @@ export function createMockRun(
     status: hasFailed ? "failed" : "passed",
     results,
     // Coverage is now calculated from actual results, not random
-    coverage: settingsStore.get().coverageEnabled && results.length > 0
-      ? Math.round((passedCount / results.length) * 100)
-      : undefined,
+    coverage:
+      settingsStore.get().coverageEnabled && results.length > 0
+        ? Math.round((passedCount / results.length) * 100)
+        : undefined,
     environment: environment || "localhost",
   };
   runsStore.set((prev) => [run, ...prev]);

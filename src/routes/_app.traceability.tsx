@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { CheckCircle2, XCircle, MinusCircle, ShieldCheck, ArrowRight, Bug as BugIcon, ExternalLink } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
+  ShieldCheck,
+  ArrowRight,
+  Bug as BugIcon,
+  ExternalLink,
+} from "lucide-react";
 import { useProjects, useTestCases, useRuns, useBugs, type TestCase } from "@/frontend/store/store";
 import { PageHeader } from "./_app.projects";
 import { Link } from "@tanstack/react-router";
@@ -21,16 +29,19 @@ function TraceabilityPage() {
   // Group test cases by requirementId
   const matrix = useMemo(() => {
     if (!activeProject) return [];
-    
-    const projectCases = testCases.filter(tc => tc.projectId === activeProject.id);
-    const grouped = projectCases.reduce((acc, tc) => {
-      const reqId = tc.requirementId || "Unlinked";
-      if (!acc[reqId]) {
-        acc[reqId] = { requirementId: reqId, testCases: [] };
-      }
-      acc[reqId].testCases.push(tc);
-      return acc;
-    }, {} as Record<string, { requirementId: string, testCases: TestCase[] }>);
+
+    const projectCases = testCases.filter((tc) => tc.project_id === activeProject.id);
+    const grouped = projectCases.reduce(
+      (acc, tc) => {
+        const reqId = tc.requirementId || "Unlinked";
+        if (!acc[reqId]) {
+          acc[reqId] = { requirementId: reqId, testCases: [] };
+        }
+        acc[reqId].testCases.push(tc);
+        return acc;
+      },
+      {} as Record<string, { requirementId: string; testCases: TestCase[] }>,
+    );
 
     return Object.values(grouped).sort((a, b) => {
       if (a.requirementId === "Unlinked") return 1;
@@ -88,7 +99,10 @@ function TraceabilityPage() {
                 </tr>
               ) : (
                 matrix.map((group) => (
-                  <tr key={group.requirementId} className="group hover:bg-[var(--c-bg-hover)]/50 transition-colors">
+                  <tr
+                    key={group.requirementId}
+                    className="group hover:bg-[var(--c-bg-hover)]/50 transition-colors"
+                  >
                     {/* Requirement Column */}
                     <td className="p-4 align-top">
                       <div className="flex items-center gap-2">
@@ -98,7 +112,8 @@ function TraceabilityPage() {
                         </span>
                       </div>
                       <p className="mt-1 text-[11px] text-[var(--c-text-muted)]">
-                        {group.testCases.length} mapped test{group.testCases.length !== 1 ? 's' : ''}
+                        {group.testCases.length} mapped test
+                        {group.testCases.length !== 1 ? "s" : ""}
                       </p>
                     </td>
 
@@ -106,23 +121,31 @@ function TraceabilityPage() {
                     <td colSpan={3} className="p-0">
                       <div className="divide-y divide-[var(--c-border)]">
                         {group.testCases.map((tc) => {
-                          const linkedBugs = bugs.filter(b => b.testCaseId === tc.id);
+                          const linkedBugs = bugs.filter((b) => b.testCaseId === tc.id);
                           const hasPassed = tc.lastRunStatus === "passed";
                           const hasFailed = tc.lastRunStatus === "failed";
-                          
+
                           return (
                             <div key={tc.id} className="flex h-full">
                               {/* Test Case */}
                               <div className="w-[30%] p-4 border-r border-[var(--c-border)] min-w-[200px]">
-                                <Link to="/suites" search={{ projectId: tc.projectId }} className="font-medium text-[var(--c-text)] hover:underline hover:text-[var(--c-accent)] flex items-center gap-2">
+                                <Link
+                                  to="/suites"
+                                  search={{ projectId: tc.project_id }}
+                                  className="font-medium text-[var(--c-text)] hover:underline hover:text-[var(--c-accent)] flex items-center gap-2"
+                                >
                                   {tc.title}
                                   <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </Link>
                                 <div className="mt-1.5 flex gap-2">
-                                  <span className={`rounded-sm px-1.5 py-0.5 font-mono text-[9px] badge-${tc.priority}`}>
+                                  <span
+                                    className={`rounded-sm px-1.5 py-0.5 font-mono text-[9px] badge-${tc.priority}`}
+                                  >
                                     {tc.priority}
                                   </span>
-                                  <span className={`rounded-sm px-1.5 py-0.5 font-mono text-[9px] status-${tc.authorStatus}`}>
+                                  <span
+                                    className={`rounded-sm px-1.5 py-0.5 font-mono text-[9px] status-${tc.authorStatus}`}
+                                  >
                                     {tc.authorStatus}
                                   </span>
                                 </div>
@@ -134,11 +157,17 @@ function TraceabilityPage() {
                                   <div className="flex items-center gap-2">
                                     {hasPassed && <CheckCircle2 className="h-4 w-4 text-sage" />}
                                     {hasFailed && <XCircle className="h-4 w-4 text-rust" />}
-                                    {tc.lastRunStatus === "skipped" && <MinusCircle className="h-4 w-4 text-muted-foreground" />}
-                                    <span className="font-medium capitalize">{tc.lastRunStatus}</span>
+                                    {tc.lastRunStatus === "skipped" && (
+                                      <MinusCircle className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                    <span className="font-medium capitalize">
+                                      {tc.lastRunStatus}
+                                    </span>
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-[var(--c-text-muted)] italic">Not run yet</span>
+                                  <span className="text-xs text-[var(--c-text-muted)] italic">
+                                    Not run yet
+                                  </span>
                                 )}
                               </div>
 
@@ -146,7 +175,7 @@ function TraceabilityPage() {
                               <div className="w-[33%] p-4 min-w-[200px]">
                                 {linkedBugs.length > 0 ? (
                                   <div className="space-y-1.5">
-                                    {linkedBugs.map(bug => (
+                                    {linkedBugs.map((bug) => (
                                       <Link
                                         key={bug.id}
                                         to="/bugs"
@@ -157,13 +186,15 @@ function TraceabilityPage() {
                                           {bug.id}
                                         </span>
                                         <span className="text-[10px] text-muted-foreground capitalize">
-                                          ({bug.status})
+                                          ({bug.is_resolved ? "resolved" : "active"})
                                         </span>
                                       </Link>
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-[var(--c-text-muted)]">No bugs reported</span>
+                                  <span className="text-xs text-[var(--c-text-muted)]">
+                                    No bugs reported
+                                  </span>
                                 )}
                               </div>
                             </div>

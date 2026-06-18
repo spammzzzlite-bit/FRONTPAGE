@@ -5,11 +5,12 @@ import type { RecordingSession } from "./types/recording";
 export const recordingsStore = createStore<RecordingSession[]>("ai-test-gen.recordings", []);
 export const useRecordings = recordingsStore.useStore;
 
-
 /**
  * Add a new recording session to the inbox
  */
-export function addRecording(session: Omit<RecordingSession, "id" | "status" | "generatedTestCaseIds" | "tags">): RecordingSession {
+export function addRecording(
+  session: Omit<RecordingSession, "id" | "status" | "generatedTestCaseIds" | "tags">,
+): RecordingSession {
   const newSession: RecordingSession = {
     ...session,
     id: `REC-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
@@ -35,9 +36,13 @@ export function linkTestCasesToRecording(recordingId: string, testCaseIds: strin
   recordingsStore.set((prev) =>
     prev.map((r) =>
       r.id === recordingId
-        ? { ...r, generatedTestCaseIds: [...new Set([...r.generatedTestCaseIds, ...testCaseIds])], status: "converted" }
-        : r
-    )
+        ? {
+            ...r,
+            generatedTestCaseIds: [...new Set([...r.generatedTestCaseIds, ...testCaseIds])],
+            status: "converted",
+          }
+        : r,
+    ),
   );
 }
 
@@ -47,4 +52,3 @@ export function linkTestCasesToRecording(recordingId: string, testCaseIds: strin
 export function deleteRecording(id: string) {
   recordingsStore.set((prev) => prev.filter((r) => r.id !== id));
 }
-

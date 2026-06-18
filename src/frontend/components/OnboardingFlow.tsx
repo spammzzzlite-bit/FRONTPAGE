@@ -506,7 +506,16 @@ function Step2ExtensionPromo({ onNext }: { onNext: () => void }) {
     >
       <StepLabel>Get the Tools</StepLabel>
 
-      <div style={{ margin: "24px 0", color: "var(--orange)", background: "var(--cream-100)", padding: 24, borderRadius: "50%", border: "1px solid var(--border-light)" }}>
+      <div
+        style={{
+          margin: "24px 0",
+          color: "var(--orange)",
+          background: "var(--cream-100)",
+          padding: 24,
+          borderRadius: "50%",
+          border: "1px solid var(--border-light)",
+        }}
+      >
         <Code2 size={40} strokeWidth={1.5} />
       </div>
 
@@ -524,8 +533,8 @@ function Step2ExtensionPromo({ onNext }: { onNext: () => void }) {
       </h2>
 
       <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 36, lineHeight: 1.6 }}>
-        As an Editor, your primary workflow involves recording user journeys in the browser. 
-        Install the extension to start recording instantly and convert your flows into automated test cases.
+        As an Editor, your primary workflow involves recording user journeys in the browser. Install
+        the extension to start recording instantly and convert your flows into automated test cases.
       </p>
 
       <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
@@ -548,8 +557,12 @@ function Step2ExtensionPromo({ onNext }: { onNext: () => void }) {
             alignItems: "center",
             gap: 8,
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--border-light)")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--cream-50)")}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.background = "var(--border-light)")
+          }
+          onMouseLeave={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.background = "var(--cream-50)")
+          }
         >
           Download Extension
         </button>
@@ -720,8 +733,13 @@ function Step3Role({
 
 // ─── Step 4: Feature Highlights ───────────────────────────────────────────────
 
-function Step4Features({ onNext, currentRole }: { onNext: () => void, currentRole: string }) {
-  const cards = currentRole === "Editor" ? FEATURE_CARDS_EDITOR : currentRole === "Viewer" ? FEATURE_CARDS_VIEWER : FEATURE_CARDS_LEAD;
+function Step4Features({ onNext, currentRole }: { onNext: () => void; currentRole: string }) {
+  const cards =
+    currentRole === "Editor"
+      ? FEATURE_CARDS_EDITOR
+      : currentRole === "Viewer"
+        ? FEATURE_CARDS_VIEWER
+        : FEATURE_CARDS_LEAD;
 
   return (
     <div
@@ -1549,7 +1567,12 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 
 // ─── Main OnboardingFlow ──────────────────────────────────────────────────────
 
-export default function OnboardingFlow({ currentRole = "Owner", onComplete, onSkip, onNavigate }: Props) {
+export default function OnboardingFlow({
+  currentRole = "Owner",
+  onComplete,
+  onSkip,
+  onNavigate,
+}: Props) {
   const auth = useAuth();
   const [, setSettings] = useSettings();
 
@@ -1747,9 +1770,7 @@ export default function OnboardingFlow({ currentRole = "Owner", onComplete, onSk
                 onNext={goNext}
               />
             )}
-            {step === 2 && currentRole === "Editor" && (
-              <Step2ExtensionPromo onNext={goNext} />
-            )}
+            {step === 2 && currentRole === "Editor" && <Step2ExtensionPromo onNext={goNext} />}
             {step === 2 && currentRole === "Viewer" && (
               <Step4Features currentRole={currentRole} onNext={goNext} />
             )}
@@ -1763,8 +1784,12 @@ export default function OnboardingFlow({ currentRole = "Owner", onComplete, onSk
                 onNavigate={handleNavigate}
               />
             )}
-            {step === 4 && currentRole !== "Viewer" && <Step4Features currentRole={currentRole} onNext={goNext} />}
-            {step === 5 && currentRole !== "Viewer" && <Step5DNA role={selectedRole ?? "qa_engineer"} onNext={goNext} />}
+            {step === 4 && currentRole !== "Viewer" && (
+              <Step4Features currentRole={currentRole} onNext={goNext} />
+            )}
+            {step === 5 && currentRole !== "Viewer" && (
+              <Step5DNA role={selectedRole ?? "qa_engineer"} onNext={goNext} />
+            )}
             {step === 6 && currentRole !== "Viewer" && (
               <Step6Checklist
                 workspaceName={workspaceName || "Workspace"}

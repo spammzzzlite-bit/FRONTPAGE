@@ -43,6 +43,7 @@ function SettingsPage() {
   const [settings, setSettings] = useSettings();
   const [tokens] = useTokens();
   const navigate = useNavigate();
+  const auth = useAuth();
 
   // Form states - Profile
   const [profileName, setProfileName] = useState(settings.userName || "");
@@ -655,25 +656,25 @@ function TeamMembersCard() {
       return;
     }
     const newProfile = createProfile(name.trim(), email.trim(), role.trim());
-    
+
     // Create workspace member mapping
-    setMembers(prev => [
+    setMembers((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
         workspaceId: DEFAULT_WORKSPACE_ID,
         userId: newProfile.id,
         role: workspaceRole,
-        joinedAt: Date.now()
-      }
+        joinedAt: Date.now(),
+      },
     ]);
-    
+
     toast.success(`Team member "${name}" added.`);
     resetForm();
   };
 
   const handleEdit = (profile: any) => {
-    const wm = members.find(m => m.userId === profile.id);
+    const wm = members.find((m) => m.userId === profile.id);
     setEditingId(profile.id);
     setName(profile.fullName);
     setEmail(profile.email);
@@ -696,9 +697,9 @@ function TeamMembersCard() {
     });
 
     // Update workspace member role
-    setMembers(prev => prev.map(m => 
-      m.userId === editingId ? { ...m, role: workspaceRole } : m
-    ));
+    setMembers((prev) =>
+      prev.map((m) => (m.userId === editingId ? { ...m, role: workspaceRole } : m)),
+    );
 
     toast.success(`Team member updated.`);
     resetForm();
@@ -711,7 +712,7 @@ function TeamMembersCard() {
     }
     if (confirm(`Are you sure you want to remove "${fullName}"?`)) {
       deleteProfile(id);
-      setMembers(prev => prev.filter(m => m.userId !== id));
+      setMembers((prev) => prev.filter((m) => m.userId !== id));
       toast.success(`Team member "${fullName}" removed.`);
     }
   };
@@ -830,7 +831,7 @@ function TeamMembersCard() {
         <div className="divide-y divide-[var(--c-border)]">
           {profiles.map((p) => {
             const isSelf = p.id === auth.user?.id;
-            const wm = members.find(m => m.userId === p.id);
+            const wm = members.find((m) => m.userId === p.id);
             const wRole = wm ? wm.role : "Viewer";
 
             return (
@@ -845,9 +846,13 @@ function TeamMembersCard() {
                   <div className="min-w-0">
                     <p className="text-[13px] font-medium text-[var(--c-text)] truncate flex items-center gap-2">
                       {p.fullName}
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold uppercase ${
-                        wRole === 'Owner' || wRole === 'Admin' ? 'bg-[var(--c-warn-soft)] text-[var(--c-warn)]' : 'bg-[var(--c-bg-hover)] text-[var(--c-text-muted)]'
-                      }`}>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold uppercase ${
+                          wRole === "Owner" || wRole === "Admin"
+                            ? "bg-[var(--c-warn-soft)] text-[var(--c-warn)]"
+                            : "bg-[var(--c-bg-hover)] text-[var(--c-text-muted)]"
+                        }`}
+                      >
                         {wRole}
                       </span>
                       {isSelf && (

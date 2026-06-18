@@ -26,7 +26,9 @@ export function exportToExcel({
         ? "Edge Case"
         : "Positive",
     Priority: tc.priority === "critical" ? "P0" : tc.priority === "high" ? "P1" : "P2",
-    Status: (tc.lastRunStatus || tc.authorStatus || tc.status).charAt(0).toUpperCase() + (tc.lastRunStatus || tc.authorStatus || tc.status).slice(1),
+    Status:
+      (tc.lastRunStatus || tc.authorStatus || tc.status).charAt(0).toUpperCase() +
+      (tc.lastRunStatus || tc.authorStatus || tc.status).slice(1),
     "Assigned To": "",
     Preconditions: "",
     Steps: tc.steps,
@@ -164,7 +166,11 @@ export function exportToExcel({
   XLSX.writeFile(wb, fileName);
 }
 
-export function downloadTextFile(content: string, filename: string, mimeType: string = "text/csv;charset=utf-8;") {
+export function downloadTextFile(
+  content: string,
+  filename: string,
+  mimeType: string = "text/csv;charset=utf-8;",
+) {
   const blob = new Blob([content], { type: mimeType });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);

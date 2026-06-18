@@ -598,9 +598,7 @@ function FeatureCard({
 }) {
   const [flipped, setFlipped] = useState(false);
   const [hovered, setHovered] = useState(false);
-  // @ts-expect-error - dynamic keying on PAGE_TEXT
   const feature = PAGE_TEXT.features[featureKey];
-  // @ts-expect-error - dynamic keying on PAGE_TEXT
   const manifesto = PAGE_TEXT.features.manifestos[featureKey];
 
   return (
