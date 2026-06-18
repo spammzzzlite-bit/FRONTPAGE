@@ -24,7 +24,7 @@ import {
 import { exportToExcel } from "@/frontend/store/export";
 
 export const Route = createFileRoute("/_app/planner")({
-  head: () => ({ meta: [{ title: "AI Test Planner — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "AI Test Planner — QA Mind" }] }),
   component: PlannerPage,
 });
 

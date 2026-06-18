@@ -35,7 +35,7 @@ import {
 } from "@/backend/api/super-admin.functions";
 
 export const Route = createFileRoute("/_app/account/super-admin")({
-  head: () => ({ meta: [{ title: "Super Admin Portal — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Super Admin Portal — QA Mind" }] }),
   component: SuperAdminPage,
 });
 

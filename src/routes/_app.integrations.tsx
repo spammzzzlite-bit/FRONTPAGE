@@ -7,7 +7,7 @@ import { deductTokenAction } from "@/frontend/store/store";
 import { Settings as SettingsIcon, ExternalLink, ShieldCheck, HelpCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_app/integrations")({
-  head: () => ({ meta: [{ title: "Integrations — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Integrations — QA Mind" }] }),
   component: IntegrationsPage,
 });
 

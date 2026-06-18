@@ -34,7 +34,7 @@ import { PageHeader, Modal } from "./_app.projects";
 import { toast } from "./_app";
 
 export const Route = createFileRoute("/_app/suites")({
-  head: () => ({ meta: [{ title: "Test Suites — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Test Suites — QA Mind" }] }),
   component: SuitesPage,
 });
 

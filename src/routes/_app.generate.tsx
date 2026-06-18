@@ -49,7 +49,7 @@ import { exportToExcel } from "@/frontend/store/export";
 import { supabase } from "@/backend/supabase";
 
 export const Route = createFileRoute("/_app/generate")({
-  head: () => ({ meta: [{ title: "Generate Tests — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Generate Tests — QA Mind" }] }),
   component: GeneratePage,
 });
 

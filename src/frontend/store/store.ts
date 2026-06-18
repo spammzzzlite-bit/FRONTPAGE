@@ -1117,7 +1117,7 @@ export type AppNotification = {
 export const notificationsStore = createStore<AppNotification[]>("ai-test-gen.notifications", [
   {
     id: "1",
-    title: "Welcome to Field Notes!",
+    title: "Welcome to QA Mind!",
     message: "Create your first project to get started with test case generation.",
     read: false,
     createdAt: Date.now() - 3600000 * 2,

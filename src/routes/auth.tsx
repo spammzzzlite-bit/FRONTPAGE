@@ -15,8 +15,8 @@ const search = z.object({
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Field Notes" },
-      { name: "description", content: "Sign in to your Field Notes workspace." },
+      { title: "Sign in — QA Mind" },
+      { name: "description", content: "Sign in to your QA Mind workspace." },
     ],
   }),
   validateSearch: (s) => search.parse(s),
@@ -645,7 +645,7 @@ function AuthPage() {
         </div>
 
         <Link to="/welcome" className="relative font-display text-2xl font-bold z-10">
-          Field Notes
+          QA Mind
         </Link>
         <div className="relative space-y-8 z-10">
           <p className="font-display text-3xl leading-snug opacity-0 animate-[fade-in-up_600ms_var(--ease-out)_both]">

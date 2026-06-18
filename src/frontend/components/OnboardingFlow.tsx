@@ -271,7 +271,7 @@ function Step1Welcome({ onNext }: { onNext: () => void }) {
   const [cursorVisible, setCursorVisible] = useState(true);
   const [cursorBlink, setCursorBlink] = useState(false);
 
-  const { displayed } = useTypewriter("Welcome to Field Notes QA.", 45, () => {
+  const { displayed } = useTypewriter("Welcome to QA Mind.", 45, () => {
     setCursorBlink(true);
     setTimeout(() => {
       setCursorVisible(false);
@@ -1310,7 +1310,7 @@ function Step6Checklist({
         </h2>
 
         <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 28 }}>
-          Knock these out first to get the most out of Field Notes QA.
+          Knock these out first to get the most out of QA Mind.
         </p>
 
         {/* Checklist */}
@@ -1710,7 +1710,7 @@ export default function OnboardingFlow({
             letterSpacing: "-0.01em",
           }}
         >
-          Field Notes{" "}
+          QA Mind{" "}
           <span style={{ color: "var(--ink-faint)", fontWeight: 400, fontSize: 12 }}>QA</span>
         </div>
 

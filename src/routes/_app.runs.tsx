@@ -42,7 +42,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_app/runs")({
-  head: () => ({ meta: [{ title: "Test Runs — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Test Runs — QA Mind" }] }),
   validateSearch: searchSchema,
   component: RunsPage,
 });

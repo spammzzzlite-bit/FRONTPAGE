@@ -18,7 +18,7 @@ import { useRuns, useTestCases, useSuites, useProjects, useBugs } from "@/fronte
 import { PageHeader } from "./_app.projects";
 
 export const Route = createFileRoute("/_app/analytics")({
-  head: () => ({ meta: [{ title: "Analytics — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Analytics — QA Mind" }] }),
   component: AnalyticsPage,
 });
 

@@ -35,7 +35,7 @@ import { RoleGuard } from "@/frontend/components/RoleGuard";
 import { toast } from "./_app";
 
 export const Route = createFileRoute("/_app/settings")({
-  head: () => ({ meta: [{ title: "Settings — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Settings — QA Mind" }] }),
   component: SettingsPage,
 });
 

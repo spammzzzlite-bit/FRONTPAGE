@@ -65,7 +65,7 @@ const projectsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_app/projects")({
-  head: () => ({ meta: [{ title: "My Projects — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "My Projects — QA Mind" }] }),
   validateSearch: (search) => projectsSearchSchema.parse(search),
   component: ProjectsPage,
 });

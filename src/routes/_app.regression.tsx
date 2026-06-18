@@ -16,7 +16,7 @@ import { PageHeader, Modal } from "./_app.projects";
 import { toast } from "./_app";
 
 export const Route = createFileRoute("/_app/regression")({
-  head: () => ({ meta: [{ title: "Regression — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Regression — QA Mind" }] }),
   component: RegressionPage,
 });
 

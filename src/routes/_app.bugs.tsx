@@ -31,7 +31,7 @@ import { toast } from "./_app";
 import { exportToExcel } from "@/frontend/store/export";
 
 export const Route = createFileRoute("/_app/bugs")({
-  head: () => ({ meta: [{ title: "Bugs — Field Notes" }] }),
+  head: () => ({ meta: [{ title: "Bugs — QA Mind" }] }),
   component: BugsPage,
 });
 

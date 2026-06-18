@@ -6,7 +6,7 @@ import { useAuth, useCurrentRole } from "@/frontend/store/store";
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
     meta: [
-      { title: "Onboarding — Field Notes" },
+      { title: "Onboarding — QA Mind" },
       { name: "description", content: "Complete your onboarding setup." },
     ],
   }),

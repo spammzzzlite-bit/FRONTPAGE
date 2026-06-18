@@ -409,7 +409,7 @@ function AppShell() {
           to="/"
           className="font-display text-[26px] transition-transform duration-300 hover:scale-[1.02]"
         >
-          Field Notes
+          QA Mind
         </Link>
         <button
           onClick={() => setMobileOpen(true)}
@@ -426,7 +426,7 @@ function AppShell() {
             className="font-display font-medium transition-transform duration-300 hover:scale-[1.02]"
             style={{ fontSize: "20px", letterSpacing: "-0.01em" }}
           >
-            Field Notes QA
+            QA Mind
           </span>
         </Link>
         <button
@@ -480,7 +480,7 @@ function AppShell() {
           >
             {mobileOpen && (
               <div className="flex items-center justify-between border-b border-[var(--c-border)] px-5 py-5 md:hidden">
-                <span className="font-display text-lg">Field Notes</span>
+                <span className="font-display text-lg">QA Mind</span>
                 <button onClick={() => setMobileOpen(false)}>
                   <X className="h-4 w-4" />
                 </button>
