@@ -22,7 +22,6 @@ import {
   useTokens,
   setPlan,
   signOut,
-  deleteUserAccount,
   useAuth,
   useWorkspaceMeta,
   useWorkspaceMembersList,
@@ -1093,9 +1092,33 @@ function SettingsPage() {
                 onClick={async () => {
                   if (confirmUsername === expectedUsername) {
                     setShowDeleteModal(false);
-                    await deleteUserAccount();
-                    toast.success("Account deleted successfully.");
-                    navigate({ to: "/welcome" });
+                    try {
+                      const { data: sessionData } = await supabase.auth.getSession();
+                      const accessToken = sessionData.session?.access_token;
+                      
+                      const { error } = await supabase.functions.invoke("delete-user", {
+                        headers: {
+                          Authorization: `Bearer ${accessToken}`,
+                        },
+                      });
+
+                      if (error) {
+                        const errMsg = (error as any).message || String(error);
+                        if (errMsg.includes("transfer_ownership_required")) {
+                          toast.error("You must transfer workspace ownership before deleting your account.");
+                        } else {
+                          toast.error("An error occurred while deleting your account.");
+                        }
+                        return;
+                      }
+
+                      await supabase.auth.signOut();
+                      localStorage.clear();
+                      toast.success("Account deleted successfully.");
+                      navigate({ to: "/welcome" });
+                    } catch (err) {
+                      toast.error("An error occurred while deleting your account.");
+                    }
                   }
                 }}
                 disabled={confirmUsername !== expectedUsername}
