@@ -1612,8 +1612,6 @@ export function DetailedNewProjectModal({
   const [desc, setDesc] = useState("");
   const [status, setStatus] = useState("planning"); // default to planning / Not Started
   const [priority, setPriority] = useState("medium"); // default to medium
-  const [totalPts, setTotalPts] = useState(0);
-  const [remPts, setRemPts] = useState(0);
   const [start, setStart] = useState("");
   const [target, setTarget] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -1625,7 +1623,6 @@ export function DetailedNewProjectModal({
   const dd = String(today.getDate()).padStart(2, "0");
   const todayStr = `${yyyy}-${mm}-${dd}`;
 
-  const showPointsWarning = totalPts <= 0 || remPts <= 0;
   const showStartWarning = start !== "" && start < todayStr;
   const showTargetWarning = target !== "" && start !== "" && target <= start;
 
@@ -1635,8 +1632,6 @@ export function DetailedNewProjectModal({
     priority !== "" &&
     start !== "" &&
     target !== "" &&
-    totalPts > 0 &&
-    remPts > 0 &&
     !showStartWarning &&
     !showTargetWarning;
 
@@ -1665,8 +1660,8 @@ export function DetailedNewProjectModal({
       description: desc.trim() || "No project description provided.",
       status: status as any,
       priority: priority as any,
-      totalStoryPoints: Number(totalPts),
-      remainingStoryPoints: Number(remPts),
+      totalStoryPoints: 0,
+      remainingStoryPoints: 0,
       startDate: start,
       targetDate: target,
       tags: tags.length > 0 ? tags : [],
@@ -1675,8 +1670,6 @@ export function DetailedNewProjectModal({
     setDesc("");
     setStatus("planning");
     setPriority("medium");
-    setTotalPts(0);
-    setRemPts(0);
     setStart("");
     setTarget("");
     setTags([]);
@@ -1745,37 +1738,6 @@ export function DetailedNewProjectModal({
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
-              Total Story Points <span className="text-[var(--c-fail)]">*</span>
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={totalPts || ""}
-              onChange={(e) => setTotalPts(e.target.value === "" ? 0 : Number(e.target.value))}
-              className="w-full rounded-[8px] border border-[var(--c-border)] bg-[var(--c-bg-input)] p-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
-              Remaining Points <span className="text-[var(--c-fail)]">*</span>
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={remPts || ""}
-              onChange={(e) => setRemPts(e.target.value === "" ? 0 : Number(e.target.value))}
-              className="w-full rounded-[8px] border border-[var(--c-border)] bg-[var(--c-bg-input)] p-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
-            />
-          </div>
-        </div>
-        {showPointsWarning && (
-          <p className="text-[11.5px] text-[var(--c-fail)] font-semibold mt-0.5">
-            Total and remaining story points must be greater than 0.
-          </p>
-        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
@@ -1886,8 +1848,6 @@ function EditProjectModal({ project: p, onClose }: { project: Project; onClose: 
   const [desc, setDesc] = useState(p.description || "");
   const [status, setStatus] = useState(p.status || "active");
   const [priority, setPriority] = useState(p.priority || "medium");
-  const [totalPts, setTotalPts] = useState(p.totalStoryPoints || 0);
-  const [remPts, setRemPts] = useState(p.remainingStoryPoints || 0);
   const [start, setStart] = useState(p.startDate || "");
   const [target, setTarget] = useState(p.targetDate || "");
   const [tagsInput, setTagsInput] = useState(p.tags?.join(", ") || "");
@@ -1909,8 +1869,6 @@ function EditProjectModal({ project: p, onClose }: { project: Project; onClose: 
       (p.description || "") === desc.trim() &&
       p.status === status &&
       p.priority === priority &&
-      Number(p.totalStoryPoints || 0) === Number(totalPts) &&
-      Number(p.remainingStoryPoints || 0) === Number(remPts) &&
       (p.startDate || "") === start &&
       (p.targetDate || "") === target &&
       !tagsChanged;
@@ -1931,8 +1889,8 @@ function EditProjectModal({ project: p, onClose }: { project: Project; onClose: 
       description: desc.trim(),
       status: status as any,
       priority: priority as any,
-      totalStoryPoints: Number(totalPts),
-      remainingStoryPoints: Number(remPts),
+      totalStoryPoints: 0,
+      remainingStoryPoints: 0,
       startDate: start,
       targetDate: target,
       tags: newTags,
@@ -1995,30 +1953,6 @@ function EditProjectModal({ project: p, onClose }: { project: Project; onClose: 
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
-              Total Points
-            </label>
-            <input
-              type="number"
-              value={totalPts}
-              onChange={(e) => setTotalPts(Number(e.target.value))}
-              className="w-full rounded-[8px] border border-[var(--c-border)] bg-[var(--c-bg-input)] p-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
-              Remaining Points
-            </label>
-            <input
-              type="number"
-              value={remPts}
-              onChange={(e) => setRemPts(Number(e.target.value))}
-              className="w-full rounded-[8px] border border-[var(--c-border)] bg-[var(--c-bg-input)] p-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
-            />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
