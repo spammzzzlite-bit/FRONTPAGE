@@ -179,59 +179,6 @@ function BarSparkline({
     </div>
   );
 }
-interface RoleChangeBannerProps {
-  role: string;
-  workspaceName: string;
-  dismissSecsLeft: number;
-  onDismiss: () => void;
-}
-
-function RoleChangeBanner({ role, workspaceName, dismissSecsLeft, onDismiss }: RoleChangeBannerProps) {
-  let bgClass = "bg-[#475569]";
-  let roleLabel = "Viewer";
-  
-  const roleClean = role.toLowerCase() as any;
-  if (can(roleClean, "workspace:viewKey")) {
-    bgClass = "bg-[#D97706]";
-    roleLabel = "Owner";
-  } else if (can(roleClean, "project:create")) {
-    bgClass = "bg-[#EA580C]";
-    roleLabel = "Admin";
-  } else if (can(roleClean, "suite:create")) {
-    bgClass = "bg-[#2563EB]";
-    roleLabel = "Editor";
-  } else {
-    bgClass = "bg-[#475569]";
-    roleLabel = "Viewer";
-  }
-
-  return (
-    <div className={`${bgClass} text-white px-4 py-3 rounded-lg flex items-center justify-between shadow-md transition-all duration-300 animate-fade-in`}>
-      <div className="flex items-center gap-2">
-        <span className="font-semibold text-sm">
-          Your role in <span className="underline decoration-dotted">{workspaceName}</span> has been updated to <span className="font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded">{roleLabel}</span>.
-        </span>
-      </div>
-      <button
-        onClick={onDismiss}
-        disabled={dismissSecsLeft > 0}
-        className={`p-1 rounded-full transition-colors flex items-center gap-1 text-xs font-medium ${
-          dismissSecsLeft > 0
-            ? "opacity-50 cursor-not-allowed text-white/70"
-            : "hover:bg-white/20 text-white cursor-pointer"
-        }`}
-      >
-        {dismissSecsLeft > 0 ? (
-          <span className="font-mono bg-black/20 px-1.5 py-0.5 rounded text-[10px]">
-            {dismissSecsLeft}s
-          </span>
-        ) : (
-          <X className="h-4 w-4" />
-        )}
-      </button>
-    </div>
-  );
-}
 
 function Dashboard() {
   const { projectId } = Route.useSearch();
@@ -243,40 +190,7 @@ function Dashboard() {
   const { currentUser } = useUserStore();
   const role = currentUser?.role ?? "viewer";
   const [workspaceMeta] = useWorkspaceMeta();
-  const [members, updateMembers] = useWorkspaceMembersList();
-  const currentMember = members.find((m) => m.userId === currentUser?.id);
-  const showBanner = currentMember?.pendingRoleChangeNotification === true;
-  const [dismissSecsLeft, setDismissSecsLeft] = useState(3);
-
-  useEffect(() => {
-    if (showBanner) {
-      setDismissSecsLeft(3);
-      const timer = setInterval(() => {
-        setDismissSecsLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [showBanner]);
-
-  const handleDismissBanner = () => {
-    if (dismissSecsLeft > 0) return;
-    const updatedMembers = members.map((m) => {
-      if (m.userId === currentUser?.id) {
-        return {
-          ...m,
-          pendingRoleChangeNotification: false,
-        };
-      }
-      return m;
-    });
-    updateMembers(updatedMembers);
-  };
+  const [members] = useWorkspaceMembersList();
 
   const [showNewProject, setShowNewProject] = useState(false);
   const { openPanel } = usePanel();
@@ -486,14 +400,6 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-10">
-      {showBanner && (
-        <RoleChangeBanner
-          role={role}
-          workspaceName={workspaceMeta?.workspaceName || "Workspace"}
-          dismissSecsLeft={dismissSecsLeft}
-          onDismiss={handleDismissBanner}
-        />
-      )}
       <Masthead projects={projects} activeProject={activeProject} />
 
       <style>{`
