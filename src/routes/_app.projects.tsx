@@ -49,6 +49,7 @@ import {
   scaffoldSprintsForProject,
   sprintsStore,
   useUserStore,
+  activeProjectStore,
   type Project,
   type TestSuite,
   type TestCase,
@@ -1332,6 +1333,7 @@ export function DetailedNewProjectModal({
   onClose: () => void;
   onSuccess?: (p: Project) => void;
 }) {
+  const navigate = useNavigate();
   const assertPermission = useAssertPermission();
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -1398,6 +1400,8 @@ export function DetailedNewProjectModal({
     setTags([]);
     setTagInput("");
     toast.success(`Project "${p.name}" created`);
+    activeProjectStore.set(p.id);
+    navigate({ to: "/projects", search: { projectId: p.id } });
     if (onSuccess) onSuccess(p);
     onClose();
   }
