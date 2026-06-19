@@ -162,13 +162,7 @@ const ROLE_NAV_LABELS: Record<string, readonly string[]> = {
 function AppLayout() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [onboardingComplete, setOnboardingComplete] = useState(() => {
-    if (typeof window === "undefined" || !auth.user?.id) return false;
-    return (
-      localStorage.getItem(`fieldnotes.user.${auth.user.id}.onboardingComplete`) === "true" &&
-      !!localStorage.getItem("fieldnotes.workspace.meta")
-    );
-  });
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
   // Authentication and onboarding gatekeeper. Runs whenever auth session, loading state, or user metadata updates.
   useEffect(() => {
@@ -209,19 +203,39 @@ function AppLayout() {
       }
 
       // 4. Force new users to complete onboarding sequence before dashboard access
-      const completed =
-        typeof window !== "undefined" &&
-        localStorage.getItem(`fieldnotes.user.${auth.user?.id}.onboardingComplete`) === "true" &&
-        !!localStorage.getItem("fieldnotes.workspace.meta");
-      setOnboardingComplete(completed);
-      if (!completed) {
-        navigate({ to: "/onboarding" });
-      }
+      const checkOnboarding = async () => {
+        if (!auth.user?.id) return;
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("onboarding_complete")
+          .eq("id", auth.user.id)
+          .single();
+
+        let completed = false;
+        if (error && error.code === "PGRST116") {
+          // Profile does not exist yet; upsert it
+          await supabase.from("profiles").upsert({
+            id: auth.user.id,
+            email: auth.user.email,
+            full_name: auth.user.user_metadata?.name || "",
+            onboarding_complete: false,
+          });
+        } else if (data) {
+          completed = !!data.onboarding_complete;
+        }
+
+        setOnboardingComplete(completed);
+        if (!completed) {
+          navigate({ to: "/onboarding" });
+        }
+      };
+      
+      checkOnboarding();
     }
   }, [auth.session, auth.user, auth.loading, navigate]);
 
   // Show generic loading spinner until auth state resolves, email is verified, and onboarding is completed.
-  if (auth.loading || !auth.session || !auth.user?.email_confirmed_at || !onboardingComplete) {
+  if (auth.loading || !auth.session || !auth.user?.email_confirmed_at || onboardingComplete === null) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />

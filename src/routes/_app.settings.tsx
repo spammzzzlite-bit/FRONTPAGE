@@ -34,6 +34,12 @@ import {
 import { PermissionGate, can } from "@/lib/permissions";
 import { toast } from "./_app";
 import { supabase } from "@/backend/supabase";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/frontend/components/ui/tooltip";
 
 function generateWorkspaceKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -955,24 +961,77 @@ function SettingsPage() {
             </div>
           </div>
 
-          {/* Card 7: Danger Zone (Owner Only) - Restyled to be aesthetic */}
-          {can(currentRole.toLowerCase() as any, "settings:danger") && (
-            <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 space-y-3 transition-colors hover:border-[var(--c-fail)]/30">
-              <div className="flex items-center gap-2 text-[var(--c-text)]">
-                <ShieldAlert className="h-5 w-5 text-[var(--c-fail)]" />
-                <h3 className="font-display text-[20px] font-semibold leading-none">Danger Zone</h3>
+          {/* Danger Zone */}
+          <div className="space-y-4">
+            {can(currentRole.toLowerCase() as any, "settings:delete_own_account") && (() => {
+              const isOwner = currentRole.toLowerCase() === "owner";
+              const activeMembers = members.filter(m => m.status === 'active' && m.userId !== auth.user?.id);
+              const hasOtherMembers = activeMembers.length > 0;
+              const disabledTooltip = isOwner && hasOtherMembers ? "Transfer ownership to another member before deleting your account." : undefined;
+              
+              return (
+                <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 space-y-3 transition-colors hover:border-[var(--c-fail)]/30">
+                  <div className="flex items-center gap-2 text-[var(--c-text)]">
+                    <ShieldAlert className="h-5 w-5 text-[var(--c-fail)]" />
+                    <h3 className="font-display text-[20px] font-semibold leading-none">Delete My Account</h3>
+                  </div>
+                  <p className="text-[12px] text-[var(--c-text-muted)] leading-normal">
+                    Permanently delete your personal account and remove your access.
+                  </p>
+                  
+                  {disabledTooltip ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div style={{ display: "inline-block", cursor: "not-allowed", width: "100%" }}>
+                            <div style={{ pointerEvents: "none", opacity: 0.5, width: "100%" }}>
+                              <button
+                                disabled
+                                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] py-2 text-[12px] font-medium"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Delete Account
+                              </button>
+                            </div>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="flex flex-col gap-2 items-center">
+                            <p>{disabledTooltip}</p>
+                            <span className="text-[12px] text-[var(--c-accent)]">Check My Membership below</span>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <button
+                      onClick={() => setShowDeleteModal(true)}
+                      className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] hover:bg-[var(--c-fail)]/5 hover:border-[var(--c-fail)] py-2 text-[12px] font-medium transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete Account
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {can(currentRole.toLowerCase() as any, "settings:delete_workspace") && (
+              <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 space-y-3 transition-colors hover:border-[var(--c-fail)]/30">
+                <div className="flex items-center gap-2 text-[var(--c-text)]">
+                  <ShieldAlert className="h-5 w-5 text-[var(--c-fail)]" />
+                  <h3 className="font-display text-[20px] font-semibold leading-none">Delete Workspace</h3>
+                </div>
+                <p className="text-[12px] text-[var(--c-text-muted)] leading-normal">
+                  Permanently wipe all projects, tests, activities, settings, and tokens for the entire workspace.
+                </p>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] hover:bg-[var(--c-fail)]/5 hover:border-[var(--c-fail)] py-2 text-[12px] font-medium transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete Workspace
+                </button>
               </div>
-              <p className="text-[12px] text-[var(--c-text-muted)] leading-normal">
-                Permanently wipe all projects, tests, activities, settings, and tokens.
-              </p>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] hover:bg-[var(--c-fail)]/5 hover:border-[var(--c-fail)] py-2 text-[12px] font-medium transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Delete Account
-              </button>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Card 8: My Workspace Membership (non-Owner Roles) */}
           {!can(currentRole.toLowerCase() as any, "workspace:viewKey") && (
@@ -1046,28 +1105,39 @@ function SettingsPage() {
       </div>
 
       {/* Danger Zone Confirmation Modal */}
-      {showDeleteModal && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(26,23,20,0.4)] p-4 backdrop-blur-[4px] animate-[fade-in-up_var(--t-normal)_var(--ease-out)_both]"
-          onClick={() => setShowDeleteModal(false)}
-        >
+      {showDeleteModal && (() => {
+        const isOwner = currentRole.toLowerCase() === "owner";
+        const activeMembers = members.filter(m => m.status === 'active' && m.userId !== auth.user?.id);
+        const hasOtherMembers = activeMembers.length > 0;
+        const willDeleteWorkspace = isOwner && !hasOtherMembers;
+
+        return (
           <div
-            className="w-full max-w-md rounded-[16px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-[28px] shadow-[var(--shadow-lg)]"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(26,23,20,0.4)] p-4 backdrop-blur-[4px] animate-[fade-in-up_var(--t-normal)_var(--ease-out)_both]"
+            onClick={() => setShowDeleteModal(false)}
           >
-            <div className="mb-[24px] flex items-center justify-between">
-              <p className="font-display text-[26px] text-[var(--c-fail)]">Delete Account</p>
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="rounded-full p-2 text-[var(--c-text-muted)] transition-colors hover:bg-[var(--c-bg-hover)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="mb-4 text-[13px] text-[var(--c-text-muted)] leading-relaxed">
-              This action is permanent and cannot be undone. All your projects, suites, test cases,
-              and history will be deleted.
-            </p>
+            <div
+              className="w-full max-w-md rounded-[16px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-[28px] shadow-[var(--shadow-lg)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-[24px] flex items-center justify-between">
+                <p className="font-display text-[26px] text-[var(--c-fail)]">Delete Account</p>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="rounded-full p-2 text-[var(--c-text-muted)] transition-colors hover:bg-[var(--c-bg-hover)]"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <p className="mb-4 text-[13px] text-[var(--c-text-muted)] leading-relaxed">
+                This action is permanent and cannot be undone. All your projects, suites, test cases,
+                and history will be deleted.
+                {willDeleteWorkspace && (
+                  <span className="font-medium text-[var(--c-fail)] block mt-2">
+                    Note: Since you are the sole member, deleting your account will also permanently delete this workspace.
+                  </span>
+                )}
+              </p>
             <p className="mb-4 text-[13px] font-mono text-[var(--c-text-muted)]">
               Type <span className="font-semibold text-[var(--c-text)]">"{expectedUsername}"</span>{" "}
               to confirm:
@@ -1129,7 +1199,8 @@ function SettingsPage() {
             </div>
           </div>
         </div>
-      )}
+      );
+      })()}
 
       {/* Leave Workspace Confirmation Modal */}
       {showLeaveModal && (

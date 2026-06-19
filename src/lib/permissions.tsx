@@ -37,7 +37,8 @@ export const PERMISSIONS: Record<string, UserRole[]> = {
   "members:remove": ["owner", "admin"],
   "settings:edit": ["owner", "admin", "editor", "viewer"],
   "settings:plan": ["owner"],
-  "settings:danger": ["owner"],
+  "settings:delete_own_account": ["owner", "admin", "editor", "viewer"],
+  "settings:delete_workspace": ["owner"],
   "workspace:viewKey": ["owner"],
   "superadmin:access": ["owner"],
 };
