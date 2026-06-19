@@ -510,9 +510,9 @@ function AppShell() {
       <div className="flex items-center justify-between border-b border-[var(--c-border)] px-4 py-3 md:hidden">
         <Link
           to="/"
-          className="font-display text-[26px] transition-transform duration-300 hover:scale-[1.02]"
+          className="font-display text-[26px] transition-transform duration-300 hover:scale-[1.02] text-[var(--c-text)]"
         >
-          QAMind AI
+          QAMind <span style={{ color: "#C2552E" }}>AI</span>
         </Link>
         <button
           onClick={() => setMobileOpen(true)}
@@ -526,10 +526,10 @@ function AppShell() {
       <header className="sticky top-0 z-20 hidden h-[52px] shrink-0 items-center gap-4 bg-[var(--c-topbar)] px-4 md:flex md:px-6">
         <Link to="/" className="mr-4 flex w-[186px] shrink-0 items-center text-white">
           <span
-            className="font-display font-medium transition-transform duration-300 hover:scale-[1.02]"
+            className="font-display transition-transform duration-300 hover:scale-[1.02] text-white"
             style={{ fontSize: "20px", letterSpacing: "-0.01em" }}
           >
-            QAMind AI
+            QAMind <span style={{ color: "#C2552E" }}>AI</span>
           </span>
         </Link>
         <button
@@ -585,7 +585,7 @@ function AppShell() {
           >
             {mobileOpen && (
               <div className="flex items-center justify-between border-b border-[var(--c-border)] px-5 py-5 md:hidden">
-                <span className="font-display text-lg">QAMind AI</span>
+                <span className="font-display text-lg text-[var(--c-text)]">QAMind <span style={{ color: "#C2552E" }}>AI</span></span>
                 <button onClick={() => setMobileOpen(false)}>
                   <X className="h-4 w-4" />
                 </button>
