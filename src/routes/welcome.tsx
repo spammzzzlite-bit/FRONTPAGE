@@ -747,30 +747,6 @@ function ThemeToggle() {
   );
 }
 
-function IssueCounter() {
-  const [issue, setIssue] = useState(PAGE_TEXT.issueNumber);
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    const handleVis = () => {
-      if (document.visibilityState === "visible") {
-        interval = setInterval(() => {
-          setIssue((prev) => (prev >= 20 ? 14 : prev + 1));
-        }, 20000);
-      } else {
-        clearInterval(interval);
-      }
-    };
-    handleVis();
-    document.addEventListener("visibilitychange", handleVis);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVis);
-    };
-  }, []);
-
-  return <span id="issue-counter">{String(issue).padStart(3, "0")}</span>;
-}
-
 function SectionMarker({ label }: { label: string }) {
   return (
     <p className="section-marker label-eyebrow mb-3 group cursor-default">
@@ -948,9 +924,6 @@ function Welcome() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link to="/welcome" className="flex items-baseline gap-2">
             <span className="font-display text-[22px] text-[var(--c-text)]">QA Mind</span>
-            <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--c-text-muted)] sm:inline">
-              Vol. 01
-            </span>
           </Link>
 
           <nav
@@ -1019,9 +992,9 @@ function Welcome() {
         >
           <div className="mx-auto grid max-w-7xl grid-cols-1 gap-14 px-6 pb-20 pt-28 md:grid-cols-[minmax(0,1fr)_430px] md:gap-20 md:pb-28 md:pt-36">
             <div className="hero-copy">
-              {/* ENHANCED: The Living Issue | Edit text in content.ts */}
+              {/* Tagline */}
               <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--c-text-muted)]">
-                {PAGE_TEXT.issueLabel} <IssueCounter /> - Quality, Slowly
+                Quality, Slowly
               </p>
 
               {/* ENHANCED: Hero Typewriter | Edit text in content.ts */}
@@ -1267,7 +1240,6 @@ function Welcome() {
         <div className="border-t border-[rgba(255,255,255,0.1)] fn-hr-draw">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 text-xs text-[rgba(255,255,255,0.6)]">
             <span>&copy; {new Date().getFullYear()} QA Mind Press</span>
-            <span className="font-mono">ISSN 2998-0142</span>
           </div>
         </div>
       </footer>

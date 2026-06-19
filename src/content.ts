@@ -29,11 +29,9 @@ export const PAGE_TEXT = {
     "One project deserves your full attention.",
     "Fair pricing is quiet pricing.",
   ],
-  issueLabel: "ISSUE",
-  issueNumber: 14,
   quote: {
     body: "We took the autoplay video off the homepage. Then we took the gradient off. Now the page is just words. We like it more.",
-    attribution: "- Editor's note, Vol. 12",
+    attribution: "- Editor's note",
   },
   practice: {
     drafting: {

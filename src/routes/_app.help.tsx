@@ -15,7 +15,7 @@ const FAQ = [
   },
   {
     q: "How do I connect CI/CD?",
-    a: "Visit Integrations and connect a runner — GitHub Actions, Jenkins, or GitLab CI. The current build uses mock connections; OAuth wiring is in the next issue.",
+    a: "Visit Integrations and connect a runner — GitHub Actions, Jenkins, or GitLab CI. The current build uses mock connections; OAuth wiring is coming in an upcoming release.",
   },
   {
     q: "What file formats are supported?",
