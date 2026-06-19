@@ -304,6 +304,10 @@ BEGIN
   FROM auth.users
   WHERE id = uid;
 
+  UPDATE workspace_members
+  SET email = user_email
+  WHERE user_id = uid AND lower(email) IS DISTINCT FROM lower(user_email);
+
   UPDATE workspace_members wm
   SET role = 'owner'
   FROM workspaces w
@@ -323,7 +327,7 @@ BEGIN
     AND wm.role <> 'owner';
 
   UPDATE workspaces
-  SET owner_id = uid
+  SET owner_id = uid, owner_email = user_email
   WHERE lower(owner_email) = lower(user_email)
     AND (owner_id IS NULL OR owner_id = uid);
 

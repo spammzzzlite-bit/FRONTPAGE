@@ -1,7 +1,8 @@
--- Run once in Supabase → SQL Editor (project: lslwjxuhxnevntvjhyrd)
--- Fixes first-time sign-ups stuck as Viewer and upgrades known accounts.
+-- Run in Supabase → SQL Editor (project: lslwjxuhxnevntvjhyrd)
+-- Fixes Viewer roles for Perfect QA Services accounts.
+-- Uses auth.users email (Google sign-in) — not hardcoded typos.
 
--- 1) RPC: self-service repair on each login (SECURITY DEFINER)
+-- 1) RPC: self-service repair on each login
 CREATE OR REPLACE FUNCTION public.ensure_user_workspace_access()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -26,7 +27,11 @@ BEGIN
   FROM auth.users
   WHERE id = uid;
 
-  -- Owner on workspace record but wrong membership role
+  -- Sync membership email to auth email (fixes old typos in workspace_members.email)
+  UPDATE workspace_members
+  SET email = user_email
+  WHERE user_id = uid AND lower(email) IS DISTINCT FROM lower(user_email);
+
   UPDATE workspace_members wm
   SET role = 'owner'
   FROM workspaces w
@@ -36,7 +41,6 @@ BEGIN
     AND w.owner_id = uid
     AND wm.role <> 'owner';
 
-  -- Email matches workspace owner_email
   UPDATE workspace_members wm
   SET role = 'owner'
   FROM workspaces w
@@ -47,11 +51,10 @@ BEGIN
     AND wm.role <> 'owner';
 
   UPDATE workspaces
-  SET owner_id = uid
+  SET owner_id = uid, owner_email = user_email
   WHERE lower(owner_email) = lower(user_email)
     AND (owner_id IS NULL OR owner_id = uid);
 
-  -- Sole active member → claim ownership
   FOR member_rec IN
     SELECT * FROM workspace_members
     WHERE user_id = uid AND status = 'active' AND role IN ('viewer', 'editor')
@@ -68,7 +71,6 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Workspace has no owner/admin yet → first active member becomes owner
   UPDATE workspace_members wm
   SET role = 'owner'
   WHERE wm.user_id = uid
@@ -81,7 +83,6 @@ BEGIN
         AND o.role IN ('owner', 'admin')
     );
 
-  -- Create a workspace when user has no active membership and no external pending invite
   IF NOT EXISTS (
     SELECT 1 FROM workspace_members WHERE user_id = uid AND status = 'active'
   ) AND NOT EXISTS (
@@ -102,50 +103,62 @@ BEGIN
     VALUES (ws_id, uid, user_email, user_name, 'owner', 'active');
   END IF;
 
-  RETURN jsonb_build_object('ok', true, 'user_id', uid);
+  RETURN jsonb_build_object('ok', true, 'user_id', uid, 'email', user_email);
 END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.ensure_user_workspace_access() TO authenticated;
 
--- 2) Immediate fix for Perfect QA Services accounts (case-insensitive)
-UPDATE workspace_members
+-- 2) Fix by actual Google/auth email (correct domain: perfectqaservices.com)
+UPDATE workspace_members wm
 SET role = 'owner'
-WHERE lower(email) IN (
-  'sharma@perfectqsservices.com',
-  'rahul@perfectqsservices.com'
-)
-AND status = 'active';
+FROM auth.users u
+WHERE wm.user_id = u.id
+  AND wm.status = 'active'
+  AND lower(u.email) LIKE '%@perfectqaservices.com';
 
--- Also match Google sign-in casing variants
+-- Fix legacy typo domain on member rows (perfectqsservices → perfectqaservices)
 UPDATE workspace_members
-SET role = 'owner'
+SET
+  role = 'owner',
+  email = regexp_replace(lower(email), '@perfectqsservices\.com$', '@perfectqaservices.com')
 WHERE status = 'active'
-  AND role <> 'owner'
-  AND (
-    lower(email) LIKE 'sharma@%perfectqsservices.com'
-    OR lower(email) LIKE 'rahul@%perfectqsservices.com'
-  );
+  AND lower(email) LIKE '%@perfectqsservices.com';
 
+-- Align workspace owner_id with owner memberships
 UPDATE workspaces w
 SET owner_id = wm.user_id,
     owner_email = wm.email
 FROM workspace_members wm
+JOIN auth.users u ON u.id = wm.user_id
 WHERE wm.workspace_id = w.id
-  AND lower(wm.email) IN (
-    'sharma@perfectqsservices.com',
-    'rahul@perfectqsservices.com'
-  )
   AND wm.status = 'active'
   AND wm.role = 'owner'
+  AND lower(u.email) LIKE '%@perfectqaservices.com'
   AND (w.owner_id IS NULL OR w.owner_id <> wm.user_id);
 
--- 3) Verify
-SELECT wm.email, wm.role, wm.status, w.name AS workspace, w.owner_email
-FROM workspace_members wm
+-- 3) Explicit accounts
+UPDATE workspace_members wm
+SET role = 'owner'
+FROM auth.users u
+WHERE wm.user_id = u.id
+  AND wm.status = 'active'
+  AND lower(u.email) IN (
+    'sharma@perfectqaservices.com',
+    'rahul@perfectqaservices.com'
+  );
+
+-- 4) Verify (shows auth email + membership role)
+SELECT
+  u.email AS auth_email,
+  wm.email AS member_email,
+  wm.role,
+  wm.status,
+  w.name AS workspace,
+  w.owner_email,
+  w.owner_id = u.id AS is_workspace_owner
+FROM auth.users u
+LEFT JOIN workspace_members wm ON wm.user_id = u.id AND wm.status = 'active'
 LEFT JOIN workspaces w ON w.id = wm.workspace_id
-WHERE lower(wm.email) IN (
-  'sharma@perfectqsservices.com',
-  'rahul@perfectqsservices.com'
-)
-ORDER BY wm.email;
+WHERE lower(u.email) LIKE '%@perfectqaservices.com'
+ORDER BY u.email, wm.role;

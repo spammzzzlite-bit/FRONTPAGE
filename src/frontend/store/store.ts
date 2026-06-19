@@ -503,7 +503,21 @@ export async function resolveActiveWorkspace(userId: string) {
 
   if (!memberships || memberships.length === 0) return null;
 
-  const membership = memberships[0];
+  const roleRank: Record<string, number> = { owner: 0, admin: 1, editor: 2, viewer: 3 };
+
+  const sorted = [...memberships].sort((a, b) => {
+    const rankA = roleRank[a.role?.toLowerCase() ?? ""] ?? 99;
+    const rankB = roleRank[b.role?.toLowerCase() ?? ""] ?? 99;
+    if (rankA !== rankB) return rankA - rankB;
+
+    const wsA = (Array.isArray(a.workspaces) ? a.workspaces[0] : a.workspaces) as { owner_id?: string } | null;
+    const wsB = (Array.isArray(b.workspaces) ? b.workspaces[0] : b.workspaces) as { owner_id?: string } | null;
+    if (wsA?.owner_id === userId) return -1;
+    if (wsB?.owner_id === userId) return 1;
+    return 0;
+  });
+
+  const membership = sorted[0];
   const ws = (Array.isArray(membership.workspaces) ? membership.workspaces[0] : membership.workspaces) as any;
 
   return {
@@ -1534,19 +1548,21 @@ export async function initializeStores(userId: string, userEmail?: string, userN
       setActiveWorkspaceContext(meta, role);
       qamindStorage.set(qamindStorage.userRole(userId), role);
       qamindStorage.set(qamindStorage.workspaceMeta(), JSON.stringify(meta));
-      
-      // Seed user profile
-      const currentProfiles = profilesStore.get();
-      if (currentProfiles.length === 0) {
-        profilesStore.set([
-          {
-            id: userId,
-            fullName: userName || userEmail?.split("@")[0] || "User",
-            email: userEmail || "",
-            role: active.role,
-          },
-        ]);
-      }
+
+      const displayName = userName || userEmail?.split("@")[0] || "User";
+      profilesStore.set((prev) => {
+        const next = {
+          id: userId,
+          fullName: displayName,
+          email: userEmail || "",
+          role: active.role,
+        };
+        const idx = prev.findIndex((p) => p.id === userId);
+        if (idx === -1) return [...prev, next];
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], ...next };
+        return copy;
+      });
       
       // Fetch workspace data from Supabase directly
       await fetchWorkspaceData(meta.workspaceId);
