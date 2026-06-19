@@ -2,7 +2,7 @@
 // PS PROJECT -- FRONT END (CLIENT-SIDE STATE & STORES)
 // =========================================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/backend/supabase";
 import type { Session, User } from "@supabase/supabase-js";
 import { syncWorkspaceFromSupabase, fetchWorkspaceData } from "./supabase-sync";
@@ -479,9 +479,6 @@ export function getAvatarColor(name: string): string {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   return brandColors[Math.abs(hash) % brandColors.length];
-}
-
-  return [members, updateActiveWorkspaceMembers] as const;
 }
 
 export async function resolveActiveWorkspace(userId: string) {
@@ -1585,8 +1582,6 @@ export async function initializeStores(userId: string, userEmail?: string, userN
 
   checkAndRefillTokens();
 }
-}
-
 
 
 /**

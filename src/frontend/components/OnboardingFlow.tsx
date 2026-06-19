@@ -24,11 +24,11 @@ import {
   useWorkspaceMeta,
   useWorkspaceMembersList,
   updateActiveWorkspaceMembers,
-  updateActiveWorkspaceMeta,
   getAvatarColor,
   type WorkspaceMeta,
   type WorkspaceMember,
 } from "@/frontend/store/store";
+import { supabase } from "@/backend/supabase";
 import { can } from "@/lib/permissions";
 
 import { commandBrief } from "../../config/onboarding/commandBrief";
@@ -1889,7 +1889,7 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
   const currentRole = (propRole || currentUser?.role || "viewer").toLowerCase();
 
 
-  const [workspaceMeta] = useWorkspaceMeta();
+  const [workspaceMeta, updateWorkspaceMeta] = useWorkspaceMeta();
   const [members, updateActiveWorkspaceMembers] = useWorkspaceMembersList();
 
   const [step, setStep] = useState(1);
@@ -1990,7 +1990,7 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
           .update({ name: workspaceName })
           .eq("id", workspaceMeta.workspaceId);
           
-        updateActiveWorkspaceMeta({
+        updateWorkspaceMeta({
           ...workspaceMeta,
           workspaceName: workspaceName
         });
