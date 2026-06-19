@@ -10,64 +10,20 @@ import {
   TestRun,
   BugReport
 } from "./store";
-import { generateWorkspaceKey } from "@/lib/workspace-key";
+import { provisionWorkspaceForNewUser } from "./workspace-provision";
 
 /**
  * Core function to sync all workspace data from Supabase down to the local state stores.
  * This runs after `initializeStores` or when switching workspaces.
  */
-export async function syncWorkspaceFromSupabase(workspaceId: string, userId: string, userEmail: string, userName: string) {
-  if (!workspaceId || !userId) return;
-
-  try {
-    // 0. Auto-create workspace and membership if they don't exist
-    const { data: existingByUid } = await supabase
-      .from('workspace_members')
-      .select('id, role, status')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    const { data: existingByEmail } = await supabase
-      .from('workspace_members')
-      .select('id, role, status')
-      .eq('email', userEmail)
-      .maybeSingle();
-
-    const existing = existingByUid || existingByEmail;
-
-    if (existing) {
-      // User already has a membership (active or pending). 
-      // Do NOT create a new workspace. Do NOT change their role.
-      return;
-    }
-
-    // No membership found — this is a truly new user with no invites.
-    // Check if workspace exists
-    const { data: wsData } = await supabase.from('workspaces').select('id').eq('id', workspaceId).maybeSingle();
-    if (!wsData) {
-      const workspaceName = workspaceId === 'ws-1001' ? 'QAMind AI Demo Workspace' : 'My Workspace';
-
-      await supabase.from('workspaces').insert({
-        id: workspaceId,
-        name: workspaceName,
-        workspace_key: generateWorkspaceKey(),
-        owner_id: userId,
-        owner_email: userEmail
-      });
-    }
-    
-    // Insert member as owner
-    await supabase.from('workspace_members').insert({
-      workspace_id: workspaceId,
-      user_id: userId,
-      email: userEmail,
-      role: 'owner',
-      status: 'active'
-    });
-
-  } catch (error) {
-    console.error("Failed to auto-provision workspace from Supabase", error);
-  }
+export async function syncWorkspaceFromSupabase(
+  workspaceId: string,
+  userId: string,
+  userEmail: string,
+  userName: string,
+) {
+  if (!userId) return;
+  await provisionWorkspaceForNewUser(userId, userEmail, userName, workspaceId);
 }
 
 /**

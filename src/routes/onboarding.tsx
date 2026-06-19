@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import OnboardingFlow from "@/frontend/components/OnboardingFlow";
 import { supabase } from "@/backend/supabase";
-import { useAuth, useCurrentRole } from "@/frontend/store/store";
+import { useAuth, useCurrentRole, initializeStores } from "@/frontend/store/store";
 import { isOnboardingCompleteLocally } from "@/lib/storage-keys";
 
 export const Route = createFileRoute("/onboarding")({
@@ -34,6 +34,13 @@ function OnboardingPage() {
   const currentRole = useCurrentRole();
 
   const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (!auth.user?.id || auth.loading) return;
+    const email = auth.user.email || "";
+    const name = auth.user.user_metadata?.name || email.split("@")[0] || "Workspace Owner";
+    void initializeStores(auth.user.id, email, name);
+  }, [auth.user?.id, auth.user?.email, auth.user?.user_metadata?.name, auth.loading]);
 
   useEffect(() => {
     if (auth.loading) return;

@@ -1508,9 +1508,11 @@ export async function initializeStores(userId: string, userEmail?: string, userN
     let active = await resolveActiveWorkspace(userId);
     
     if (!active) {
-      // Auto-provision if no workspace membership exists (it will return early if they have a pending invite)
-      const defaultWsId = "ws-" + crypto.randomUUID().split("-")[0];
-      await syncWorkspaceFromSupabase(defaultWsId, userId, userEmail || "", userName || "");
+      await provisionWorkspaceForNewUser(
+        userId,
+        userEmail || "",
+        userName || "",
+      );
       active = await resolveActiveWorkspace(userId);
     }
 
@@ -1525,8 +1527,11 @@ export async function initializeStores(userId: string, userEmail?: string, userN
         createdAt: ws.created_at || new Date().toISOString(),
         plan: ws.plan || "standard",
       };
-      
-      setActiveWorkspaceContext(meta, active.role.toLowerCase() as any);
+
+      const role = active.role.toLowerCase() as "owner" | "admin" | "editor" | "viewer";
+      setActiveWorkspaceContext(meta, role);
+      qamindStorage.set(qamindStorage.userRole(userId), role);
+      qamindStorage.set(qamindStorage.workspaceMeta(), JSON.stringify(meta));
       
       // Seed user profile
       const currentProfiles = profilesStore.get();

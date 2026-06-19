@@ -39,7 +39,17 @@ function AuthCallbackPage() {
       setPendingInvites(invites as any);
       setShowInvitesModal(true);
     } else {
-      navigate({ to: "/dashboard" });
+      const { data: activeMemberships } = await supabase
+        .from("workspace_members")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+
+      if (!activeMemberships?.length) {
+        navigate({ to: "/onboarding" });
+      } else {
+        navigate({ to: "/dashboard" });
+      }
     }
   };
 
