@@ -13,12 +13,11 @@ echo "==> Extracting application..."
 mkdir -p "$APP_DIR"
 tar xzf "$ARCHIVE" -C "$APP_DIR"
 
-echo "==> Writing .env..."
-cat > "$APP_DIR/.env" << 'ENVEOF'
-VITE_SUPABASE_URL=https://xlrgteezusfeinbnhzhq.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_n8e7Ey4A1gNa7fW3uTgQHA_zmAOeuEE
-VITE_GOOGLE_CLIENT_ID=283486130787-jvvmh5aokrpjvo38ff3fdbgqaa4kp3ac.apps.googleusercontent.com
-ENVEOF
+echo "==> Checking .env..."
+if [ ! -f "$APP_DIR/.env" ]; then
+  echo "ERROR: $APP_DIR/.env missing. Create it on the VPS before deploying."
+  exit 1
+fi
 
 echo "==> Installing dependencies..."
 cd "$APP_DIR"
