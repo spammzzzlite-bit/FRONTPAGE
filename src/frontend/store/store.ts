@@ -204,8 +204,6 @@ export type Project = {
   description: string;
   status: "active" | "completed" | "on_hold" | "planning";
   priority: "critical" | "high" | "medium" | "low";
-  totalStoryPoints: number;
-  remainingStoryPoints: number;
   startDate: string;
   targetDate: string;
   tags: string[];
@@ -226,8 +224,6 @@ export function createProject(name: string, data?: Partial<Project>): Project {
       data?.description !== undefined ? data.description : "Standard web project for QA testing.",
     status: data?.status !== undefined ? data.status : "active",
     priority: data?.priority !== undefined ? data.priority : "medium",
-    totalStoryPoints: data?.totalStoryPoints !== undefined ? data.totalStoryPoints : 10,
-    remainingStoryPoints: data?.remainingStoryPoints !== undefined ? data.remainingStoryPoints : 10,
     startDate:
       data?.startDate !== undefined ? data.startDate : new Date().toISOString().split("T")[0],
     targetDate:
@@ -250,8 +246,6 @@ export function createProject(name: string, data?: Partial<Project>): Project {
       description: p.description,
       status: p.status,
       priority: p.priority,
-      total_story_points: p.totalStoryPoints,
-      remaining_story_points: p.remainingStoryPoints,
       start_date: p.startDate,
       target_date: p.targetDate,
       tags: p.tags
@@ -270,8 +264,6 @@ export function updateProject(id: string, data: Partial<Project>) {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.priority !== undefined) updateData.priority = data.priority;
-    if (data.totalStoryPoints !== undefined) updateData.total_story_points = data.totalStoryPoints;
-    if (data.remainingStoryPoints !== undefined) updateData.remaining_story_points = data.remainingStoryPoints;
     if (data.startDate !== undefined) updateData.start_date = data.startDate;
     if (data.targetDate !== undefined) updateData.target_date = data.targetDate;
     if (data.tags !== undefined) updateData.tags = data.tags;
@@ -717,7 +709,6 @@ export type Sprint = {
   status: "Upcoming" | "Active" | "Completed";
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
-  storyPointsAllocated: number;
   sprintLeadId: string | null;
   sprintMembers: string[];
   sprintDevelopers: string[];
@@ -759,8 +750,6 @@ export function scaffoldSprintsForProject(project: Project): Sprint[] {
   }
 
   const numSprints = sprintsToCreate.length;
-  const basePoints = Math.floor(project.totalStoryPoints / numSprints);
-  let leftoverPoints = project.totalStoryPoints % numSprints;
 
   const generatedSprints: Sprint[] = [];
   let currentSprintStartDate = new Date(project.startDate);
@@ -769,12 +758,6 @@ export function scaffoldSprintsForProject(project: Project): Sprint[] {
     const sConf = sprintsToCreate[i];
     const currentSprintEndDate = new Date(currentSprintStartDate);
     currentSprintEndDate.setDate(currentSprintEndDate.getDate() + sConf.duration - 1);
-
-    let allocated = basePoints;
-    if (leftoverPoints > 0) {
-      allocated += 1;
-      leftoverPoints -= 1;
-    }
 
     const status = i === 0 ? "Active" : "Upcoming";
 
@@ -786,7 +769,6 @@ export function scaffoldSprintsForProject(project: Project): Sprint[] {
       status,
       startDate: currentSprintStartDate.toISOString().split("T")[0],
       endDate: currentSprintEndDate.toISOString().split("T")[0],
-      storyPointsAllocated: allocated,
       sprintLeadId: null,
       sprintMembers: [],
       sprintDevelopers: [],
@@ -825,7 +807,6 @@ export async function bulkUpsertSprintsToSupabase(
       status: s.status,
       start_date: startDate && !isNaN(startDate.getTime()) ? startDate.toISOString() : null,
       end_date: endDate && !isNaN(endDate.getTime()) ? endDate.toISOString() : null,
-      story_points_allocated: s.storyPointsAllocated,
       sprint_lead_id: s.sprintLeadId,
       sprint_members: s.sprintMembers || [],
       sprint_developers: s.sprintDevelopers || [],
@@ -868,7 +849,6 @@ export async function fetchSprintsFromSupabase(projectId: string): Promise<Sprin
             : "Upcoming",
         startDate: d.start_date ? d.start_date.split("T")[0] : "",
         endDate: d.end_date ? d.end_date.split("T")[0] : "",
-        storyPointsAllocated: d.story_points_allocated ?? 0,
         sprintLeadId: d.sprint_lead_id ?? null,
         sprintMembers: d.sprint_members || [],
         sprintDevelopers: d.sprint_developers || [],
@@ -1789,8 +1769,6 @@ export function initializeStores(userId: string, userEmail?: string, userName?: 
             description: "Core test suite for Acme E-Commerce frontend web application.",
             status: "active",
             priority: "high",
-            totalStoryPoints: 24,
-            remainingStoryPoints: 12,
             startDate: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString().split("T")[0],
             targetDate: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().split("T")[0],
             tags: ["web", "react"],
@@ -1803,8 +1781,6 @@ export function initializeStores(userId: string, userEmail?: string, userName?: 
             description: "Backend microservice API suite for billing and subscriptions.",
             status: "planning",
             priority: "critical",
-            totalStoryPoints: 16,
-            remainingStoryPoints: 16,
             startDate: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().split("T")[0],
             targetDate: new Date(Date.now() + 20 * 24 * 3600 * 1000).toISOString().split("T")[0],
             tags: ["api", "billing"],
