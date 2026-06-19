@@ -57,7 +57,7 @@ export type Database = {
         Row: {
           id: string;
           workspace_id: string;
-          user_id: string;
+          user_id: string | null;
           email: string;
           display_name: string | null;
           role: "owner" | "admin" | "editor" | "viewer";
@@ -70,7 +70,7 @@ export type Database = {
         Insert: {
           id?: string;
           workspace_id: string;
-          user_id: string;
+          user_id?: string | null;
           email: string;
           display_name?: string | null;
           role: "owner" | "admin" | "editor" | "viewer";
@@ -83,7 +83,7 @@ export type Database = {
         Update: {
           id?: string;
           workspace_id?: string;
-          user_id?: string;
+          user_id?: string | null;
           email?: string;
           display_name?: string | null;
           role?: "owner" | "admin" | "editor" | "viewer";

@@ -711,7 +711,7 @@ function Dashboard() {
                 ? "bg-sage"
                 : "bg-rust";
             const activeMembers = members.filter((m) =>
-              ["owner", "admin", "editor"].includes(m.role.toLowerCase()) && m.status === "active"
+              ["owner", "admin", "editor"].includes((m.role || "").toLowerCase()) && m.status === "active"
             );
 
             return (

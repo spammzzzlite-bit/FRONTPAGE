@@ -610,7 +610,7 @@ export function resolveWorkspaceMembership(userId: string, email: string) {
     }
 
     const pendingInvite = pendingInvites.find(
-      (inv: any) => inv.email.toLowerCase() === email.toLowerCase() && inv.status === "pending",
+      (inv: any) => (inv.email || "").toLowerCase() === (email || "").toLowerCase() && inv.status === "pending",
     );
     if (pendingInvite) {
       const expiresAt = new Date(pendingInvite.expiresAt);
@@ -626,7 +626,8 @@ export function resolveWorkspaceMembership(userId: string, email: string) {
     const ws = shared[matchedWorkspaceId];
     localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(ws.meta));
     localStorage.setItem("fieldnotes.workspace.members", JSON.stringify(ws.members));
-    localStorage.setItem(`fieldnotes.user.${userId}.role`, activeMemberEntry.role.toLowerCase());
+    const role = activeMemberEntry.role || "viewer";
+    localStorage.setItem(`fieldnotes.user.${userId}.role`, role.toLowerCase());
   } else if (matchedInvite && matchedWorkspaceId) {
     const ws = shared[matchedWorkspaceId];
     ws.pendingInvites = ws.pendingInvites.filter(
@@ -650,7 +651,8 @@ export function resolveWorkspaceMembership(userId: string, email: string) {
 
     localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(ws.meta));
     localStorage.setItem("fieldnotes.workspace.members", JSON.stringify(ws.members));
-    localStorage.setItem(`fieldnotes.user.${userId}.role`, matchedInvite.role.toLowerCase());
+    const matchedRole = matchedInvite.role || "viewer";
+    localStorage.setItem(`fieldnotes.user.${userId}.role`, matchedRole.toLowerCase());
 
     window.location.href = "/onboarding";
   } else {
@@ -1932,7 +1934,8 @@ export function initializeStores(userId: string, userEmail?: string, userName?: 
       const member = workspaceMembersStore
         .get()
         .find((m) => m.userId === userId && m.workspaceId === DEFAULT_WORKSPACE_ID);
-      const roleToSet = member ? member.role.toLowerCase() : "viewer";
+      const memberRole = member?.role || "viewer";
+      const roleToSet = memberRole.toLowerCase();
       localStorage.setItem(`fieldnotes.user.${userId}.role`, roleToSet);
     }
   }

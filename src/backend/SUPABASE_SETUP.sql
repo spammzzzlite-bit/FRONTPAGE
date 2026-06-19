@@ -158,3 +158,111 @@ CREATE TABLE IF NOT EXISTS public.suites (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ─── Multi-User Workspace & Advanced Schema ───
+
+-- Create workspaces table
+CREATE TABLE IF NOT EXISTS public.workspaces (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  workspace_key VARCHAR(255) NOT NULL UNIQUE,
+  owner_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  owner_email VARCHAR(255),
+  plan VARCHAR(50) DEFAULT 'standard',
+  billing_status VARCHAR(50) DEFAULT 'active',
+  settings JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create workspace_members table
+CREATE TABLE IF NOT EXISTS public.workspace_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE, -- Nullable for pending invites
+  email VARCHAR(255) NOT NULL,
+  display_name VARCHAR(255),
+  role VARCHAR(50) NOT NULL CHECK (role IN ('owner', 'admin', 'editor', 'viewer')),
+  job_title VARCHAR(255),
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  added_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  avatar_color VARCHAR(50),
+  status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'pending')),
+  UNIQUE(workspace_id, email)
+);
+
+-- Add workspace_id to projects
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+
+-- Create test_suites table
+CREATE TABLE IF NOT EXISTS public.test_suites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create test_cases table
+CREATE TABLE IF NOT EXISTS public.test_cases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  suite_id UUID NOT NULL REFERENCES public.test_suites(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  steps TEXT,
+  expected TEXT,
+  priority VARCHAR(50) DEFAULT 'medium' CHECK (priority IN ('critical', 'high', 'medium', 'low')),
+  author_status VARCHAR(50) DEFAULT 'draft' CHECK (author_status IN ('draft', 'ready', 'approved')),
+  last_run_status VARCHAR(50) CHECK (last_run_status IN ('passed', 'failed', 'skipped')),
+  last_run_id UUID,
+  tags TEXT[] DEFAULT '{}',
+  type VARCHAR(50) CHECK (type IN ('functional', 'regression', 'smoke', 'performance', 'security', 'integration', 'e2e')),
+  assigned_to UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  requirement_id VARCHAR(255),
+  source_recording_id UUID,
+  module_name VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create test_runs table
+CREATE TABLE IF NOT EXISTS public.test_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  suite_id UUID REFERENCES public.test_suites(id) ON DELETE SET NULL,
+  suite_name VARCHAR(255),
+  project_name VARCHAR(255),
+  duration INTEGER DEFAULT 0,
+  status VARCHAR(50) NOT NULL CHECK (status IN ('running', 'passed', 'failed', 'aborted')),
+  coverage NUMERIC,
+  environment VARCHAR(255),
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create test_run_results table
+CREATE TABLE IF NOT EXISTS public.test_run_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_id UUID NOT NULL REFERENCES public.test_runs(id) ON DELETE CASCADE,
+  test_case_id UUID NOT NULL REFERENCES public.test_cases(id) ON DELETE CASCADE,
+  status VARCHAR(50) NOT NULL CHECK (status IN ('passed', 'failed', 'skipped')),
+  duration INTEGER DEFAULT 0,
+  error_message TEXT
+);
+
+-- Update bugs table to include workspace_id and additional columns
+ALTER TABLE public.bugs ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+ALTER TABLE public.bugs ADD COLUMN IF NOT EXISTS test_case_id UUID REFERENCES public.test_cases(id) ON DELETE SET NULL;
+ALTER TABLE public.bugs ADD COLUMN IF NOT EXISTS run_id UUID REFERENCES public.test_runs(id) ON DELETE SET NULL;
+ALTER TABLE public.bugs ADD COLUMN IF NOT EXISTS recording_session_id UUID;
+ALTER TABLE public.bugs ADD COLUMN IF NOT EXISTS severity VARCHAR(50) DEFAULT 'major' CHECK (severity IN ('blocker', 'critical', 'major', 'minor', 'trivial'));
+ALTER TABLE public.bugs ADD COLUMN IF NOT EXISTS environment VARCHAR(255);
+
+-- Create profiles table
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+  full_name VARCHAR(255),
+  email VARCHAR(255),
+  avatar_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+

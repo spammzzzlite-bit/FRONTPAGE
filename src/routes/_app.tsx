@@ -1127,43 +1127,126 @@ function escapeRegExp(string: string) {
 }
 
 function InviteAcceptModal({ userId }: { userId: string }) {
+  const auth = useAuth();
   const [invite, setInvite] = useState<any>(null);
 
   useEffect(() => {
-    const pending = localStorage.getItem(`fieldnotes.invite_pending.${userId}`);
-    if (pending) {
-      const parsed = JSON.parse(pending);
-      const accepted = localStorage.getItem(`fieldnotes.accepted_role.${userId}`);
-      if (!accepted) {
-        setInvite(parsed);
+    const userEmail = auth.user?.email;
+    if (!userEmail) return;
+
+    const checkInvite = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("workspace_members")
+          .select("*, workspaces(*)")
+          .eq("email", userEmail)
+          .eq("status", "pending");
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const firstInvite = data[0];
+          let inviterName = "An administrator";
+          if (firstInvite.added_by) {
+            const { data: inviterProfile } = await supabase
+              .from("profiles")
+              .select("full_name, email")
+              .eq("id", firstInvite.added_by)
+              .maybeSingle();
+            if (inviterProfile?.full_name) {
+              inviterName = inviterProfile.full_name;
+            } else if (inviterProfile?.email) {
+              inviterName = inviterProfile.email;
+            }
+          } else if (firstInvite.workspaces?.owner_email) {
+            inviterName = firstInvite.workspaces.owner_email;
+          }
+
+          setInvite({
+            id: firstInvite.id,
+            inviterName,
+            workspaceId: firstInvite.workspace_id,
+            workspaceName: firstInvite.workspaces?.name || "New Workspace",
+            assignedRole: firstInvite.role,
+            jobTitle: firstInvite.job_title || "Team Member",
+            email: firstInvite.email,
+          });
+        }
+      } catch (err) {
+        console.error("Error checking invitations:", err);
       }
-    }
-  }, [userId]);
+    };
+
+    checkInvite();
+  }, [auth.user?.email]);
 
   if (!invite) return null;
 
-  const handleAccept = () => {
-    localStorage.setItem(`fieldnotes.accepted_role.${userId}`, invite.assignedRole);
-    
-    const sharedInvites = JSON.parse(
-      localStorage.getItem("fieldnotes.pending_invites") || "{}"
-    );
-    if (sharedInvites[invite.email]) {
-      sharedInvites[invite.email].status = "accepted";
-      sharedInvites[invite.email].acceptedAt = Date.now();
-      sharedInvites[invite.email].acceptedByUserId = userId;
-      localStorage.setItem("fieldnotes.pending_invites", JSON.stringify(sharedInvites));
+  const handleAccept = async () => {
+    if (!invite || !auth.user) return;
+
+    try {
+      const { error: updateErr } = await supabase
+        .from("workspace_members")
+        .update({
+          status: "active",
+          user_id: auth.user.id,
+          display_name: auth.user.user_metadata?.name || auth.user.email?.split("@")[0] || "User",
+        })
+        .eq("id", invite.id);
+
+      if (updateErr) throw updateErr;
+
+      const { data: wsData, error: wsErr } = await supabase
+        .from("workspaces")
+        .select("*")
+        .eq("id", invite.workspaceId)
+        .single();
+
+      if (wsErr) throw wsErr;
+
+      const workspaceMeta = {
+        workspaceId: wsData.id,
+        workspaceName: wsData.name,
+        workspaceKey: wsData.workspace_key,
+        ownerId: wsData.owner_id || "",
+        ownerEmail: wsData.owner_email || "",
+        createdAt: wsData.created_at,
+        plan: wsData.plan || "standard",
+      };
+
+      localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(workspaceMeta));
+      localStorage.setItem(`fieldnotes.user.${auth.user.id}.role`, invite.assignedRole);
+      localStorage.setItem(`fieldnotes.user.${auth.user.id}.onboardingComplete`, "true");
+
+      window.dispatchEvent(new Event("storage"));
+      toast.success(`Welcome to ${invite.workspaceName}! You joined as ${invite.assignedRole}.`);
+      setInvite(null);
+
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to accept invitation: ${err.message || String(err)}`);
     }
-    
-    localStorage.removeItem(`fieldnotes.invite_pending.${userId}`);
-    setInvite(null);
-    toast.success(`Welcome to ${invite.workspaceName}! You joined as ${invite.assignedRole}.`);
   };
 
-  const handleDecline = () => {
-    localStorage.removeItem(`fieldnotes.invite_pending.${userId}`);
-    setInvite(null);
-    toast("Invite declined.");
+  const handleDecline = async () => {
+    if (!invite) return;
+
+    try {
+      const { error: deleteErr } = await supabase
+        .from("workspace_members")
+        .delete()
+        .eq("id", invite.id);
+
+      if (deleteErr) throw deleteErr;
+
+      setInvite(null);
+      toast("Invite declined.");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to decline invitation: ${err.message || String(err)}`);
+    }
   };
 
   return (
@@ -1172,6 +1255,13 @@ function InviteAcceptModal({ userId }: { userId: string }) {
         {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--c-accent)] to-transparent" />
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-[var(--c-accent)] opacity-10 rounded-full blur-2xl pointer-events-none" />
+
+        <button
+          onClick={() => setInvite(null)}
+          className="absolute top-4 right-4 text-[var(--c-text-muted)] hover:text-[var(--c-text)] p-1 rounded-md hover:bg-[var(--c-bg-hover)] transition-colors cursor-pointer select-none"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         <div className="mb-6 flex justify-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--c-accent-soft)] border border-[var(--c-accent)] shadow-[0_0_15px_rgba(217,103,38,0.3)]">
@@ -1182,7 +1272,7 @@ function InviteAcceptModal({ userId }: { userId: string }) {
         <h2 className="mb-2 text-center font-display text-2xl text-[var(--c-text)]">
           You've been invited
         </h2>
-        
+
         <p className="mb-6 text-center text-sm text-[var(--c-text-muted)]">
           <strong className="text-[var(--c-text)] font-semibold">{invite.inviterName}</strong> invited you to join <strong className="text-[var(--c-text)] font-semibold">{invite.workspaceName}</strong> as <strong className="text-[var(--c-text)] font-semibold">{invite.assignedRole}</strong>.
         </p>
@@ -1197,7 +1287,7 @@ function InviteAcceptModal({ userId }: { userId: string }) {
               <p className="text-sm font-medium text-[var(--c-text)]">{invite.workspaceName}</p>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--c-text-dim)] mb-0.5">Role</p>
@@ -1213,13 +1303,13 @@ function InviteAcceptModal({ userId }: { userId: string }) {
         <div className="flex gap-3 mt-6">
           <button
             onClick={handleDecline}
-            className="flex-1 rounded-md px-4 py-2.5 text-sm font-medium text-[var(--c-text)] transition-colors hover:bg-[var(--c-bg-hover)] hover:text-white border border-[var(--c-border)]"
+            className="flex-1 rounded-md px-4 py-2.5 text-sm font-medium text-[var(--c-text)] transition-colors hover:bg-[var(--c-bg-hover)] hover:text-white border border-[var(--c-border)] select-none"
           >
             Decline
           </button>
           <button
             onClick={handleAccept}
-            className="flex-1 rounded-md bg-[var(--c-accent)] px-4 py-2.5 text-sm font-medium text-white transition-all hover:brightness-110 shadow-lg shadow-[var(--c-accent)]/20 flex justify-center items-center gap-2"
+            className="flex-1 rounded-md bg-[var(--c-accent)] px-4 py-2.5 text-sm font-medium text-white transition-all hover:brightness-110 shadow-lg shadow-[var(--c-accent)]/20 flex justify-center items-center gap-2 select-none"
           >
             <CheckCircle className="w-4 h-4" />
             Accept & Join

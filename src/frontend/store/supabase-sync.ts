@@ -25,9 +25,31 @@ export async function syncWorkspaceFromSupabase(workspaceId: string, userId: str
       // Check if workspace exists
       const { data: wsData } = await supabase.from('workspaces').select('id').eq('id', workspaceId).maybeSingle();
       if (!wsData) {
+        let workspaceName = workspaceId === 'ws-1001' ? 'QAMind AI Demo Workspace' : 'My Workspace';
+        try {
+          const metaRaw = localStorage.getItem("fieldnotes.workspace.meta");
+          if (metaRaw) {
+            const meta = JSON.parse(metaRaw);
+            if (meta.workspaceId === workspaceId && meta.workspaceName) {
+              workspaceName = meta.workspaceName;
+            }
+          }
+          if (workspaceName === 'My Workspace') {
+            const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+            if (sharedRaw) {
+              const shared = JSON.parse(sharedRaw);
+              if (shared[workspaceId]?.meta?.workspaceName) {
+                workspaceName = shared[workspaceId].meta.workspaceName;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Failed to read workspace name from localStorage", e);
+        }
+
         await supabase.from('workspaces').insert({
           id: workspaceId,
-          name: workspaceId === 'ws-1001' ? 'QAMind AI Demo Workspace' : 'My Workspace',
+          name: workspaceName,
           workspace_key: 'FNQ-' + Math.floor(Math.random() * 10000),
           owner_id: userId,
           owner_email: userEmail

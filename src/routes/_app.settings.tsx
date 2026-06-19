@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Sparkles,
   Bell,
@@ -34,6 +34,7 @@ import {
 } from "@/frontend/store/store";
 import { PermissionGate, can } from "@/lib/permissions";
 import { toast } from "./_app";
+import { supabase } from "@/backend/supabase";
 
 function generateWorkspaceKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -81,43 +82,196 @@ function SettingsPage() {
   const [prefDateFormat, setPrefDateFormat] = useState(settings.dateFormat || "MM/DD/YYYY");
   const [prefCoverage, setPrefCoverage] = useState(settings.coverageEnabled || false);
 
+  // Sync settings and members from Supabase on mount/auth load
+  useEffect(() => {
+    if (!auth.user) return;
+    
+    const userMeta = auth.user.user_metadata || {};
+    const prefs = userMeta.preferences || {};
+    
+    if (workspaceMeta?.workspaceId) {
+      // 1. Fetch workspace details (AI model, plan, name, settings)
+      supabase.from('workspaces')
+        .select('*')
+        .eq('id', workspaceMeta.workspaceId)
+        .maybeSingle()
+        .then(({ data: wsData, error }) => {
+          if (wsData && !error) {
+            const wsSettings = wsData.settings || {};
+            setSettings(prev => ({
+              ...prev,
+              aiModel: wsSettings.aiModel || prev.aiModel,
+              coverageEnabled: wsSettings.coverageEnabled !== undefined ? wsSettings.coverageEnabled : prev.coverageEnabled,
+              workspaceName: wsData.name || prev.workspaceName
+            }));
+            
+            if (wsData.name !== workspaceMeta.workspaceName || wsData.workspace_key !== workspaceMeta.workspaceKey || wsData.plan !== workspaceMeta.plan) {
+              updateWorkspaceMeta({
+                ...workspaceMeta,
+                workspaceName: wsData.name,
+                workspaceKey: wsData.workspace_key,
+                plan: (wsData.plan || 'standard') as any
+              });
+            }
+          }
+        });
+
+      // 2. Fetch workspace members list from Supabase
+      supabase.from('workspace_members')
+        .select('*')
+        .eq('workspace_id', workspaceMeta.workspaceId)
+        .then(({ data: membersData, error }) => {
+          if (membersData && !error) {
+            const mappedMembers = membersData.map((m: any) => ({
+              userId: m.user_id || m.id,
+              email: m.email,
+              displayName: m.display_name || m.email.split('@')[0],
+              role: m.role,
+              jobTitle: m.job_title || 'QA Engineer',
+              joinedAt: m.joined_at,
+              addedBy: m.added_by,
+              avatarColor: m.avatar_color || getAvatarColor(m.display_name || m.email),
+              status: m.status || 'active'
+            }));
+            updateMembers(mappedMembers);
+          }
+        });
+    }
+
+    // Merge preferences from user metadata
+    setSettings(prev => ({
+      ...prev,
+      userName: userMeta.name || prev.userName,
+      userEmail: auth.user?.email || prev.userEmail,
+      username: userMeta.username || prev.username,
+      role: userMeta.role || prev.role,
+      defaultProjectView: prefs.defaultProjectView || prev.defaultProjectView,
+      timezone: prefs.timezone || prev.timezone,
+      dateFormat: prefs.dateFormat || prev.dateFormat,
+      twoFactorEnabled: prefs.twoFactorEnabled !== undefined ? prefs.twoFactorEnabled : prev.twoFactorEnabled,
+      notifications: prefs.notifications || prev.notifications
+    }));
+  }, [auth.user, workspaceMeta?.workspaceId]);
+
+  // Sync form states when settings load/update
+  useEffect(() => {
+    if (settings.userName) setProfileName(settings.userName);
+    if (settings.username) setProfileUsername(settings.username);
+    if (settings.userEmail) setProfileEmail(settings.userEmail);
+    if (settings.role) setProfileRole(settings.role);
+    setTwoFactor(settings.twoFactorEnabled || false);
+    setPrefView(settings.defaultProjectView || "card");
+    setPrefTimezone(settings.timezone || "America/New_York");
+    setPrefDateFormat(settings.dateFormat || "MM/DD/YYYY");
+    setPrefCoverage(settings.coverageEnabled || false);
+  }, [settings]);
+
   // Modal state - Danger Zone Delete Account
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [confirmUsername, setConfirmUsername] = useState("");
   const expectedUsername = settings.username || settings.userName || "delete";
 
-  function saveProfile(e: React.FormEvent) {
+  async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
-    const emailChanged = profileEmail !== settings.userEmail;
-    setSettings((prev) => ({
-      ...prev,
-      userName: profileName,
-      userEmail: profileEmail,
-      username: profileUsername,
-      role: profileRole,
-    }));
-    toast.success("Profile settings updated successfully.");
-    if (emailChanged) {
-      toast.info(`Verification email sent to ${profileEmail}. Please check your inbox.`);
+    if (!auth.user) return;
+    
+    const emailChanged = profileEmail !== auth.user.email;
+    
+    try {
+      // 1. Update public.users
+      const { error: userErr } = await supabase
+        .from('users')
+        .update({ name: profileName })
+        .eq('id', auth.user.id);
+        
+      if (userErr) throw userErr;
+
+      // 2. Update workspace_members if we have a membership entry
+      if (workspaceMeta?.workspaceId) {
+        const { error: memErr } = await supabase
+          .from('workspace_members')
+          .update({ display_name: profileName, job_title: profileRole })
+          .eq('workspace_id', workspaceMeta.workspaceId)
+          .eq('user_id', auth.user.id);
+          
+        if (memErr) throw memErr;
+      }
+      
+      // 3. Update auth user metadata
+      const { error: authErr } = await supabase.auth.updateUser({
+        email: emailChanged ? profileEmail : undefined,
+        data: { name: profileName, username: profileUsername, role: profileRole }
+      });
+      
+      if (authErr) throw authErr;
+      
+      setSettings((prev) => ({
+        ...prev,
+        userName: profileName,
+        userEmail: profileEmail,
+        username: profileUsername,
+        role: profileRole,
+      }));
+      
+      // Update local members list for own displayName
+      if (workspaceMeta?.workspaceId) {
+        const updated = members.map(m => m.userId === auth.user?.id ? {
+          ...m,
+          displayName: profileName,
+          jobTitle: profileRole
+        } : m);
+        updateMembers(updated);
+      }
+      
+      toast.success("Profile settings updated successfully.");
+      if (emailChanged) {
+        toast.info(`Verification email sent to ${profileEmail}. Please check your inbox.`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to update profile: ${err.message || String(err)}`);
     }
   }
 
-  function saveSecurity(e: React.FormEvent) {
+  async function saveSecurity(e: React.FormEvent) {
     e.preventDefault();
+    if (!auth.user) return;
+    
     if (newPassword && newPassword !== confirmPassword) {
       toast.error("New passwords do not match!");
       return;
     }
-    setSettings((prev) => ({
-      ...prev,
-      twoFactorEnabled: twoFactor,
-    }));
-    toast.success("Security configuration updated.");
-    if (newPassword) {
-      toast.success("Password changed successfully.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+    
+    try {
+      // Get current preferences to merge
+      const userMeta = auth.user.user_metadata || {};
+      const prefs = userMeta.preferences || {};
+      const updatedPrefs = { ...prefs, twoFactorEnabled: twoFactor };
+      
+      // 1. Update password if provided
+      if (newPassword) {
+        const { error: passErr } = await supabase.auth.updateUser({ password: newPassword });
+        if (passErr) throw passErr;
+        toast.success("Password changed successfully.");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+      
+      // 2. Update preferences (2FA toggle)
+      const { error: prefsErr } = await supabase.auth.updateUser({
+        data: { ...userMeta, preferences: updatedPrefs }
+      });
+      if (prefsErr) throw prefsErr;
+      
+      setSettings((prev) => ({
+        ...prev,
+        twoFactorEnabled: twoFactor,
+      }));
+      toast.success("Security configuration updated.");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to update security: ${err.message || String(err)}`);
     }
   }
 
@@ -125,38 +279,135 @@ function SettingsPage() {
     return can(currentRole.toLowerCase() as any, "project:create");
   }, [currentRole]);
 
-  function savePreferences(e: React.FormEvent) {
+  async function savePreferences(e: React.FormEvent) {
     e.preventDefault();
-    setSettings((prev) => ({
-      ...prev,
-      defaultProjectView: prefView as any,
-      timezone: prefTimezone,
-      dateFormat: prefDateFormat,
-      coverageEnabled: canToggleCoverage ? prefCoverage : prev.coverageEnabled,
-    }));
-    toast.success("Workspace preferences updated.");
+    if (!auth.user) return;
+    
+    try {
+      const userMeta = auth.user.user_metadata || {};
+      const prefs = userMeta.preferences || {};
+      const updatedPrefs = {
+        ...prefs,
+        defaultProjectView: prefView,
+        timezone: prefTimezone,
+        dateFormat: prefDateFormat
+      };
+      
+      // 1. Update user preferences
+      const { error: prefsErr } = await supabase.auth.updateUser({
+        data: { ...userMeta, preferences: updatedPrefs }
+      });
+      if (prefsErr) throw prefsErr;
+      
+      // 2. Update workspace settings for coverage enabled if can toggle
+      if (canToggleCoverage && workspaceMeta?.workspaceId) {
+        // Fetch current workspace settings
+        const { data: ws } = await supabase.from('workspaces').select('settings').eq('id', workspaceMeta.workspaceId).maybeSingle();
+        const wsSettings = ws?.settings || {};
+        const updatedWsSettings = { ...wsSettings, coverageEnabled: prefCoverage };
+        
+        const { error: wsErr } = await supabase
+          .from('workspaces')
+          .update({ settings: updatedWsSettings })
+          .eq('id', workspaceMeta.workspaceId);
+          
+        if (wsErr) throw wsErr;
+      }
+      
+      setSettings((prev) => ({
+        ...prev,
+        defaultProjectView: prefView as any,
+        timezone: prefTimezone,
+        dateFormat: prefDateFormat,
+        coverageEnabled: canToggleCoverage ? prefCoverage : prev.coverageEnabled,
+      }));
+      toast.success("Workspace preferences updated.");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to update preferences: ${err.message || String(err)}`);
+    }
   }
 
-  function toggleNotification(key: keyof typeof settings.notifications) {
-    setSettings((prev) => ({
-      ...prev,
-      notifications: {
-        ...prev.notifications,
-        [key]: !prev.notifications[key],
-      },
-    }));
-    toast.success("Notification preferences updated.");
+  async function toggleNotification(key: keyof typeof settings.notifications) {
+    if (!auth.user) return;
+    
+    try {
+      const userMeta = auth.user.user_metadata || {};
+      const prefs = userMeta.preferences || {};
+      const currentNotifications = prefs.notifications || settings.notifications;
+      const updatedNotifications = {
+        ...currentNotifications,
+        [key]: !currentNotifications[key]
+      };
+      const updatedPrefs = {
+        ...prefs,
+        notifications: updatedNotifications
+      };
+      
+      const { error: prefsErr } = await supabase.auth.updateUser({
+        data: { ...userMeta, preferences: updatedPrefs }
+      });
+      if (prefsErr) throw prefsErr;
+      
+      setSettings((prev) => ({
+        ...prev,
+        notifications: updatedNotifications,
+      }));
+      toast.success("Notification preferences updated.");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to update notification preference: ${err.message || String(err)}`);
+    }
   }
 
-  function handleModelChange(val: string) {
-    setSettings((prev) => ({ ...prev, aiModel: val }));
-    toast.success(`Active AI Model set to ${val}`);
+  async function handleModelChange(val: string) {
+    if (workspaceMeta?.workspaceId) {
+      try {
+        const { data: ws } = await supabase.from('workspaces').select('settings').eq('id', workspaceMeta.workspaceId).maybeSingle();
+        const wsSettings = ws?.settings || {};
+        const updatedWsSettings = { ...wsSettings, aiModel: val };
+        
+        const { error: wsErr } = await supabase
+          .from('workspaces')
+          .update({ settings: updatedWsSettings })
+          .eq('id', workspaceMeta.workspaceId);
+          
+        if (wsErr) throw wsErr;
+        
+        setSettings((prev) => ({ ...prev, aiModel: val }));
+        toast.success(`Active AI Model set to ${val}`);
+      } catch (err: any) {
+        console.error(err);
+        toast.error(`Failed to update AI Model: ${err.message || String(err)}`);
+      }
+    } else {
+      setSettings((prev) => ({ ...prev, aiModel: val }));
+      toast.success(`Active AI Model set to ${val}`);
+    }
   }
 
-  function handleTogglePlan() {
+  async function handleTogglePlan() {
     const nextPlan = tokens.plan === "Standard" ? "Premium" : "Standard";
-    setPlan(nextPlan);
-    toast.success(`Plan changed to ${nextPlan}. Token balance initialized.`);
+    
+    if (workspaceMeta?.workspaceId) {
+      try {
+        const { error: wsErr } = await supabase
+          .from('workspaces')
+          .update({ plan: nextPlan.toLowerCase() as any })
+          .eq('id', workspaceMeta.workspaceId);
+          
+        if (wsErr) throw wsErr;
+        
+        setPlan(nextPlan);
+        toast.success(`Plan changed to ${nextPlan}. Token balance initialized.`);
+      } catch (err: any) {
+        console.error(err);
+        toast.error(`Failed to update plan: ${err.message || String(err)}`);
+      }
+    } else {
+      setPlan(nextPlan);
+      toast.success(`Plan changed to ${nextPlan}. Token balance initialized.`);
+    }
   }
 
   return (
@@ -217,7 +468,7 @@ function SettingsPage() {
                         Copy
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (
                             confirm(
                               "Are you sure you want to regenerate the invite key? This will invalidate all pending invitations.",
@@ -226,26 +477,32 @@ function SettingsPage() {
                             const newKey = generateWorkspaceKey();
                             const updatedMeta = { ...workspaceMeta, workspaceKey: newKey };
 
-                            // Save locally and update in shared workspaces
-                            updateWorkspaceMeta(updatedMeta);
+                            try {
+                              // 1. Update workspaces key in Supabase
+                              const { error: wsErr } = await supabase
+                                .from('workspaces')
+                                .update({ workspace_key: newKey })
+                                .eq('id', workspaceMeta.workspaceId);
+                              if (wsErr) throw wsErr;
 
-                            // Clear pending invites in the registry
-                            const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
-                            if (sharedRaw) {
-                              const shared = JSON.parse(sharedRaw);
-                              if (shared[workspaceMeta.workspaceId]) {
-                                shared[workspaceMeta.workspaceId].pendingInvites = [];
-                                localStorage.setItem(
-                                  "fieldnotes.shared.workspaces",
-                                  JSON.stringify(shared),
-                                );
-                              }
+                              // 2. Clear pending invites in Supabase workspace_members table
+                              const { error: delErr } = await supabase
+                                .from('workspace_members')
+                                .delete()
+                                .eq('workspace_id', workspaceMeta.workspaceId)
+                                .eq('status', 'pending');
+                              if (delErr) throw delErr;
+
+                              // Save locally and update in shared workspaces
+                              updateWorkspaceMeta(updatedMeta);
+
+                              toast.success(
+                                "Workspace invite key regenerated. All pending invites have been invalidated.",
+                              );
+                            } catch (err: any) {
+                              console.error(err);
+                              toast.error(`Failed to regenerate invite key: ${err.message || String(err)}`);
                             }
-
-                            toast.success(
-                              "Workspace invite key regenerated. All pending invites have been invalidated.",
-                            );
-                            window.dispatchEvent(new Event("storage"));
                           }
                         }}
                         className="rounded-[6px] border border-[var(--c-fail)]/40 hover:border-[var(--c-fail)] text-[var(--c-fail)] px-4 py-[8px] text-[12px] font-medium transition-colors"
@@ -976,30 +1233,10 @@ function TeamMembersCard() {
   const currentRole = useCurrentRole();
   const [, setSettings] = useSettings();
 
-  // Get pending invites
+  // Get pending invites from the active members list
   const pendingInvites = useMemo(() => {
-    if (typeof window === "undefined" || !workspaceMeta) return [];
-    const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
-    if (!sharedRaw) return [];
-    try {
-      const shared = JSON.parse(sharedRaw);
-      const ws = shared[workspaceMeta.workspaceId];
-      return ws?.pendingInvites || [];
-    } catch (e) {
-      return [];
-    }
-  }, [workspaceMeta]);
-
-  const updatePendingInvites = (newInvites: any[]) => {
-    if (typeof window === "undefined" || !workspaceMeta) return;
-    const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
-    const shared = sharedRaw ? JSON.parse(sharedRaw) : {};
-    if (shared[workspaceMeta.workspaceId]) {
-      shared[workspaceMeta.workspaceId].pendingInvites = newInvites;
-      localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
-      window.dispatchEvent(new Event("storage"));
-    }
-  };
+    return members.filter((m) => m.status === "pending");
+  }, [members]);
 
   // State for Invite / Edit Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1034,11 +1271,11 @@ function TeamMembersCard() {
       setEmailError("Please enter a valid email address.");
       return false;
     }
-    if (members.some((m) => m.email.toLowerCase() === emailVal.toLowerCase())) {
+    if (members.some((m) => m.status === 'active' && (m.email || "").toLowerCase() === emailVal.toLowerCase())) {
       setEmailError("This email is already an active member of the workspace.");
       return false;
     }
-    if (pendingInvites.some((inv: any) => inv.email.toLowerCase() === emailVal.toLowerCase())) {
+    if (pendingInvites.some((inv: any) => (inv.email || "").toLowerCase() === emailVal.toLowerCase())) {
       setEmailError("This email already has a pending invitation.");
       return false;
     }
@@ -1046,137 +1283,170 @@ function TeamMembersCard() {
     return true;
   };
 
-  const handleSendInvite = () => {
+  const handleSendInvite = async () => {
     if (!validateEmail(email)) return;
-
-    const existingInvites = JSON.parse(
-      localStorage.getItem("fieldnotes.pending_invites") || "{}"
-    );
+    if (!workspaceMeta) return;
 
     const emailLower = email.toLowerCase().trim();
 
-    // Block duplicate pending invites for same email
-    if (
-      existingInvites[emailLower] &&
-      existingInvites[emailLower].status === "pending"
-    ) {
-      toast.error("An invite is already pending for this email.");
-      return;
+    try {
+      // Call Supabase to insert a pending workspace member
+      const { error: inviteErr } = await supabase
+        .from('workspace_members')
+        .insert({
+          workspace_id: workspaceMeta.workspaceId,
+          email: emailLower,
+          role: role,
+          job_title: jobTitle.trim(),
+          status: "pending",
+          added_by: auth.user?.id || null,
+          avatar_color: getAvatarColor(displayName.trim() || emailLower.split("@")[0])
+        });
+
+      if (inviteErr) throw inviteErr;
+
+      toast.success(`Invite sent to ${emailLower}. They will be prompted to accept on next login.`);
+      setIsModalOpen(false);
+      resetFormState();
+
+      // Refresh members list
+      const { data: membersData } = await supabase
+        .from('workspace_members')
+        .select('*')
+        .eq('workspace_id', workspaceMeta.workspaceId);
+      
+      if (membersData) {
+        updateMembers(membersData.map((m: any) => ({
+          userId: m.user_id || m.id,
+          email: m.email,
+          displayName: m.display_name || m.email.split('@')[0],
+          role: m.role,
+          jobTitle: m.job_title || 'QA Engineer',
+          joinedAt: m.joined_at,
+          addedBy: m.added_by,
+          avatarColor: m.avatar_color || getAvatarColor(m.display_name || m.email),
+          status: m.status || 'active'
+        })));
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to send invite: ${err.message || String(err)}`);
     }
-
-    // Also block if already an active member
-    if (members.some((m) => m.email.toLowerCase() === emailLower)) {
-      toast.error("This email is already an active member of the workspace.");
-      return;
-    }
-
-    const newInvite = {
-      inviteId: crypto.randomUUID(),
-      inviterUserId: auth.user?.id ?? "",
-      inviterName: auth.user?.user_metadata?.name || auth.user?.email?.split("@")[0] || "Your teammate",
-      workspaceName: workspaceMeta?.workspaceName || "the workspace",
-      assignedRole: role,           // the WorkspaceRole selected in the form
-      jobTitle: jobTitle.trim(),    // the job title string from the form
-      displayName: displayName.trim() || emailLower.split("@")[0],
-      email: emailLower,
-      status: "pending",
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,  // 7 days
-    };
-
-    existingInvites[emailLower] = newInvite;
-
-    localStorage.setItem(
-      "fieldnotes.pending_invites",
-      JSON.stringify(existingInvites)
-    );
-
-    // Keep it in the shared workspaces list for the inviter to see
-    const updatedInvites = [...pendingInvites, newInvite];
-    updatePendingInvites(updatedInvites);
-
-    toast.success(`Invite sent to ${emailLower}. They will be prompted to accept on next login.`);
-    setIsModalOpen(false);
-    resetFormState();
   };
 
   const handleEditSelfClick = (member: any) => {
     setModalMode("edit_self");
     setEditingUserId(member.userId);
     setDisplayName(member.displayName || member.email.split("@")[0]);
-    setRole(member.role.toLowerCase() as any);
+    setRole(((member.role || "viewer").toLowerCase() as any));
     setJobTitle(member.jobTitle);
     setIsModalOpen(true);
   };
 
-  const handleSaveSelfEdit = (e: React.FormEvent) => {
+  const handleSaveSelfEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     const userId = auth.user?.id;
-    if (!userId) return;
+    if (!userId || !workspaceMeta) return;
 
-    const updated = members.map((m) => {
-      if (m.userId === userId) {
-        return {
-          ...m,
-          displayName: displayName.trim(),
-          jobTitle: jobTitle.trim(),
-        };
-      }
-      return m;
-    });
-    updateMembers(updated);
+    try {
+      const { error: dbErr } = await supabase
+        .from('workspace_members')
+        .update({
+          display_name: displayName.trim(),
+          job_title: jobTitle.trim(),
+        })
+        .eq('workspace_id', workspaceMeta.workspaceId)
+        .eq('user_id', userId);
 
-    setSettings((prev) => ({
-      ...prev,
-      userName: displayName.trim(),
-      role: jobTitle.trim(),
-    }));
+      if (dbErr) throw dbErr;
 
-    toast.success("Profile display info updated.");
-    setIsModalOpen(false);
-    resetFormState();
+      // Update auth user metadata
+      await supabase.auth.updateUser({
+        data: { ...auth.user?.user_metadata, name: displayName.trim(), role: jobTitle.trim() }
+      });
+
+      const updated = members.map((m) => {
+        if (m.userId === userId) {
+          return {
+            ...m,
+            displayName: displayName.trim(),
+            jobTitle: jobTitle.trim(),
+          };
+        }
+        return m;
+      });
+      updateMembers(updated);
+
+      setSettings((prev) => ({
+        ...prev,
+        userName: displayName.trim(),
+        role: jobTitle.trim(),
+      }));
+
+      toast.success("Profile display info updated.");
+      setIsModalOpen(false);
+      resetFormState();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to update display info: ${err.message || String(err)}`);
+    }
   };
 
   const handleEditClick = (member: any) => {
     setModalMode("edit");
-    setEditingUserId(member.id);
+    setEditingUserId(member.userId);
     setEmail(member.email);
-    setDisplayName(member.name);
-    setRole(member.role.toLowerCase() as any);
+    setDisplayName(member.displayName);
+    setRole(((member.role || "viewer").toLowerCase() as any));
     setJobTitle(member.jobTitle);
     setIsModalOpen(true);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingUserId) return;
+    if (!editingUserId || !workspaceMeta) return;
 
-    const updated = members.map((m) => {
-      if (m.userId === editingUserId) {
-        const roleChanged = m.role.toLowerCase() !== role.toLowerCase();
-        return {
-          ...m,
+    try {
+      const { error: dbErr } = await supabase
+        .from('workspace_members')
+        .update({
           role: role,
-          jobTitle: jobTitle.trim(),
-          ...(roleChanged ? { pendingRoleChangeNotification: true } : {}),
-        };
-      }
-      return m;
-    });
+          job_title: jobTitle.trim(),
+        })
+        .eq('workspace_id', workspaceMeta.workspaceId)
+        .eq('user_id', editingUserId);
 
-    updateMembers(updated);
-    localStorage.setItem(`fieldnotes.user.${editingUserId}.role`, role.toLowerCase());
+      if (dbErr) throw dbErr;
 
-    toast.success(`Role updated to ${role.charAt(0).toUpperCase() + role.slice(1)}`);
-    setIsModalOpen(false);
-    resetFormState();
+      const updated = members.map((m) => {
+        if (m.userId === editingUserId) {
+          return {
+            ...m,
+            role: role,
+            jobTitle: jobTitle.trim(),
+          };
+        }
+        return m;
+      });
+
+      updateMembers(updated);
+      localStorage.setItem(`fieldnotes.user.${editingUserId}.role`, role.toLowerCase());
+
+      toast.success(`Role updated to ${role.charAt(0).toUpperCase() + role.slice(1)}`);
+      setIsModalOpen(false);
+      resetFormState();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to update member role: ${err.message || String(err)}`);
+    }
   };
 
-  const handleDeleteMember = (userId: string, emailVal: string) => {
+  const handleDeleteMember = async (userId: string, emailVal: string) => {
     if (userId === auth.user?.id) {
       toast.error("You cannot remove your own profile.");
       return;
     }
+    if (!workspaceMeta) return;
 
     const memberToDelete = members.find((m) => m.userId === userId);
     if (memberToDelete && can(memberToDelete.role, "workspace:viewKey")) {
@@ -1189,32 +1459,59 @@ function TeamMembersCard() {
         `Remove ${memberToDelete?.displayName || emailVal} from the workspace?\nThey will lose access immediately.`,
       )
     ) {
-      const updated = members.filter((m) => m.userId !== userId);
-      updateMembers(updated);
-      localStorage.removeItem(`fieldnotes.user.${userId}.role`);
-      toast.success(`${memberToDelete?.displayName || emailVal} removed.`);
+      try {
+        const { error: dbErr } = await supabase
+          .from('workspace_members')
+          .delete()
+          .eq('workspace_id', workspaceMeta.workspaceId)
+          .eq('user_id', userId);
+
+        if (dbErr) throw dbErr;
+
+        const updated = members.filter((m) => m.userId !== userId);
+        updateMembers(updated);
+        localStorage.removeItem(`fieldnotes.user.${userId}.role`);
+        toast.success(`${memberToDelete?.displayName || emailVal} removed.`);
+      } catch (err: any) {
+        console.error(err);
+        toast.error(`Failed to remove member: ${err.message || String(err)}`);
+      }
     }
   };
 
-  const handleResendInvite = (inviteId: string, emailVal: string) => {
-    const updated = pendingInvites.map((inv: any) => {
-      if (inv.inviteId === inviteId) {
-        return {
-          ...inv,
-          expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-        };
-      }
-      return inv;
-    });
-    updatePendingInvites(updated);
-    toast.success(`Invite resent to ${emailVal}`);
+  const handleResendInvite = async (inviteId: string, emailVal: string) => {
+    try {
+      const { error: dbErr } = await supabase
+        .from('workspace_members')
+        .update({ joined_at: new Date().toISOString() })
+        .eq('id', inviteId);
+
+      if (dbErr) throw dbErr;
+
+      toast.success(`Invite resent to ${emailVal}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to resend invite: ${err.message || String(err)}`);
+    }
   };
 
-  const handleCancelInvite = (inviteId: string, emailVal: string) => {
+  const handleCancelInvite = async (inviteId: string, emailVal: string) => {
     if (confirm(`Are you sure you want to cancel the invitation for ${emailVal}?`)) {
-      const updated = pendingInvites.filter((inv: any) => inv.inviteId !== inviteId);
-      updatePendingInvites(updated);
-      toast.success("Invite cancelled");
+      try {
+        const { error: dbErr } = await supabase
+          .from('workspace_members')
+          .delete()
+          .eq('id', inviteId);
+
+        if (dbErr) throw dbErr;
+
+        const updated = members.filter(m => m.userId !== inviteId);
+        updateMembers(updated);
+        toast.success("Invite cancelled");
+      } catch (err: any) {
+        console.error(err);
+        toast.error(`Failed to cancel invite: ${err.message || String(err)}`);
+      }
     }
   };
 
@@ -1539,15 +1836,14 @@ function TeamMembersCard() {
                       <label className="block font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
                         Job Title / Persona
                       </label>
-                      <select
+                      <input
+                        type="text"
+                        required
                         value={jobTitle}
                         onChange={(e) => setJobTitle(e.target.value)}
-                        className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)] p-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
-                      >
-                        <option value="QA Engineer">QA Engineer</option>
-                        <option value="Developer">Developer</option>
-                        <option value="Project Manager">Project Manager</option>
-                      </select>
+                        placeholder="e.g. QA Engineer, Developer"
+                        className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)] px-[12px] py-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
+                      />
                     </div>
 
                     <div className="flex justify-between pt-2">
@@ -1690,15 +1986,14 @@ function TeamMembersCard() {
                   <label className="block font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
                     Job Title / Persona
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    required
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)] p-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
-                  >
-                    <option value="QA Engineer">QA Engineer</option>
-                    <option value="Developer">Developer</option>
-                    <option value="Project Manager">Project Manager</option>
-                  </select>
+                    placeholder="e.g. QA Engineer, Developer"
+                    className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)] px-[12px] py-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
+                  />
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-[var(--c-border)]/50">
@@ -1742,15 +2037,14 @@ function TeamMembersCard() {
                   <label className="block font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
                     Job Title / Persona
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    required
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)] p-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
-                  >
-                    <option value="QA Engineer">QA Engineer</option>
-                    <option value="Developer">Developer</option>
-                    <option value="Project Manager">Project Manager</option>
-                  </select>
+                    placeholder="e.g. QA Engineer, Developer"
+                    className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)] px-[12px] py-[10px] text-[13px] outline-none focus:border-[var(--c-accent)]"
+                  />
                 </div>
 
                 <div className="space-y-1.5">

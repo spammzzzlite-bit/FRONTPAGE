@@ -138,7 +138,7 @@ function AuthPage() {
         const pending = ws.pendingInvites || [];
         const found = pending.find(
           (inv: any) =>
-            inv.email.toLowerCase() === email.toLowerCase() &&
+            (inv.email || "").toLowerCase() === (email || "").toLowerCase() &&
             inv.status === "pending" &&
             new Date(inv.expiresAt) > new Date(),
         );
@@ -233,7 +233,8 @@ function AuthPage() {
 
         localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(ws.meta));
         localStorage.setItem("fieldnotes.workspace.members", JSON.stringify(ws.members));
-        localStorage.setItem(`fieldnotes.user.${userId}.role`, matchedInvite.role.toLowerCase());
+        const matchedRole = matchedInvite.role || "viewer";
+        localStorage.setItem(`fieldnotes.user.${userId}.role`, matchedRole.toLowerCase());
 
         toast.success("Successfully joined workspace!");
 
