@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/backend/supabase";
+import { clearUserSessionData, qamindStorage } from "@/lib/storage-keys";
 import type { Session, User } from "@supabase/supabase-js";
 import { syncWorkspaceFromSupabase, fetchWorkspaceData } from "./supabase-sync";
 
@@ -165,13 +166,8 @@ export function useAuth() {
 export async function signOut() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("theme");
-    localStorage.removeItem("fieldnotes_onboarding_complete");
     if (currentUserId) {
-      localStorage.removeItem(`fieldnotes_onboarding_complete.${currentUserId}`);
-      localStorage.removeItem(`fieldnotes.user.${currentUserId}.onboardingComplete`);
-      localStorage.removeItem(`fieldnotes_onboarding_data.${currentUserId}`);
-      localStorage.removeItem(`fieldnotes.user.${currentUserId}.tokens`);
-      localStorage.removeItem(`fieldnotes.user.${currentUserId}.tokenDeductions`);
+      clearUserSessionData(currentUserId);
     }
   }
   // Clear memory context
@@ -192,9 +188,7 @@ export async function deleteUserAccount() {
     }
     
     if (typeof window !== "undefined") {
-      localStorage.removeItem(`fieldnotes_onboarding_complete.${userId}`);
-      localStorage.removeItem(`fieldnotes.user.${userId}.onboardingComplete`);
-      localStorage.removeItem(`fieldnotes_onboarding_data.${userId}`);
+      clearUserSessionData(userId);
     }
   }
   await signOut();

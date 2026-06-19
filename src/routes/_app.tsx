@@ -37,6 +37,7 @@ import { PanelProvider, usePanel } from "@/frontend/components/PanelContext";
 import { PanelShell } from "@/frontend/components/PanelShell";
 import { CommandPalette } from "@/frontend/components/CommandPalette";
 import { QAMindLogo } from "@/frontend/components/brand";
+import { isOnboardingCompleteLocally, qamindStorage } from "@/lib/storage-keys";
 import { Toaster, toast } from "sonner";
 import {
   useProjects,
@@ -160,11 +161,6 @@ const ROLE_NAV_LABELS: Record<string, readonly string[]> = {
   ],
 };
 
-function isOnboardingCompleteLocally(userId: string | undefined): boolean {
-  if (!userId || typeof window === "undefined") return false;
-  return localStorage.getItem(`fieldnotes.user.${userId}.onboardingComplete`) === "true";
-}
-
 function AppLayout() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -193,7 +189,7 @@ function AppLayout() {
         // BUG 3 PART B: Detect pending invite
         const uEmailLower = uEmail.toLowerCase();
         const sharedInvites = JSON.parse(
-          localStorage.getItem("fieldnotes.pending_invites") || "{}"
+          qamindStorage.get(qamindStorage.pendingInvites()) || "{}"
         );
         const pendingInvite = sharedInvites[uEmailLower];
         if (
@@ -201,8 +197,8 @@ function AppLayout() {
           pendingInvite.status === "pending" &&
           pendingInvite.expiresAt > Date.now()
         ) {
-          localStorage.setItem(
-            `fieldnotes.invite_pending.${auth.user.id}`,
+          qamindStorage.set(
+            qamindStorage.invitePending(auth.user.id),
             JSON.stringify(pendingInvite)
           );
         }
@@ -1236,9 +1232,9 @@ function InviteAcceptModal({ userId }: { userId: string }) {
         plan: wsData.plan || "standard",
       };
 
-      localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(workspaceMeta));
-      localStorage.setItem(`fieldnotes.user.${auth.user.id}.role`, invite.assignedRole);
-      localStorage.setItem(`fieldnotes.user.${auth.user.id}.onboardingComplete`, "true");
+      qamindStorage.set(qamindStorage.workspaceMeta(), JSON.stringify(workspaceMeta));
+      qamindStorage.set(qamindStorage.userRole(auth.user.id), invite.assignedRole);
+      qamindStorage.set(qamindStorage.userOnboardingComplete(auth.user.id), "true");
 
       window.dispatchEvent(new Event("storage"));
       toast.success(`Welcome to ${invite.workspaceName}! You joined as ${invite.assignedRole}.`);

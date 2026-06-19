@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { PageHeader } from "./_app.projects";
+import { CONTACT_EMAIL } from "@/lib/brand";
 
 export const Route = createFileRoute("/_app/help")({
   head: () => ({ meta: [{ title: "Help & Docs — QAMind AI" }] }),
@@ -34,7 +35,7 @@ function HelpPage() {
       <PageHeader
         section="§ Help"
         title="Help & docs"
-        subtitle="A short field guide. Email hello@fieldnotes.qa for anything else."
+        subtitle={`Questions about setup, runs, or exports? Email ${CONTACT_EMAIL}.`}
       />
       <div className="space-y-4">
         {FAQ.map((item, i) => (

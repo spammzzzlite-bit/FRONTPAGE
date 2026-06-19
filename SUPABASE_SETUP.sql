@@ -1,8 +1,8 @@
 -- ==========================================
--- FIELD NOTES QA - SUPABASE SCHEMA SETUP
+-- QAMIND AI - SUPABASE SCHEMA SETUP
 -- ==========================================
 -- This script creates all tables, triggers, and Row Level Security (RLS) policies 
--- necessary for migrating the Field Notes QA app from local storage to Supabase.
+-- necessary for migrating the QAMind AI app from local storage to Supabase.
 -- It assumes that Supabase Auth (auth.users) is already active.
 
 -- ==========================================

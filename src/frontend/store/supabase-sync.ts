@@ -10,6 +10,7 @@ import {
   TestRun,
   BugReport
 } from "./store";
+import { generateWorkspaceKey } from "@/lib/workspace-key";
 
 /**
  * Core function to sync all workspace data from Supabase down to the local state stores.
@@ -49,7 +50,7 @@ export async function syncWorkspaceFromSupabase(workspaceId: string, userId: str
       await supabase.from('workspaces').insert({
         id: workspaceId,
         name: workspaceName,
-        workspace_key: 'FNQ-' + Math.floor(Math.random() * 10000),
+        workspace_key: generateWorkspaceKey(),
         owner_id: userId,
         owner_email: userEmail
       });

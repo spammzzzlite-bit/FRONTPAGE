@@ -8,6 +8,7 @@ import {
 } from "@/frontend/components/ui/tooltip";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
+import { qamindStorage } from "@/lib/storage-keys";
 
 export type UserRole = "owner" | "admin" | "editor" | "viewer";
 
@@ -59,13 +60,13 @@ export function getStoredRole(): UserRole {
   if (!userId) {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith("fieldnotes.user.") && key.endsWith(".role")) {
+      if (key && qamindStorage.isUserRoleKey(key)) {
         return (localStorage.getItem(key)?.toLowerCase() as UserRole) || "viewer";
       }
     }
     return "viewer";
   }
-  return (localStorage.getItem(`fieldnotes.user.${userId}.role`)?.toLowerCase() as UserRole) || "viewer";
+  return (qamindStorage.get(qamindStorage.userRole(userId))?.toLowerCase() as UserRole) || "viewer";
 }
 
 export function getMinimumRoleForAction(action: string): string {

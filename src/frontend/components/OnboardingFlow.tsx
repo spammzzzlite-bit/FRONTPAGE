@@ -37,6 +37,8 @@ import { fieldBrief } from "../../config/onboarding/fieldBrief";
 import { intelBrief } from "../../config/onboarding/intelBrief";
 import type { OnboardingStep } from "../../config/onboarding/types";
 import { QAMindLogo } from "@/frontend/components/brand";
+import { markOnboardingComplete, qamindStorage } from "@/lib/storage-keys";
+import { generateWorkspaceKey } from "@/lib/workspace-key";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1869,18 +1871,6 @@ function ProgressBar({
   );
 }
 
-function generateWorkspaceKey(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const genPart = (length: number) => {
-    let result = "";
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-  return `FNQ-${genPart(4)}-${genPart(4)}`;
-}
-
 // ─── Main OnboardingFlow ──────────────────────────────────────────────────────
 
 export default function OnboardingFlow({ onComplete, onSkip, onNavigate, currentRole: propRole }: Props) {
@@ -1935,7 +1925,7 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
   useEffect(() => {
     const userId = auth.user?.id;
     if (userId) {
-      const saved = localStorage.getItem(`fieldnotes_onboarding_data.${userId}`);
+      const saved = qamindStorage.get(qamindStorage.onboardingData(userId));
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -2029,19 +2019,11 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
 
   const handleComplete = useCallback(() => {
     const userId = auth.user?.id;
-    localStorage.setItem("fieldnotes_onboarding_complete", "true");
-    if (userId) {
-      localStorage.setItem(`fieldnotes_onboarding_complete.${userId}`, "true");
-      localStorage.setItem(`fieldnotes.user.${userId}.onboardingComplete`, "true");
-      localStorage.setItem(
-        `fieldnotes_onboarding_data.${userId}`,
-        JSON.stringify({
-          workspaceName,
-          role: selectedRole ?? "qa_engineer",
-          archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
-        }),
-      );
-    }
+    markOnboardingComplete(userId, {
+      workspaceName,
+      role: selectedRole ?? "qa_engineer",
+      archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
+    });
 
     let mappedRole = "QA Engineer";
     if (selectedRole === "developer") mappedRole = "Developer";
@@ -2064,19 +2046,11 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
   const handleNavigate = useCallback(
     (route: string) => {
       const userId = auth.user?.id;
-      localStorage.setItem("fieldnotes_onboarding_complete", "true");
-      if (userId) {
-        localStorage.setItem(`fieldnotes_onboarding_complete.${userId}`, "true");
-        localStorage.setItem(`fieldnotes.user.${userId}.onboardingComplete`, "true");
-        localStorage.setItem(
-          `fieldnotes_onboarding_data.${userId}`,
-          JSON.stringify({
-            workspaceName,
-            role: selectedRole ?? "qa_engineer",
-            archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
-          }),
-        );
-      }
+      markOnboardingComplete(userId, {
+        workspaceName,
+        role: selectedRole ?? "qa_engineer",
+        archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
+      });
 
       let mappedRole = "QA Engineer";
       if (selectedRole === "developer") mappedRole = "Developer";
@@ -2112,21 +2086,18 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
 
   const handleSkip = useCallback(() => {
     const userId = auth.user?.id;
-    localStorage.setItem("fieldnotes_onboarding_complete", "true");
-    if (userId) {
-      localStorage.setItem(`fieldnotes_onboarding_complete.${userId}`, "true");
-      localStorage.setItem(`fieldnotes.user.${userId}.onboardingComplete`, "true");
-      if (workspaceName.trim()) {
-        localStorage.setItem(
-          `fieldnotes_onboarding_data.${userId}`,
-          JSON.stringify({
+    markOnboardingComplete(
+      userId,
+      workspaceName.trim()
+        ? {
             workspaceName,
             role: selectedRole ?? "qa_engineer",
-            archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
-          }),
-        );
-      }
-    }
+            archetype: selectedRole
+              ? ARCHETYPES[selectedRole].title
+              : ARCHETYPES.qa_engineer.title,
+          }
+        : undefined,
+    );
     // Make sure we trigger setup so Owner gets workspace created even if they skip
     if (briefingTrack === "command" && workspaceName.trim()) {
       completeWorkspaceSetup();

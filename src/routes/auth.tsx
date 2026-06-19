@@ -185,7 +185,7 @@ function AuthPage() {
       if (!workspaceKey.trim()) {
         setWorkspaceKeyError("Workspace key is required.");
       } else if (!isKeyValid) {
-        setWorkspaceKeyError("Invalid workspace key format (expected FNQ-XXXX-XXXX).");
+        setWorkspaceKeyError("Invalid workspace key format (expected QAM-XXXX-XXXX).");
       }
 
       if (!isEmailValid || !isPassValid || !isConfirmValid || !isKeyValid) return;
@@ -841,7 +841,7 @@ function AuthPage() {
                     setWorkspaceKey(e.target.value.toUpperCase());
                     setWorkspaceKeyError(null);
                   }}
-                  placeholder="FNQ-XXXX-XXXX"
+                  placeholder="QAM-XXXX-XXXX"
                   required
                   className={`w-full rounded-[8px] bg-[var(--c-bg-input)] px-[14px] py-[10px] text-[14px] outline-none transition-all duration-[var(--t-fast)] border ${
                     workspaceKeyError

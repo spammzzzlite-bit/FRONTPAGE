@@ -161,7 +161,7 @@ export function exportToExcel({
 
   const safeName = projectName.replace(/[^a-z0-9]/gi, "_");
   const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `FieldNotes_Export_${safeName}_${dateStr}.xlsx`;
+  const fileName = `QAMind_Export_${safeName}_${dateStr}.xlsx`;
 
   XLSX.writeFile(wb, fileName);
 }

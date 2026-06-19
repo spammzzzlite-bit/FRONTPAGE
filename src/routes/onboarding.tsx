@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import OnboardingFlow from "@/frontend/components/OnboardingFlow";
 import { supabase } from "@/backend/supabase";
 import { useAuth, useCurrentRole } from "@/frontend/store/store";
+import { isOnboardingCompleteLocally } from "@/lib/storage-keys";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -13,11 +14,6 @@ export const Route = createFileRoute("/onboarding")({
   }),
   component: OnboardingPage,
 });
-
-function isOnboardingCompleteLocally(userId: string | undefined): boolean {
-  if (!userId || typeof window === "undefined") return false;
-  return localStorage.getItem(`fieldnotes.user.${userId}.onboardingComplete`) === "true";
-}
 
 async function persistOnboardingComplete(user: {
   id: string;

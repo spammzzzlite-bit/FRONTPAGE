@@ -40,18 +40,8 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/frontend/components/ui/tooltip";
-
-function generateWorkspaceKey(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const genPart = (length: number) => {
-    let result = "";
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-  return `FNQ-${genPart(4)}-${genPart(4)}`;
-}
+import { clearWorkspaceLocalData, qamindStorage } from "@/lib/storage-keys";
+import { generateWorkspaceKey } from "@/lib/workspace-key";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — QAMind AI" }] }),
@@ -1239,11 +1229,7 @@ function SettingsPage() {
                   if (userId) {
                     const updated = members.filter((m) => m.userId !== userId);
                     updateMembers(updated);
-                    localStorage.removeItem("fieldnotes.workspace.meta");
-                    localStorage.removeItem("fieldnotes.workspace.members");
-                    localStorage.removeItem(`fieldnotes.user.${userId}.role`);
-                    localStorage.removeItem(`fieldnotes.user.${userId}.onboardingComplete`);
-                    localStorage.removeItem(`fieldnotes_onboarding_complete.${userId}`);
+                    clearWorkspaceLocalData(userId);
                   }
                   await signOut();
                   toast.success("You have successfully left the workspace.");
@@ -1267,13 +1253,8 @@ function SettingsPage() {
         <button
           onClick={() => {
             const userId = auth.user?.id;
-            localStorage.removeItem("fieldnotes_onboarding_complete");
             if (userId) {
-              localStorage.removeItem(`fieldnotes_onboarding_complete.${userId}`);
-              localStorage.removeItem(`fieldnotes.user.${userId}.onboardingComplete`);
-              localStorage.removeItem(`fieldnotes_onboarding_data.${userId}`);
-              localStorage.removeItem("fieldnotes.workspace.meta");
-              localStorage.removeItem("fieldnotes.workspace.members");
+              clearWorkspaceLocalData(userId);
             }
             window.location.href = "/onboarding";
           }}
@@ -1524,7 +1505,7 @@ function TeamMembersCard() {
       });
 
       updateMembers(updated);
-      localStorage.setItem(`fieldnotes.user.${editingUserId}.role`, role.toLowerCase());
+      qamindStorage.set(qamindStorage.userRole(editingUserId), role.toLowerCase());
 
       toast.success(`Role updated to ${role.charAt(0).toUpperCase() + role.slice(1)}`);
       setIsModalOpen(false);
@@ -1564,7 +1545,7 @@ function TeamMembersCard() {
 
         const updated = members.filter((m) => m.userId !== userId);
         updateMembers(updated);
-        localStorage.removeItem(`fieldnotes.user.${userId}.role`);
+        qamindStorage.remove(qamindStorage.userRole(userId));
         toast.success(`${memberToDelete?.displayName || emailVal} removed.`);
       } catch (err: any) {
         console.error(err);
