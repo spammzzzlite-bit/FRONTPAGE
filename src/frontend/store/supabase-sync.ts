@@ -10,7 +10,7 @@ import {
   TestRun,
   BugReport
 } from "./store";
-import { provisionWorkspaceForNewUser } from "./workspace-provision";
+import { provisionWorkspaceForNewUser, ensureUserWorkspaceAccess } from "./workspace-provision";
 
 /**
  * Core function to sync all workspace data from Supabase down to the local state stores.

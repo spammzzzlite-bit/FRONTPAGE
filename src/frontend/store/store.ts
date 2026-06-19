@@ -1505,8 +1505,10 @@ export async function initializeStores(userId: string, userEmail?: string, userN
   currentUserId = userId;
 
   if (userId) {
+    await ensureUserWorkspaceAccess();
+
     let active = await resolveActiveWorkspace(userId);
-    
+
     if (!active) {
       await provisionWorkspaceForNewUser(
         userId,
