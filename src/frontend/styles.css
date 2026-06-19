@@ -2,43 +2,11 @@
 @import "tw-animate-css";
 @source "../src";
 
-@font-face {
-  font-family: "Graphik";
-  src: url("https://framerusercontent.com/assets/j6qvQRNGEtVcz6veUbhy3Htq04.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Graphik";
-  src: url("https://framerusercontent.com/assets/tagxH3tvhUVx2wshWNOd0lrs0k.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Graphik";
-  src: url("https://framerusercontent.com/assets/34OMxQSb21pj11o9pWUerAr31Do.woff2") format("woff2");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Graphik";
-  src: url("https://framerusercontent.com/assets/cCNGIqGKRHhF6cFC7QayCIlxogY.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Print-editorial design system.
- * Cream paper bg, ink text, rust + sage accents, serif display.
+ * QAMind AI Design System.
+ * Warm paper bg, ink text, terracotta accent, brand typefaces.
  */
 
 @theme inline {
@@ -84,48 +52,81 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-rust: var(--rust);
   --color-sage: var(--sage);
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-sans: "Inter", "Graphik", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Fragment Mono", ui-monospace, monospace;
+  /* ─── Brand Typefaces ─── */
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'Hanken Grotesk', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  /* Legacy aliases — keep existing TSX classes working */
+  --font-serif: 'Bricolage Grotesque', sans-serif;
+  --font-sans: 'Hanken Grotesk', sans-serif;
+
+  /* ─── Typography Scale ─── */
+  --text-display: 60px; --lh-display: 1.05; --ls-display: -0.025em;
+  --text-heading: 44px; --lh-heading: 1.15; --ls-heading: -0.034em;
+  --text-subhead: 26px; --lh-subhead: 1.3;  --ls-subhead: 0;
+  --text-body: 16px;    --lh-body: 1.6;     --ls-body: 0;
+  --text-label: 13px;   --lh-label: 1;      --ls-label: 0.125em;
 }
 
 :root {
-  /* 60% DOMINANT — Warm cream */
-  --c-bg: #f2eae0;
-  --c-bg-card: #f8f3ee;
-  --c-bg-sidebar: #ede4d8;
-  --c-bg-input: #ede4d8;
-  --c-bg-hover: #e6ddd1;
+  /* ─── 60% DOMINANT — Warm paper (Light mode) ─── */
+  --c-bg: #EFE8DF;
+  --c-bg-card: #E9E1D6;
+  --c-bg-sidebar: #E3DBD0;
+  --c-bg-input: #E9E1D6;
+  --c-bg-hover: #DCD3C4;
 
-  /* 30% SECONDARY — Deep charcoal */
-  --c-text: #1a1714;
-  --c-text-muted: #6b6159;
+  /* ─── 30% SECONDARY — Ink (Light mode) ─── */
+  --c-text: #2A2420;
+  --c-text-muted: #5F574C;
   --c-text-dim: #9c9088;
-  --c-border: #d8cfc4;
-  --c-border-strong: #c2b8ac;
-  --c-topbar: #1a1714;
+  --c-border: #DCD3C4;
+  --c-border-strong: #C8BFB2;
+  --c-topbar: #2A2420;
 
-  /* 10% ACCENT — Terracotta */
-  --c-accent: #c4551a;
-  --c-accent-dark: #a3441388;
-  --c-accent-soft: #f0ddd4;
-  --c-accent-text: #c4551a;
+  /* ─── 10% ACCENT — Terracotta (never changes between modes) ─── */
+  --c-accent: #C2552E;
+  --c-accent-hover: #D9744A;
+  --c-accent-pressed: #9E4220;
+  --c-accent-dark: #9E422088;
+  --c-accent-soft: #F0DDD4;
+  --c-accent-text: #C2552E;
 
-  /* Semantic */
-  --c-pass: #3d7a52;
-  --c-pass-soft: #e6f0eb;
-  --c-fail: #a83b3b;
-  --c-fail-soft: #f2e5e5;
-  --c-warn: #b8801a;
-  --c-warn-soft: #f2ead8;
+  /* ─── Brand Color System (spec) ─── */
+  --color-accent: #C2552E;
+  --color-accent-hover: #D9744A;
+  --color-accent-pressed: #9E4220;
+  --color-bg: #EFE8DF;
+  --color-surface: #E9E1D6;
+  --color-border: #DCD3C4;
+  --color-text-soft: #5F574C;
+  --color-text: #2A2420;
 
-  /* Shadows — subtle, warm-toned */
-  --shadow-sm: 0 1px 2px rgba(26, 23, 20, 0.05);
-  --shadow-md: 0 4px 12px rgba(26, 23, 20, 0.08), 0 1px 3px rgba(26, 23, 20, 0.05);
-  --shadow-lg: 0 8px 24px rgba(26, 23, 20, 0.12), 0 2px 6px rgba(26, 23, 20, 0.06);
-  --shadow-modal: 0 20px 60px rgba(26, 23, 20, 0.2);
+  /* ─── Semantic — Pass (Sage) ─── */
+  --c-pass: #5E7A4F;
+  --c-pass-soft: #DCE7DB;
+  --color-pass-text-light: #5E7A4F;
+  --color-pass-bg-light: #DCE7DB;
 
-  /* Animation Tokens */
+  /* ─── Semantic — Fail (Clay) ─── */
+  --c-fail: #B04E3D;
+  --c-fail-soft: #F0DCD7;
+  --color-fail-text-light: #B04E3D;
+  --color-fail-bg-light: #F0DCD7;
+
+  /* ─── Semantic — Flaky (Gold) ─── */
+  --c-warn: #8E7E38;
+  --c-warn-soft: #ECE5CD;
+  --color-flaky-text-light: #8E7E38;
+  --color-flaky-bg-light: #ECE5CD;
+
+  /* ─── Shadows — subtle, warm-toned ─── */
+  --shadow-sm: 0 1px 2px rgba(42, 36, 32, 0.05);
+  --shadow-md: 0 4px 12px rgba(42, 36, 32, 0.08), 0 1px 3px rgba(42, 36, 32, 0.05);
+  --shadow-lg: 0 8px 24px rgba(42, 36, 32, 0.12), 0 2px 6px rgba(42, 36, 32, 0.06);
+  --shadow-modal: 0 20px 60px rgba(42, 36, 32, 0.2);
+
+  /* ─── Animation Tokens ─── */
   --t-instant: 100ms;
   --t-fast: 150ms;
   --t-normal: 200ms;
@@ -134,14 +135,13 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 0.3s;
   --duration-medium: 0.6s;
   --duration-slow: 1.2s;
 
-  /* Map standard tailwind tokens to new design system */
+  /* ─── Tailwind token mappings ─── */
   --radius: 0.75rem;
   --background: var(--c-bg);
   --foreground: var(--c-text);
@@ -175,41 +175,109 @@
   --sidebar-ring: var(--c-accent);
 }
 
-.dark {
-  /* Dark warm-charcoal editorial background */
-  --c-bg: #161412;
-  --c-bg-card: #1e1a17;
-  --c-bg-sidebar: #1b1816;
-  --c-bg-input: #24201d;
-  --c-bg-hover: #2d2825;
+.dark,
+[data-theme="dark"] {
+  /* ─── Espresso background (Dark mode) ─── */
+  --c-bg: #1A1613;
+  --c-bg-card: #221C16;
+  --c-bg-sidebar: #1D1914;
+  --c-bg-input: #281F18;
+  --c-bg-hover: #2E2720;
 
-  /* Creamy text & thin warm-charcoal borders */
-  --c-text: #f5efeb;
-  --c-text-muted: #a3988f;
+  /* ─── Cream text (Dark mode) ─── */
+  --c-text: #ECE3D6;
+  --c-text-muted: #B5AB9B;
   --c-text-dim: #7d7268;
-  --c-border: #38322d;
-  --c-border-strong: #4f4740;
-  --c-topbar: #0e0d0c;
+  --c-border: #362B1F;
+  --c-border-strong: #4A3C30;
+  --c-topbar: #110E0B;
 
-  /* Terracotta accents for high contrast in dark mode */
-  --c-accent: #d96726;
-  --c-accent-dark: #b54f1a88;
-  --c-accent-soft: #382116;
-  --c-accent-text: #d96726;
+  /* ─── Terracotta — NEVER CHANGES between modes ─── */
+  --c-accent: #C2552E;
+  --c-accent-hover: #D9744A;
+  --c-accent-pressed: #9E4220;
+  --c-accent-dark: #9E422088;
+  --c-accent-soft: #311A10;
+  --c-accent-text: #C2552E;
 
-  /* Dark theme semantic status states */
-  --c-pass: #4da36b;
-  --c-pass-soft: #182b1f;
-  --c-fail: #c74e4e;
-  --c-fail-soft: #3b1a1a;
-  --c-warn: #d1972c;
-  --c-warn-soft: #302513;
+  /* ─── Brand Color System (dark mode) ─── */
+  --color-bg: #1A1613;
+  --color-surface: #221C16;
+  --color-border: #362B1F;
+  --color-text-soft: #B5AB9B;
+  --color-text: #ECE3D6;
 
-  /* Shadow configurations */
+  /* ─── Semantic — Pass (Sage dark) ─── */
+  --c-pass: #86A56E;
+  --c-pass-soft: #15241A;
+  --color-pass-text-dark: #86A56E;
+  --color-pass-bg-dark: #15241A;
+
+  /* ─── Semantic — Fail (Clay dark) ─── */
+  --c-fail: #CC6243;
+  --c-fail-soft: #2C1613;
+  --color-fail-text-dark: #CC6243;
+  --color-fail-bg-dark: #2C1613;
+
+  /* ─── Semantic — Flaky (Gold dark) ─── */
+  --c-warn: #C9A84E;
+  --c-warn-soft: #262016;
+  --color-flaky-text-dark: #C9A84E;
+  --color-flaky-bg-dark: #262016;
+
+  /* ─── Shadow configurations ─── */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
   --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* System-level dark mode auto detection */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-bg: #1A1613;
+    --c-bg-card: #221C16;
+    --c-bg-sidebar: #1D1914;
+    --c-bg-input: #281F18;
+    --c-bg-hover: #2E2720;
+    --c-text: #ECE3D6;
+    --c-text-muted: #B5AB9B;
+    --c-text-dim: #7d7268;
+    --c-border: #362B1F;
+    --c-border-strong: #4A3C30;
+    --c-topbar: #110E0B;
+    --c-accent: #C2552E;
+    --c-accent-hover: #D9744A;
+    --c-accent-pressed: #9E4220;
+    --c-accent-dark: #9E422088;
+    --c-accent-soft: #311A10;
+    --c-accent-text: #C2552E;
+    --c-pass: #86A56E;
+    --c-pass-soft: #15241A;
+    --c-fail: #CC6243;
+    --c-fail-soft: #2C1613;
+    --c-warn: #C9A84E;
+    --c-warn-soft: #262016;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6);
+    --background: var(--c-bg);
+    --foreground: var(--c-text);
+    --card: var(--c-bg-card);
+    --card-foreground: var(--c-text);
+    --popover: var(--c-bg-card);
+    --popover-foreground: var(--c-text);
+    --muted: var(--c-bg-sidebar);
+    --muted-foreground: var(--c-text-muted);
+    --border: var(--c-border);
+    --input: var(--c-bg-input);
+    --ring: var(--c-accent);
+    --sage: var(--c-pass);
+    --sidebar: var(--c-bg-sidebar);
+    --sidebar-foreground: var(--c-text);
+    --sidebar-border: var(--c-border);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -226,10 +294,13 @@
     border-color: var(--color-border);
   }
 
+  /* ─── Global Body — Hanken Grotesk ─── */
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-sans);
+    background-color: var(--c-bg);
+    color: var(--c-text);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
     font-feature-settings: "ss01", "cv11";
   }
 
@@ -250,30 +321,113 @@
     z-index: 1;
   }
 
-  .font-display {
-    font-family: var(--font-serif);
+  /* ─── H1 / Display hero — Bricolage Grotesque ─── */
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-display);
+    font-weight: 600;
+    line-height: var(--lh-display);
+    letter-spacing: var(--ls-display);
+    color: var(--c-text);
+  }
+
+  /* ─── H2 / Section headings — Bricolage Grotesque ─── */
+  h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-heading);
+    font-weight: 600;
+    line-height: var(--lh-heading);
+    letter-spacing: var(--ls-heading);
+    color: var(--c-text);
+  }
+
+  /* ─── H3/H4 Subheadings — Hanken Grotesk ─── */
+  h3, h4 {
+    font-family: var(--font-body);
+    font-size: var(--text-subhead);
+    font-weight: 600;
+    line-height: var(--lh-subhead);
+    color: var(--c-text);
+  }
+
+  /* ─── Paragraphs — Hanken Grotesk ─── */
+  p {
+    font-family: var(--font-body);
+    font-size: var(--text-body);
     font-weight: 400;
-    letter-spacing: 0;
+    line-height: var(--lh-body);
   }
 
-  .font-mono {
+  /* ─── Inline code ─── */
+  code, pre {
     font-family: var(--font-mono);
+    font-size: var(--text-label);
+    font-weight: 400;
   }
 
-  .label-eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-muted-foreground);
+  /* ─── Links ─── */
+  a {
+    color: var(--c-accent);
+    text-decoration: none;
+    transition: color var(--t-fast) var(--ease);
+  }
+  a:hover {
+    color: var(--c-accent-hover);
+    text-decoration: underline;
   }
 
+  /* ─── Inputs ─── */
+  input, textarea, select {
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    font-weight: 400;
+    color: var(--c-text);
+  }
+
+  /* ─── Buttons ─── */
+  button {
+    font-family: var(--font-body);
+    font-weight: 600;
+    transition: all var(--t-fast) var(--ease);
+  }
   button:active {
     transform: scale(0.97);
   }
 
-  button {
-    transition: all var(--t-fast) var(--ease);
+  /* ─── .font-display — Bricolage Grotesque (used throughout TSX) ─── */
+  .font-display {
+    font-family: var(--font-display) !important;
+    font-weight: 600;
+    letter-spacing: var(--ls-heading);
+  }
+
+  /* ─── .font-mono — IBM Plex Mono ─── */
+  .font-mono {
+    font-family: var(--font-mono) !important;
+  }
+
+  /* ─── .font-sans — Hanken Grotesk ─── */
+  .font-sans {
+    font-family: var(--font-body) !important;
+  }
+
+  /* ─── Eyebrow / metadata labels ─── */
+  .label-eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    font-weight: 500;
+    letter-spacing: var(--ls-label);
+    text-transform: uppercase;
+    color: var(--c-text-muted);
+  }
+
+  /* ─── Lucide Icons — consistent stroke ─── */
+  svg[data-lucide],
+  .lucide {
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--c-text-muted);
   }
 }
 

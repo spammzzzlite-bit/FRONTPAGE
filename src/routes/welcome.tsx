@@ -924,7 +924,7 @@ function Welcome() {
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link to="/welcome" className="flex items-baseline gap-2">
-            <span className="font-display text-[22px] text-[var(--c-text)]">QAMind AI</span>
+            <span className="font-display text-[22px] text-[var(--c-text)]">QAMind <span style={{ color: "#C2552E" }}>AI</span></span>
           </Link>
 
           <nav
@@ -1189,7 +1189,7 @@ function Welcome() {
       <footer id="contact" className="dim-target bg-[#1A1714] text-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-4">
           <div className="md:col-span-2">
-            <p className="font-display text-3xl">QAMind AI</p>
+            <p className="font-display text-3xl">QAMind <span style={{ color: "#C2552E" }}>AI</span></p>
             <p className="mt-2 text-sm text-[rgba(255,255,255,0.6)]">
               A test-case workspace, in plain language.
             </p>

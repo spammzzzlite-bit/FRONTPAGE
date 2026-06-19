@@ -781,7 +781,7 @@ function AuthPage() {
         </div>
 
         <Link to="/welcome" className="relative font-display text-2xl font-bold z-10">
-          QAMind AI
+          QAMind <span style={{ color: "#C2552E" }}>AI</span>
         </Link>
         <div className="relative space-y-8 z-10">
           <p className="font-display text-3xl leading-snug opacity-0 animate-[fade-in-up_600ms_var(--ease-out)_both]">
