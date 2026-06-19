@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import {
   Upload,
@@ -22,9 +22,16 @@ import {
   DropdownMenuTrigger,
 } from "@/frontend/components/ui/dropdown-menu";
 import { exportToExcel } from "@/frontend/store/export";
+import { useAssertPermission, TokenCostLabel, can, getStoredRole } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_app/planner")({
-  head: () => ({ meta: [{ title: "AI Test Planner — QA Mind" }] }),
+  beforeLoad: () => {
+    const role = getStoredRole();
+    if (!can(role, "suite:create")) {
+      throw redirect({ to: "/" });
+    }
+  },
+  head: () => ({ meta: [{ title: "AI Test Planner — QAMind AI" }] }),
   component: PlannerPage,
 });
 
@@ -38,6 +45,7 @@ const INPUT_TABS = [
 ] as const;
 
 function PlannerPage() {
+  const assertPerm = useAssertPermission();
   const [projects] = useProjects();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +91,7 @@ function PlannerPage() {
   };
 
   const generate = () => {
+    if (!assertPerm("plans:create")) return;
     if (!deductTokenAction("Generate AI Test Plan")) return;
     setState("loading");
     setTimeout(() => {
@@ -306,7 +315,7 @@ function PlannerPage() {
                   Generating...
                 </>
               ) : (
-                <>Generate Test Plan →</>
+                <TokenCostLabel baseText="Generate Test Plan →" />
               )}
             </button>
           </div>

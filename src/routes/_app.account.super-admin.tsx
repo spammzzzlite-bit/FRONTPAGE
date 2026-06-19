@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { can, getStoredRole } from "@/lib/permissions";
 import { useState, useEffect } from "react";
 import {
   ShieldAlert,
@@ -35,7 +36,13 @@ import {
 } from "@/backend/api/super-admin.functions";
 
 export const Route = createFileRoute("/_app/account/super-admin")({
-  head: () => ({ meta: [{ title: "Super Admin Portal — QA Mind" }] }),
+  beforeLoad: () => {
+    const role = getStoredRole();
+    if (!can(role, "superadmin:access")) {
+      throw redirect({ to: "/" });
+    }
+  },
+  head: () => ({ meta: [{ title: "Super Admin Portal — QAMind AI" }] }),
   component: SuperAdminPage,
 });
 

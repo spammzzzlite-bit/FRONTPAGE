@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { can, getStoredRole } from "@/lib/permissions";
 import { useState } from "react";
 import {
   Video,
@@ -29,6 +30,12 @@ import type { RecordingSession, RecordingEvent } from "@/frontend/store/types/re
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/recordings")({
+  beforeLoad: () => {
+    const role = getStoredRole();
+    if (!can(role, "suite:create")) {
+      throw redirect({ to: "/" });
+    }
+  },
   component: RecordingsPage,
 });
 
@@ -68,7 +75,7 @@ function RecordingsPage() {
           icon={Video}
           title="No recordings yet"
           body="Install and connect the Chrome extension to start receiving browser recording sessions here."
-          cta={{ label: "View Extension Docs", onClick: () => alert("Docs coming soon!") }}
+          cta={{ label: "View Extension Docs", onClick: () => toast.info("Docs coming soon!") }}
         />
       ) : (
         <div className="mt-8 space-y-4">

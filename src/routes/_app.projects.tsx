@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, redirect } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { z } from "zod";
 import {
@@ -48,6 +48,7 @@ import {
   useProfiles,
   scaffoldSprintsForProject,
   sprintsStore,
+  useUserStore,
   type Project,
   type TestSuite,
   type TestCase,
@@ -56,7 +57,7 @@ import {
 } from "@/frontend/store/store";
 import { usePanel } from "@/frontend/components/PanelContext";
 import { EmptyState } from "@/frontend/components/EmptyState";
-import { RoleGuard } from "@/frontend/components/RoleGuard";
+import { PermissionGate, can, useAssertPermission, TokenCostLabel, getStoredRole } from "@/lib/permissions";
 import { supabase } from "@/backend/supabase";
 import { toast } from "./_app";
 
@@ -65,7 +66,13 @@ const projectsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_app/projects")({
-  head: () => ({ meta: [{ title: "My Projects — QA Mind" }] }),
+  beforeLoad: () => {
+    const role = getStoredRole();
+    if (!can(role, "suite:create")) {
+      throw redirect({ to: "/" });
+    }
+  },
+  head: () => ({ meta: [{ title: "My Projects — QAMind AI" }] }),
   validateSearch: (search) => projectsSearchSchema.parse(search),
   component: ProjectsPage,
 });
@@ -76,6 +83,8 @@ function ProjectsPage() {
   const [projects] = useProjects();
   const [showNew, setShowNew] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const { currentUser } = useUserStore();
+  const role = currentUser?.role ?? "viewer";
 
   const selectedProject = projects.find((p) => p.id === projectId);
 
@@ -100,12 +109,14 @@ function ProjectsPage() {
         title="My projects"
         subtitle="A binder for each thing you're testing."
         action={
-          <button
-            onClick={() => setShowNew(true)}
-            className="rounded-full bg-[var(--c-accent)] px-[18px] py-[8px] text-[14px] font-medium text-white transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[var(--shadow-md)]"
-          >
-            + New project
-          </button>
+          can(role, "project:create") ? (
+            <button
+              onClick={() => setShowNew(true)}
+              className="rounded-full bg-[var(--c-accent)] px-[18px] py-[8px] text-[14px] font-medium text-white transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[var(--shadow-md)]"
+            >
+              + New project
+            </button>
+          ) : undefined
         }
       />
 
@@ -119,12 +130,14 @@ function ProjectsPage() {
             Projects keep your test cases, files and runs together. Start with one — you can always
             add more.
           </p>
-          <button
-            onClick={() => setShowNew(true)}
-            className="mt-6 rounded-[8px] bg-[var(--c-text)] px-[20px] py-[10px] text-[14px] text-[var(--c-bg)] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:opacity-90 hover:shadow-[var(--shadow-md)]"
-          >
-            Create your first project
-          </button>
+          {can(role, "project:create") && (
+            <button
+              onClick={() => setShowNew(true)}
+              className="mt-6 rounded-[8px] bg-[var(--c-text)] px-[20px] py-[10px] text-[14px] text-[var(--c-bg)] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:opacity-90 hover:shadow-[var(--shadow-md)]"
+            >
+              Create your first project
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -247,7 +260,7 @@ function ProjectCard({
           >
             <Edit2 className="h-3.5 w-3.5" /> Edit
           </button>
-          <RoleGuard allowedRoles={["Owner", "Admin"]}>
+          <PermissionGate action="project:delete">
             <button
               onClick={() => {
                 if (confirm(`Delete "${p.name}"?`)) {
@@ -260,7 +273,7 @@ function ProjectCard({
             >
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
-          </RoleGuard>
+          </PermissionGate>
         </div>
       </div>
     </div>
@@ -274,6 +287,7 @@ export function ProjectDetail({ project }: { project: Project }) {
   const [suites] = useSuites();
   const { openPanel } = usePanel();
   const fileInput = useRef<HTMLInputElement>(null);
+  const assertPermission = useAssertPermission();
 
   // Refresh from store
   const p = projects.find((x) => x.id === project.id) ?? project;
@@ -292,6 +306,7 @@ export function ProjectDetail({ project }: { project: Project }) {
   }
 
   function handleRunAll() {
+    if (!assertPermission("tests:run")) return;
     if (!deductTokenAction(`Run all tests for project "${p.name}"`)) return;
     const run = createMockRun(p.id);
     toast.success(
@@ -423,6 +438,7 @@ export function ProjectDetail({ project }: { project: Project }) {
   };
 
   const handleAddNewSprint = async (newSprint: Sprint) => {
+    if (!assertPermission("plans:create")) return;
     if (!deductTokenAction(`Add sprint "${newSprint.name}" to project`)) return;
     const newSprints = [...dbSprints, newSprint];
     updateLocalSprints(p.id, newSprints);
@@ -1591,6 +1607,7 @@ export function DetailedNewProjectModal({
   onClose: () => void;
   onSuccess?: (p: Project) => void;
 }) {
+  const assertPermission = useAssertPermission();
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [status, setStatus] = useState("planning"); // default to planning / Not Started
@@ -1641,6 +1658,7 @@ export function DetailedNewProjectModal({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!isFormValid) return;
+    if (!assertPermission("project:create")) return;
 
     if (!deductTokenAction(`Create project "${name.trim()}"`)) return;
     const p = createProject(name.trim(), {
@@ -1855,7 +1873,7 @@ export function DetailedNewProjectModal({
             disabled={!isFormValid}
             className="rounded-[8px] bg-[var(--c-text)] px-[16px] py-[8px] text-[13px] font-medium text-[var(--c-bg)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
-            Create Project
+            <TokenCostLabel baseText="Create Project" />
           </button>
         </div>
       </form>

@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { can, getStoredRole } from "@/lib/permissions";
 import { useState } from "react";
 import { PageHeader } from "./_app.projects";
 import { usePanel } from "@/frontend/components/PanelContext";
@@ -7,7 +8,13 @@ import { deductTokenAction } from "@/frontend/store/store";
 import { Settings as SettingsIcon, ExternalLink, ShieldCheck, HelpCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_app/integrations")({
-  head: () => ({ meta: [{ title: "Integrations — QA Mind" }] }),
+  beforeLoad: () => {
+    const role = getStoredRole();
+    if (!can(role, "integrations:toggle") && !can(role, "integrations:configure")) {
+      throw redirect({ to: "/" });
+    }
+  },
+  head: () => ({ meta: [{ title: "Integrations — QAMind AI" }] }),
   component: IntegrationsPage,
 });
 

@@ -11,8 +11,31 @@ import {
   ArrowRight,
   ChevronLeft,
   X,
+  Crown,
+  Star,
+  Shield,
+  Eye,
+  Lock,
 } from "lucide-react";
-import { useAuth, useSettings } from "@/frontend/store/store";
+import {
+  useAuth,
+  useSettings,
+  useUserStore,
+  useWorkspaceMeta,
+  useWorkspaceMembersList,
+  updateActiveWorkspaceMembers,
+  updateActiveWorkspaceMeta,
+  getAvatarColor,
+  type WorkspaceMeta,
+  type WorkspaceMember,
+} from "@/frontend/store/store";
+import { can } from "@/lib/permissions";
+
+import { commandBrief } from "../../config/onboarding/commandBrief";
+import { opsBrief } from "../../config/onboarding/opsBrief";
+import { fieldBrief } from "../../config/onboarding/fieldBrief";
+import { intelBrief } from "../../config/onboarding/intelBrief";
+import type { OnboardingStep } from "../../config/onboarding/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,102 +96,6 @@ const ROLE_CARDS: { id: Role; label: string; sublabel: string; icon: React.React
   },
 ];
 
-const FEATURE_CARDS_LEAD = [
-  {
-    icon: <Zap size={22} strokeWidth={1.5} />,
-    title: "Generate Tests",
-    description: "Describe a feature, AI writes the test cases.",
-  },
-  {
-    icon: <Bug size={22} strokeWidth={1.5} />,
-    title: "Bug Reporter",
-    description: "Flag failures and auto-log bugs in one click.",
-  },
-  {
-    icon: <RefreshCw size={22} strokeWidth={1.5} />,
-    title: "Regression",
-    description: "Run full suite checks across your projects.",
-  },
-  {
-    icon: <BarChart2 size={22} strokeWidth={1.5} />,
-    title: "Reports",
-    description: "Export PDF and CSV reports for any project.",
-  },
-];
-
-const FEATURE_CARDS_EDITOR = [
-  {
-    icon: <Code2 size={22} strokeWidth={1.5} />,
-    title: "Chrome Extension",
-    description: "Record user journeys directly from your browser.",
-  },
-  {
-    icon: <Zap size={22} strokeWidth={1.5} />,
-    title: "AI Generation",
-    description: "Convert recorded steps into automated test cases.",
-  },
-  {
-    icon: <RefreshCw size={22} strokeWidth={1.5} />,
-    title: "Execute Runs",
-    description: "Run test suites and mark them pass/fail.",
-  },
-  {
-    icon: <Bug size={22} strokeWidth={1.5} />,
-    title: "Log Bugs",
-    description: "Auto-push failures to Jira or Linear.",
-  },
-];
-
-const FEATURE_CARDS_VIEWER = [
-  {
-    icon: <BarChart2 size={22} strokeWidth={1.5} />,
-    title: "Traceability Matrix",
-    description: "Map test cases directly to requirements.",
-  },
-  {
-    icon: <FileText size={22} strokeWidth={1.5} />,
-    title: "Test Reports",
-    description: "View real-time coverage and execution stats.",
-  },
-  {
-    icon: <Bug size={22} strokeWidth={1.5} />,
-    title: "Bug Dashboards",
-    description: "Track all failures and linked Jira tickets.",
-  },
-  {
-    icon: <CheckCircle size={22} strokeWidth={1.5} />,
-    title: "Coverage Analytics",
-    description: "Ensure quality gates are met before shipping.",
-  },
-];
-
-const CHECKLIST_ITEMS = [
-  {
-    label: "Create your first project",
-    description: "Set up a workspace project to organize your test suites.",
-    route: "/projects",
-    action: "New Project modal",
-  },
-  {
-    label: "Generate your first test case",
-    description: "Describe a feature and let AI draft your tests.",
-    route: "/generate",
-    action: "Generate Tests",
-  },
-  {
-    label: "Set up a test suite",
-    description: "Group related test cases for organised runs.",
-    route: "/suites",
-    action: "Test Suites",
-  },
-  {
-    label: "Run your first regression",
-    description: "Execute a full suite check across your project.",
-    route: "/regression",
-    action: "Regression",
-  },
-];
-
 const SCAN_LINES = [
   "Scanning workflow patterns...",
   "Detecting edge case sensitivity...",
@@ -208,7 +135,7 @@ function useTypewriter(text: string, speed = 45, onDone?: () => void) {
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 
-function StepLabel({ children }: { children: React.ReactNode }) {
+function StepLabel({ children, accentColor }: { children: React.ReactNode; accentColor: string }) {
   return (
     <span
       style={{
@@ -216,7 +143,7 @@ function StepLabel({ children }: { children: React.ReactNode }) {
         fontSize: "10px",
         letterSpacing: "0.15em",
         textTransform: "uppercase",
-        color: "var(--orange)",
+        color: accentColor,
         fontWeight: 500,
       }}
     >
@@ -229,21 +156,23 @@ function ContinueButton({
   onClick,
   disabled,
   label = "Continue →",
+  accentColor,
 }: {
   onClick: () => void;
   disabled?: boolean;
   label?: string;
+  accentColor: string;
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       style={{
-        background: disabled ? "var(--border)" : "var(--ink)",
-        color: disabled ? "var(--ink-faint)" : "#F8F5F0",
+        background: disabled ? "var(--border)" : accentColor,
+        color: disabled ? "var(--ink-faint)" : "#FFFFFF",
         fontFamily: "Inter, sans-serif",
         fontSize: "14px",
-        fontWeight: 500,
+        fontWeight: 600,
         padding: "12px 28px",
         borderRadius: "6px",
         border: "none",
@@ -252,10 +181,14 @@ function ContinueButton({
         letterSpacing: "0.01em",
       }}
       onMouseEnter={(e) => {
-        if (!disabled) (e.currentTarget as HTMLButtonElement).style.background = "#2D2924";
+        if (!disabled) {
+          (e.currentTarget as HTMLButtonElement).style.filter = "brightness(0.9)";
+        }
       }}
       onMouseLeave={(e) => {
-        if (!disabled) (e.currentTarget as HTMLButtonElement).style.background = "var(--ink)";
+        if (!disabled) {
+          (e.currentTarget as HTMLButtonElement).style.filter = "none";
+        }
       }}
     >
       {label}
@@ -265,13 +198,23 @@ function ContinueButton({
 
 // ─── Step 1: Welcome ──────────────────────────────────────────────────────────
 
-function Step1Welcome({ onNext }: { onNext: () => void }) {
+interface Step1WelcomeProps {
+  briefingTrack: string;
+  config: OnboardingStep;
+  onNext: () => void;
+  accentColor: string;
+  iconName: string;
+}
+
+function Step1Welcome({ briefingTrack, config, onNext, accentColor, iconName }: Step1WelcomeProps) {
   const [subtextVisible, setSubtextVisible] = useState(false);
   const [ctaVisible, setCtaVisible] = useState(false);
   const [cursorVisible, setCursorVisible] = useState(true);
   const [cursorBlink, setCursorBlink] = useState(false);
 
-  const { displayed } = useTypewriter("Welcome to QA Mind.", 45, () => {
+  const typewriterSpeed = briefingTrack === "field" ? 30 : briefingTrack === "intel" ? 60 : 45;
+
+  const { displayed } = useTypewriter(config.welcomeHeader || "", typewriterSpeed, () => {
     setCursorBlink(true);
     setTimeout(() => {
       setCursorVisible(false);
@@ -280,44 +223,88 @@ function Step1Welcome({ onNext }: { onNext: () => void }) {
     }, 800);
   });
 
+  const renderIcon = () => {
+    if (iconName === "Crown" || iconName === "Star") {
+      return (
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-20 h-20 rounded-full border border-[var(--c-border)] animate-[spin_8s_linear_infinite]" />
+          <div className="absolute w-28 h-28 rounded-full border border-dashed border-[var(--c-border)] animate-[spin_12s_linear_infinite_reverse]" />
+          <div
+            className="flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-bg-card)] border shadow-md animate-pulse"
+            style={{ borderColor: accentColor }}
+          >
+            <Crown size={28} style={{ color: accentColor }} />
+          </div>
+        </div>
+      );
+    }
+    if (iconName === "Shield") {
+      return (
+        <div className="relative flex items-center justify-center">
+          <div
+            className="absolute w-24 h-24 rounded-full border-2 border-dashed animate-[spin_16s_linear_infinite]"
+            style={{ borderColor: `${accentColor}22` }}
+          />
+          <div
+            className="flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-bg-card)] border shadow-md"
+            style={{ borderColor: accentColor }}
+          >
+            <Shield size={28} style={{ color: accentColor }} className="animate-pulse" />
+          </div>
+        </div>
+      );
+    }
+    if (iconName === "Zap") {
+      return (
+        <div className="relative flex items-center justify-center">
+          <div
+            className="absolute w-20 h-20 rounded-full border-2 animate-ping opacity-25"
+            style={{ borderColor: accentColor }}
+          />
+          <div
+            className="flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-bg-card)] border shadow-md animate-bounce"
+            style={{ borderColor: accentColor, animationDuration: "2.5s" }}
+          >
+            <Zap size={28} style={{ color: accentColor }} />
+          </div>
+        </div>
+      );
+    }
+    if (iconName === "Eye") {
+      return (
+        <div className="relative flex items-center justify-center">
+          <div
+            className="absolute w-22 h-22 rounded-full border border-solid opacity-30 animate-pulse"
+            style={{ borderColor: accentColor, animationDuration: "4s" }}
+          />
+          <div
+            className="flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-bg-card)] border"
+            style={{ borderColor: accentColor }}
+          >
+            <Eye size={28} style={{ color: accentColor }} />
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div
       className="step-fade-up flex flex-col items-center justify-center text-center animate-[fade-slide-up_300ms_ease-out_forwards]"
       style={{ maxWidth: 560, margin: "0 auto" }}
     >
-      {/* Floating SVG icon cluster */}
       <div
-        className="flex items-center gap-8 mb-10"
-        style={{ height: 64, opacity: subtextVisible ? 1 : 0, transition: "opacity 400ms ease" }}
+        className="flex items-center justify-center mb-10 h-32"
+        style={{ opacity: subtextVisible ? 1 : 0, transition: "opacity 400ms ease" }}
       >
-        <div className="animate-float" style={{ color: "var(--orange)", opacity: 0.8 }}>
-          <Bug size={32} strokeWidth={1.5} />
-        </div>
-        <div className="animate-float-delay-1" style={{ color: "var(--ink)", opacity: 0.6 }}>
-          <FileText size={36} strokeWidth={1.2} />
-        </div>
-        <div className="animate-float-delay-2" style={{ color: "var(--orange)", opacity: 0.7 }}>
-          <BarChart2 size={30} strokeWidth={1.5} />
-        </div>
-        <div
-          className="animate-float"
-          style={{ color: "var(--ink)", opacity: 0.5, animationDelay: "1.2s" }}
-        >
-          <CheckCircle size={28} strokeWidth={1.5} />
-        </div>
-        <div
-          className="animate-float-delay-1"
-          style={{ color: "var(--orange)", opacity: 0.65, animationDelay: "0.6s" }}
-        >
-          <Code2 size={26} strokeWidth={1.5} />
-        </div>
+        {renderIcon()}
       </div>
 
-      {/* Typewriter heading */}
       <h1
         style={{
           fontFamily: "Playfair Display, Georgia, serif",
-          fontSize: "clamp(32px, 5vw, 52px)",
+          fontSize: "clamp(30px, 4.5vw, 48px)",
           fontWeight: 700,
           color: "var(--ink)",
           lineHeight: 1.15,
@@ -332,7 +319,7 @@ function Step1Welcome({ onNext }: { onNext: () => void }) {
               display: "inline-block",
               width: "3px",
               height: "0.85em",
-              background: "var(--orange)",
+              background: accentColor,
               marginLeft: "3px",
               verticalAlign: "middle",
               animation: cursorBlink ? "blink 0.8s step-end infinite" : "none",
@@ -341,7 +328,6 @@ function Step1Welcome({ onNext }: { onNext: () => void }) {
         )}
       </h1>
 
-      {/* Subtext */}
       <p
         style={{
           fontFamily: "Inter, sans-serif",
@@ -355,10 +341,9 @@ function Step1Welcome({ onNext }: { onNext: () => void }) {
           maxWidth: 440,
         }}
       >
-        Your workspace for smarter QA &mdash; let&apos;s get you set up in 2 minutes.
+        {config.welcomeSubtext}
       </p>
 
-      {/* CTA */}
       <div
         style={{
           marginTop: 36,
@@ -367,30 +352,7 @@ function Step1Welcome({ onNext }: { onNext: () => void }) {
           transition: "opacity 200ms ease, transform 200ms ease",
         }}
       >
-        <button
-          onClick={onNext}
-          style={{
-            background: "var(--orange)",
-            color: "#fff",
-            fontFamily: "Inter, sans-serif",
-            fontSize: "15px",
-            fontWeight: 500,
-            padding: "13px 32px",
-            borderRadius: "6px",
-            border: "none",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-            transition: "background 150ms ease",
-          }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.background = "var(--orange-hover)")
-          }
-          onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.background = "var(--orange)")
-          }
-        >
-          Let&apos;s go &rarr;
-        </button>
+        <ContinueButton onClick={onNext} label={config.welcomeButton} accentColor={accentColor} />
       </div>
     </div>
   );
@@ -402,10 +364,14 @@ function Step2Workspace({
   workspaceName,
   onChange,
   onNext,
+  config,
+  accentColor,
 }: {
   workspaceName: string;
   onChange: (v: string) => void;
   onNext: () => void;
+  config: OnboardingStep;
+  accentColor: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [shaking, setShaking] = useState(false);
@@ -433,7 +399,7 @@ function Step2Workspace({
       className="step-slide-right flex flex-col items-center text-center"
       style={{ maxWidth: 480, margin: "0 auto" }}
     >
-      <StepLabel>Workspace Setup</StepLabel>
+      <StepLabel accentColor={accentColor}>Workspace Setup</StepLabel>
 
       <h2
         style={{
@@ -446,12 +412,10 @@ function Step2Workspace({
           lineHeight: 1.2,
         }}
       >
-        Name your workspace.
+        {config.label}.
       </h2>
 
-      <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 36 }}>
-        This is how your workspace will appear across the app.
-      </p>
+      <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 36 }}>{config.note}</p>
 
       <div style={{ width: "100%", maxWidth: 400 }}>
         <input
@@ -460,7 +424,7 @@ function Step2Workspace({
           value={workspaceName}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleContinue()}
-          placeholder="e.g. Acme QA Team"
+          placeholder={config.placeholder}
           className={shaking ? "input-shake" : ""}
           style={{
             width: "100%",
@@ -476,7 +440,7 @@ function Step2Workspace({
             boxSizing: "border-box",
           }}
           onFocus={(e) => {
-            if (!isEmpty) e.currentTarget.style.borderColor = "var(--ink)";
+            if (!isEmpty) e.currentTarget.style.borderColor = accentColor;
           }}
           onBlur={(e) => {
             if (!isEmpty) e.currentTarget.style.borderColor = "var(--border)";
@@ -490,105 +454,33 @@ function Step2Workspace({
       </div>
 
       <div style={{ marginTop: 36 }}>
-        <ContinueButton onClick={handleContinue} disabled={false} />
+        <ContinueButton onClick={handleContinue} accentColor={accentColor} />
       </div>
     </div>
   );
 }
 
-// ─── Step 2.5: Extension Promo (Editor Only) ──────────────────────────────────
-
-function Step2ExtensionPromo({ onNext }: { onNext: () => void }) {
-  return (
-    <div
-      className="step-slide-right flex flex-col items-center text-center"
-      style={{ maxWidth: 520, margin: "0 auto" }}
-    >
-      <StepLabel>Get the Tools</StepLabel>
-
-      <div
-        style={{
-          margin: "24px 0",
-          color: "var(--orange)",
-          background: "var(--cream-100)",
-          padding: 24,
-          borderRadius: "50%",
-          border: "1px solid var(--border-light)",
-        }}
-      >
-        <Code2 size={40} strokeWidth={1.5} />
-      </div>
-
-      <h2
-        style={{
-          fontFamily: "Playfair Display, Georgia, serif",
-          fontSize: "clamp(24px, 4vw, 36px)",
-          fontWeight: 700,
-          color: "var(--ink)",
-          marginBottom: 12,
-          lineHeight: 1.2,
-        }}
-      >
-        Install the Chrome Extension
-      </h2>
-
-      <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 36, lineHeight: 1.6 }}>
-        As an Editor, your primary workflow involves recording user journeys in the browser. Install
-        the extension to start recording instantly and convert your flows into automated test cases.
-      </p>
-
-      <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-        <button
-          onClick={() => {
-            window.open("https://chrome.google.com/webstore", "_blank");
-          }}
-          style={{
-            background: "var(--cream-50)",
-            color: "var(--ink)",
-            fontFamily: "Inter, sans-serif",
-            fontSize: "14px",
-            fontWeight: 500,
-            padding: "12px 24px",
-            borderRadius: "6px",
-            border: "1.5px solid var(--border)",
-            cursor: "pointer",
-            transition: "background 150ms ease",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.background = "var(--border-light)")
-          }
-          onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.background = "var(--cream-50)")
-          }
-        >
-          Download Extension
-        </button>
-        <ContinueButton onClick={onNext} label="I'll do it later" />
-      </div>
-    </div>
-  );
-}
-
-// ─── Step 3: Role Selection ───────────────────────────────────────────────────
+// ─── Step 3: Specialty Selection ───────────────────────────────────────────────
 
 function Step3Role({
   selectedRole,
   onSelect,
   onNext,
+  config,
+  accentColor,
 }: {
   selectedRole: Role | null;
   onSelect: (r: Role) => void;
   onNext: () => void;
+  config: OnboardingStep;
+  accentColor: string;
 }) {
   return (
     <div
-      className="step-slide-right flex flex-col items-center text-center"
+      className="step-slide-right flex flex-col items-center text-center animate-[fade-slide-up_300ms_ease-out_forwards]"
       style={{ maxWidth: 680, margin: "0 auto" }}
     >
-      <StepLabel>Your Expertise</StepLabel>
+      <StepLabel accentColor={accentColor}>Your Expertise</StepLabel>
 
       <h2
         style={{
@@ -601,11 +493,11 @@ function Step3Role({
           lineHeight: 1.2,
         }}
       >
-        What&apos;s your role?
+        {config.specialtyHeader}
       </h2>
 
       <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 36 }}>
-        We&apos;ll tailor the experience to what matters to you.
+        {config.specialtySubtext}
       </p>
 
       <div
@@ -633,7 +525,7 @@ function Step3Role({
                   className="flip-card-front"
                   style={{
                     background: isSelected ? "var(--cream-100)" : "var(--cream-50)",
-                    border: `1.5px solid ${isSelected ? "var(--orange)" : "var(--border)"}`,
+                    border: `1.5px solid ${isSelected ? accentColor : "var(--border)"}`,
                     borderRadius: 10,
                     display: "flex",
                     flexDirection: "column",
@@ -645,7 +537,7 @@ function Step3Role({
                     transition: "opacity 200ms ease",
                   }}
                 >
-                  <div style={{ color: "var(--orange)" }}>{card.icon}</div>
+                  <div style={{ color: accentColor }}>{card.icon}</div>
                   <div>
                     <div
                       style={{
@@ -685,11 +577,11 @@ function Step3Role({
                   }}
                 >
                   <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-                    <circle cx="18" cy="18" r="17" stroke="#C4531A" strokeWidth="1.5" />
+                    <circle cx="18" cy="18" r="17" stroke={accentColor} strokeWidth="1.5" />
                     <path
                       className="check-path"
                       d="M11 18.5L15.5 23L25 13"
-                      stroke="#C4531A"
+                      stroke={accentColor}
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -725,7 +617,7 @@ function Step3Role({
       </div>
 
       <div style={{ marginTop: 36 }}>
-        <ContinueButton onClick={onNext} disabled={!selectedRole} />
+        <ContinueButton onClick={onNext} disabled={!selectedRole} accentColor={accentColor} />
       </div>
     </div>
   );
@@ -733,20 +625,44 @@ function Step3Role({
 
 // ─── Step 4: Feature Highlights ───────────────────────────────────────────────
 
-function Step4Features({ onNext, currentRole }: { onNext: () => void; currentRole: string }) {
-  const cards =
-    currentRole === "Editor"
-      ? FEATURE_CARDS_EDITOR
-      : currentRole === "Viewer"
-        ? FEATURE_CARDS_VIEWER
-        : FEATURE_CARDS_LEAD;
+const FEATURE_CARDS_LEAD = [
+  {
+    icon: <Zap size={22} strokeWidth={1.5} />,
+    title: "Generate Tests",
+    description: "Describe a feature, AI writes the test cases.",
+  },
+  {
+    icon: <Bug size={22} strokeWidth={1.5} />,
+    title: "Bug Reporter",
+    description: "Flag failures and auto-log bugs in one click.",
+  },
+  {
+    icon: <RefreshCw size={22} strokeWidth={1.5} />,
+    title: "Regression",
+    description: "Run full suite checks across your projects.",
+  },
+  {
+    icon: <BarChart2 size={22} strokeWidth={1.5} />,
+    title: "Reports",
+    description: "Export PDF and CSV reports for any project.",
+  },
+];
 
+function Step4Features({
+  onNext,
+  config,
+  accentColor,
+}: {
+  onNext: () => void;
+  config: OnboardingStep;
+  accentColor: string;
+}) {
   return (
     <div
-      className="step-fade flex flex-col items-center text-center"
+      className="step-fade flex flex-col items-center text-center animate-[fade-slide-up_300ms_ease-out_forwards]"
       style={{ maxWidth: 600, margin: "0 auto" }}
     >
-      <StepLabel>Features</StepLabel>
+      <StepLabel accentColor={accentColor}>Features</StepLabel>
 
       <h2
         style={{
@@ -759,11 +675,11 @@ function Step4Features({ onNext, currentRole }: { onNext: () => void; currentRol
           lineHeight: 1.2,
         }}
       >
-        Here&apos;s what you can do.
+        {config.featuresHeader}
       </h2>
 
       <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 36 }}>
-        Everything you need to run QA without the noise.
+        {config.featuresSubtext}
       </p>
 
       <div
@@ -774,7 +690,7 @@ function Step4Features({ onNext, currentRole }: { onNext: () => void; currentRol
           width: "100%",
         }}
       >
-        {cards.map((card, i) => (
+        {FEATURE_CARDS_LEAD.map((card, i) => (
           <div
             key={card.title}
             className="feature-card animate-[scaleInFade_300ms_ease_forwards]"
@@ -789,7 +705,7 @@ function Step4Features({ onNext, currentRole }: { onNext: () => void; currentRol
           >
             <div
               style={{
-                color: "var(--orange)",
+                color: accentColor,
                 marginBottom: 10,
               }}
             >
@@ -821,7 +737,7 @@ function Step4Features({ onNext, currentRole }: { onNext: () => void; currentRol
       </div>
 
       <div style={{ marginTop: 36 }}>
-        <ContinueButton onClick={onNext} />
+        <ContinueButton onClick={onNext} accentColor={accentColor} />
       </div>
     </div>
   );
@@ -831,7 +747,17 @@ function Step4Features({ onNext, currentRole }: { onNext: () => void; currentRol
 
 type DNAPhase = "scanning" | "reveal";
 
-function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
+function Step5DNA({
+  role,
+  onNext,
+  config,
+  accentColor,
+}: {
+  role: Role;
+  onNext: () => void;
+  config: OnboardingStep;
+  accentColor: string;
+}) {
   const archetype = ARCHETYPES[role];
   const [phase, setPhase] = useState<DNAPhase>("scanning");
   const [progress, setProgress] = useState(0);
@@ -842,23 +768,23 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
     [],
   );
 
-  // Build line text char by char for each line
+  const logs = config.terminalLogs || SCAN_LINES;
+  const progressLabel = config.progressLabel || "Analysing your QA profile...";
+
   useEffect(() => {
     const totalDuration = 1800;
-    const lineInterval = totalDuration / SCAN_LINES.length;
+    const lineInterval = totalDuration / logs.length;
     const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-    SCAN_LINES.forEach((line, lineIdx) => {
+    logs.forEach((line, lineIdx) => {
       const lineStart = lineIdx * lineInterval;
 
-      // Add blank line slot first
       timeouts.push(
         setTimeout(() => {
           setVisibleLines((prev) => [...prev, ""]);
         }, lineStart),
       );
 
-      // Type chars for this line
       for (let c = 0; c < line.length; c++) {
         timeouts.push(
           setTimeout(
@@ -876,7 +802,6 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
       }
     });
 
-    // Progress bar
     const startTime = Date.now();
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -885,11 +810,9 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
       if (pct >= 100) clearInterval(progressInterval);
     }, 30);
 
-    // Transition to reveal
     timeouts.push(
       setTimeout(() => {
         setPhase("reveal");
-        // Spawn particles
         setParticles(
           Array.from({ length: 14 }, (_, i) => ({
             id: i,
@@ -906,23 +829,23 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
       timeouts.forEach(clearTimeout);
       clearInterval(progressInterval);
     };
-  }, []);
+  }, [logs]);
 
   const ArchetypeIcon = useMemo(() => {
     if (role === "qa_engineer")
       return (
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="22" stroke="var(--orange)" strokeWidth="1.5" />
+          <circle cx="24" cy="24" r="22" stroke={accentColor} strokeWidth="1.5" />
           <path
             d="M16 24 L20 28 L32 16"
-            stroke="var(--orange)"
+            stroke={accentColor}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
             d="M24 12 L24 8 M32 16 L36 12 M12 24 L8 24"
-            stroke="var(--orange)"
+            stroke={accentColor}
             strokeWidth="1.5"
             strokeLinecap="round"
             opacity="0.4"
@@ -932,24 +855,24 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
     if (role === "developer")
       return (
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="22" stroke="var(--orange)" strokeWidth="1.5" />
+          <circle cx="24" cy="24" r="22" stroke={accentColor} strokeWidth="1.5" />
           <path
             d="M19 17 L12 24 L19 31"
-            stroke="var(--orange)"
+            stroke={accentColor}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
             d="M29 17 L36 24 L29 31"
-            stroke="var(--orange)"
+            stroke={accentColor}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
             d="M26 14 L22 34"
-            stroke="var(--orange)"
+            stroke={accentColor}
             strokeWidth="2"
             strokeLinecap="round"
             opacity="0.5"
@@ -958,35 +881,27 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
       );
     return (
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-        <circle cx="24" cy="24" r="22" stroke="var(--orange)" strokeWidth="1.5" />
-        <rect
-          x="15"
-          y="13"
-          width="18"
-          height="22"
-          rx="2"
-          stroke="var(--orange)"
-          strokeWidth="1.5"
-        />
+        <circle cx="24" cy="24" r="22" stroke={accentColor} strokeWidth="1.5" />
+        <rect x="15" y="13" width="18" height="22" rx="2" stroke={accentColor} strokeWidth="1.5" />
         <path
           d="M19 19 H29 M19 23 H29 M19 27 H25"
-          stroke="var(--orange)"
+          stroke={accentColor}
           strokeWidth="1.5"
           strokeLinecap="round"
         />
-        <path d="M21 12 H27" stroke="var(--orange)" strokeWidth="2" strokeLinecap="round" />
+        <path d="M21 12 H27" stroke={accentColor} strokeWidth="2" strokeLinecap="round" />
       </svg>
     );
-  }, [role]);
+  }, [role, accentColor]);
 
   return (
     <div
-      className="step-fade animate-pulse-subtle flex flex-col items-center text-center"
+      className="step-fade animate-pulse-subtle flex flex-col items-center text-center animate-[fade-slide-up_300ms_ease-out_forwards]"
       style={{ maxWidth: 560, margin: "0 auto", position: "relative" }}
     >
       {phase === "scanning" && (
         <>
-          <StepLabel>QA DNA</StepLabel>
+          <StepLabel accentColor={accentColor}>QA DNA</StepLabel>
           <h2
             style={{
               fontFamily: "Playfair Display, Georgia, serif",
@@ -997,7 +912,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
               marginBottom: 28,
             }}
           >
-            Analysing your QA profile...
+            {progressLabel}
           </h2>
 
           {/* Terminal block */}
@@ -1045,22 +960,21 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
                   minHeight: "1.4em",
                 }}
               >
-                <span style={{ color: "var(--orange)", marginRight: 6 }}>&gt;</span>
+                <span style={{ color: accentColor, marginRight: 6 }}>&gt;</span>
                 {lineTexts[lineIdx] || ""}
-                {lineIdx === visibleLines.length - 1 &&
-                  lineTexts[lineIdx] !== SCAN_LINES[lineIdx] && (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: "6px",
-                        height: "12px",
-                        background: "var(--orange)",
-                        marginLeft: "1px",
-                        verticalAlign: "middle",
-                        animation: "blink 0.6s step-end infinite",
-                      }}
-                    />
-                  )}
+                {lineIdx === visibleLines.length - 1 && lineTexts[lineIdx] !== logs[lineIdx] && (
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "6px",
+                      height: "12px",
+                      background: accentColor,
+                      marginLeft: "1px",
+                      verticalAlign: "middle",
+                      animation: "blink 0.6s step-end infinite",
+                    }}
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -1081,7 +995,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
               style={{
                 height: "100%",
                 width: `${progress}%`,
-                background: "var(--orange)",
+                background: accentColor,
                 borderRadius: 2,
               }}
             />
@@ -1094,7 +1008,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
 
       {phase === "reveal" && (
         <div className="step-fade flex flex-col items-center" style={{ width: "100%" }}>
-          <StepLabel>Your QA Identity</StepLabel>
+          <StepLabel accentColor={accentColor}>Your QA Identity</StepLabel>
 
           <div style={{ position: "relative", marginTop: 28, marginBottom: 28 }}>
             {/* Energy pulse particles */}
@@ -1108,7 +1022,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
                   width: p.size,
                   height: p.size,
                   borderRadius: "50%",
-                  background: "var(--orange)",
+                  background: accentColor,
                   animation: "onboardingEnergyPulse 600ms ease forwards",
                   animationDelay: `${Math.random() * 200}ms`,
                   pointerEvents: "none",
@@ -1122,7 +1036,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
               className="badge-spring"
               style={{
                 background: "var(--cream-50)",
-                border: "2px solid var(--orange)",
+                border: `2px solid ${accentColor}`,
                 borderRadius: 16,
                 padding: "36px 48px",
                 display: "flex",
@@ -1131,7 +1045,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
                 gap: 14,
                 maxWidth: 360,
                 margin: "0 auto",
-                boxShadow: "0 4px 40px rgba(196,83,26,0.12)",
+                boxShadow: `0 4px 40px ${accentColor}1F`,
               }}
             >
               {ArchetypeIcon}
@@ -1142,7 +1056,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
                   fontSize: 10,
                   letterSpacing: "0.15em",
                   textTransform: "uppercase",
-                  color: "var(--orange)",
+                  color: accentColor,
                   fontWeight: 500,
                 }}
               >
@@ -1158,7 +1072,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
                   lineHeight: 1.2,
                 }}
               >
-                {archetype.title}
+                {config.badgeLabel}
               </div>
 
               <div
@@ -1171,7 +1085,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
                   maxWidth: 240,
                 }}
               >
-                &ldquo;{archetype.description}&rdquo;
+                {config.badgeSubtitle}
               </div>
             </div>
           </div>
@@ -1195,7 +1109,7 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
               transition: "opacity 400ms ease, transform 400ms ease",
             }}
           >
-            <ContinueButton onClick={onNext} />
+            <ContinueButton onClick={onNext} accentColor={accentColor} />
           </div>
         </div>
       )}
@@ -1205,16 +1119,21 @@ function Step5DNA({ role, onNext }: { role: Role; onNext: () => void }) {
 
 // ─── Step 6: Interactive Checklist ────────────────────────────────────────────
 
-function Step6Checklist({
+function StepChecklist({
   workspaceName,
   onComplete,
   onNavigate,
+  config,
+  accentColor,
 }: {
   workspaceName: string;
   onComplete: () => void;
   onNavigate: (route: string) => void;
+  config: OnboardingStep;
+  accentColor: string;
 }) {
-  const [checked, setChecked] = useState<boolean[]>([false, false, false, false]);
+  const items = config.checklistItems || [];
+  const [checked, setChecked] = useState<boolean[]>(() => items.map(() => false));
   const [confettiPieces, setConfettiPieces] = useState<
     { id: number; x: number; size: number; delay: number; color: string; drift: number }[]
   >([]);
@@ -1228,15 +1147,14 @@ function Step6Checklist({
         x: Math.random() * 100,
         size: 6 + Math.random() * 8,
         delay: Math.random() * 0.4,
-        color: Math.random() > 0.5 ? "#C4531A" : "#F2EDE5",
+        color: Math.random() > 0.5 ? accentColor : "#F2EDE5",
         drift: (Math.random() - 0.5) * 80,
       })),
     );
 
-    // Curtain reveal after 400ms
     const t = setTimeout(() => setCurtainVisible(true), 400);
     return () => clearTimeout(t);
-  }, []);
+  }, [accentColor]);
 
   const toggleCheck = (i: number) => {
     setChecked((prev) => {
@@ -1288,11 +1206,13 @@ function Step6Checklist({
 
       {/* Content */}
       <div
-        className="step-fade flex flex-col"
+        className="step-fade flex flex-col animate-[fade-slide-up_300ms_ease-out_forwards]"
         style={{ maxWidth: 560, margin: "0 auto", position: "relative", zIndex: 1 }}
       >
         <div style={{ marginBottom: 6 }}>
-          <StepLabel>[{workspaceName || "Your workspace"} is ready.]</StepLabel>
+          <StepLabel accentColor={accentColor}>
+            [{workspaceName || "Your workspace"} is ready.]
+          </StepLabel>
         </div>
 
         <h2
@@ -1306,24 +1226,24 @@ function Step6Checklist({
             lineHeight: 1.2,
           }}
         >
-          You&apos;re in. Here&apos;s where to start.
+          {config.checklistHeader}
         </h2>
 
         <p style={{ color: "var(--ink-muted)", fontSize: 15, marginBottom: 28 }}>
-          Knock these out first to get the most out of QA Mind.
+          {config.checklistSubtext}
         </p>
 
         {/* Checklist */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {CHECKLIST_ITEMS.map((item, i) => (
+          {items.map((item, i) => (
             <div
-              key={item.route}
+              key={i}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 14,
                 background: "var(--cream-50)",
-                border: `1.5px solid ${checked[i] ? "var(--orange)" : "var(--border-light)"}`,
+                border: `1.5px solid ${checked[i] ? accentColor : "var(--border-light)"}`,
                 borderRadius: 8,
                 padding: "14px 16px",
                 transition: "border-color 200ms ease",
@@ -1337,8 +1257,8 @@ function Step6Checklist({
                   width: 22,
                   height: 22,
                   borderRadius: 5,
-                  border: `1.5px solid ${checked[i] ? "var(--orange)" : "var(--border)"}`,
-                  background: checked[i] ? "var(--orange)" : "transparent",
+                  border: `1.5px solid ${checked[i] ? accentColor : "var(--border)"}`,
+                  background: checked[i] ? accentColor : "transparent",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -1371,19 +1291,10 @@ function Step6Checklist({
                     textDecoration: checked[i] ? "line-through" : "none",
                     opacity: checked[i] ? 0.5 : 1,
                     transition: "opacity 150ms ease",
+                    textAlign: "left",
                   }}
                 >
                   {item.label}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: 12,
-                    color: "var(--ink-faint)",
-                    marginTop: 2,
-                  }}
-                >
-                  {item.description}
                 </div>
               </div>
 
@@ -1407,8 +1318,8 @@ function Step6Checklist({
                 }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLButtonElement;
-                  el.style.borderColor = "var(--orange)";
-                  el.style.color = "var(--orange)";
+                  el.style.borderColor = accentColor;
+                  el.style.color = accentColor;
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget as HTMLButtonElement;
@@ -1461,7 +1372,7 @@ function Step6Checklist({
               style={{
                 height: "100%",
                 width: "100%",
-                background: "var(--orange)",
+                background: accentColor,
                 borderRadius: 2,
               }}
             />
@@ -1508,34 +1419,426 @@ function Step6Checklist({
             width: "100%",
             marginTop: 20,
             padding: "15px 24px",
-            background: "var(--orange)",
-            color: "#fff",
+            background: accentColor,
+            color: "#FFFFFF",
             fontFamily: "Inter, sans-serif",
             fontSize: "15px",
-            fontWeight: 500,
+            fontWeight: 600,
             borderRadius: 7,
             border: "none",
             cursor: "pointer",
             letterSpacing: "0.01em",
-            transition: "background 150ms ease",
+            transition: "filter 150ms ease",
           }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.background = "var(--orange-hover)")
-          }
-          onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.background = "var(--orange)")
-          }
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.filter = "brightness(0.9)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.filter = "none";
+          }}
         >
-          Go to my dashboard &rarr;
+          {config.ctaButtonText || "Go to my dashboard"} &rarr;
         </button>
       </div>
     </div>
   );
 }
 
+// ─── Step Scope (Admin) ───────────────────────────────────────────────────────
+
+function StepScope({
+  onNext,
+  config,
+  accentColor,
+}: {
+  onNext: () => void;
+  config: OnboardingStep;
+  accentColor: string;
+}) {
+  return (
+    <div
+      className="step-fade flex flex-col items-center text-center animate-[fade-slide-up_300ms_ease-out_forwards]"
+      style={{ maxWidth: 620, margin: "0 auto" }}
+    >
+      <StepLabel accentColor={accentColor}>
+        {config.scopeHeader || "Your operational scope:"}
+      </StepLabel>
+
+      <h2
+        style={{
+          fontFamily: "Playfair Display, Georgia, serif",
+          fontSize: "clamp(26px, 4vw, 40px)",
+          fontWeight: 700,
+          color: "var(--ink)",
+          marginTop: 16,
+          marginBottom: 28,
+          lineHeight: 1.2,
+        }}
+      >
+        Your operational scope.
+      </h2>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 16,
+          width: "100%",
+          marginBottom: 36,
+        }}
+      >
+        {/* CAN Column */}
+        <div
+          style={{
+            background: "var(--cream-50)",
+            border: "1.5px solid var(--border-light)",
+            borderRadius: 10,
+            padding: 20,
+            textAlign: "left",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <span
+              style={{
+                color: "#2E7D32",
+                fontWeight: 700,
+                fontSize: 13,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              CAN
+            </span>
+          </div>
+          <ul
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              fontSize: 13,
+              color: "var(--ink-muted)",
+              listStyleType: "none",
+              padding: 0,
+              margin: 0,
+            }}
+          >
+            <li>✓ Manage projects</li>
+            <li>✓ Configure integrations</li>
+            <li>✓ Add team members</li>
+            <li>✓ Generate & run tests</li>
+            <li>✓ Log bug reports</li>
+          </ul>
+        </div>
+
+        {/* CANNOT Column */}
+        <div
+          style={{
+            background: "var(--cream-50)",
+            border: "1.5px solid var(--border-light)",
+            borderRadius: 10,
+            padding: 20,
+            textAlign: "left",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <span
+              style={{
+                color: "#64748B",
+                fontWeight: 700,
+                fontSize: 13,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              CANNOT
+            </span>
+          </div>
+          <ul
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              fontSize: 13,
+              color: "var(--ink-muted)",
+              listStyleType: "none",
+              padding: 0,
+              margin: 0,
+            }}
+          >
+            <li>✕ Delete projects</li>
+            <li>✕ Change billing plan</li>
+          </ul>
+        </div>
+
+        {/* NEEDS OWNER Column */}
+        <div
+          style={{
+            background: "var(--cream-50)",
+            border: "1.5px solid var(--border-light)",
+            borderRadius: 10,
+            padding: 20,
+            textAlign: "left",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <span
+              style={{
+                color: "#B8801a",
+                fontWeight: 700,
+                fontSize: 13,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              NEEDS OWNER
+            </span>
+          </div>
+          <ul
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              fontSize: 13,
+              color: "var(--ink-muted)",
+              listStyleType: "none",
+              padding: 0,
+              margin: 0,
+            }}
+          >
+            <li>🔒 Account deletion</li>
+            <li>🔒 Workspace key access</li>
+          </ul>
+        </div>
+      </div>
+
+      <ContinueButton onClick={onNext} accentColor={accentColor} />
+    </div>
+  );
+}
+
+// ─── Step Loadout (Editor) ────────────────────────────────────────────────────
+
+function StepLoadout({
+  onNext,
+  config,
+  accentColor,
+}: {
+  onNext: () => void;
+  config: OnboardingStep;
+  accentColor: string;
+}) {
+  const loadoutItems = [
+    { label: "Generate test cases from specs", allowed: true },
+    { label: "Record user journeys", allowed: true },
+    { label: "Create test suites", allowed: true },
+    { label: "Execute test runs", allowed: true },
+    { label: "Log bugs", allowed: true },
+    { label: "Create test plans", allowed: true },
+    { label: "Project deletion", allowed: false, note: "Owner only" },
+    { label: "Billing management", allowed: false, note: "Owner only" },
+  ];
+
+  return (
+    <div
+      className="step-fade flex flex-col items-center text-center animate-[fade-slide-up_300ms_ease-out_forwards]"
+      style={{ maxWidth: 600, margin: "0 auto" }}
+    >
+      <StepLabel accentColor={accentColor}>
+        {config.loadoutHeader || "Here's what you're equipped with:"}
+      </StepLabel>
+
+      <h2
+        style={{
+          fontFamily: "Playfair Display, Georgia, serif",
+          fontSize: "clamp(26px, 4vw, 40px)",
+          fontWeight: 700,
+          color: "var(--ink)",
+          marginTop: 16,
+          marginBottom: 28,
+          lineHeight: 1.2,
+        }}
+      >
+        Your Field Loadout.
+      </h2>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 12,
+          width: "100%",
+          marginBottom: 36,
+        }}
+      >
+        {loadoutItems.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              background: "var(--cream-50)",
+              border: "1.5px solid var(--border-light)",
+              borderRadius: 10,
+              padding: "16px 20px",
+              textAlign: "left",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              opacity: item.allowed ? 1 : 0.55,
+            }}
+          >
+            {item.allowed ? (
+              <div
+                style={{
+                  color: accentColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CheckCircle size={18} strokeWidth={2.5} />
+              </div>
+            ) : (
+              <div
+                style={{
+                  color: "var(--ink-faint)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Lock size={16} />
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+                {item.label}
+              </span>
+              {!item.allowed && (
+                <span style={{ fontSize: 10, color: "var(--ink-faint)", marginTop: 1 }}>
+                  Not in your mission scope &middot; {item.note}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <ContinueButton onClick={onNext} accentColor={accentColor} />
+    </div>
+  );
+}
+
+// ─── Step Intel Access (Viewer) ────────────────────────────────────────────────
+
+function StepIntelAccess({
+  onNext,
+  config,
+  accentColor,
+}: {
+  onNext: () => void;
+  config: OnboardingStep;
+  accentColor: string;
+}) {
+  const accessItems = [
+    "View all test cases and runs",
+    "Read test plans and reports",
+    "Monitor bug registry",
+    "Access analytics and dashboards",
+  ];
+
+  return (
+    <div
+      className="step-fade flex flex-col items-center text-center animate-[fade-slide-up_300ms_ease-out_forwards]"
+      style={{ maxWidth: 520, margin: "0 auto" }}
+    >
+      <StepLabel accentColor={accentColor}>
+        {config.accessHeader || "What's in your intel package:"}
+      </StepLabel>
+
+      <h2
+        style={{
+          fontFamily: "Playfair Display, Georgia, serif",
+          fontSize: "clamp(26px, 4vw, 40px)",
+          fontWeight: 700,
+          color: "var(--ink)",
+          marginTop: 16,
+          marginBottom: 28,
+          lineHeight: 1.2,
+        }}
+      >
+        Your Intel Package.
+      </h2>
+
+      <div
+        style={{
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          marginBottom: 36,
+        }}
+      >
+        {accessItems.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              background: "var(--cream-50)",
+              border: "1.5px solid var(--border-light)",
+              borderRadius: 10,
+              padding: "16px 20px",
+              textAlign: "left",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <div
+              style={{
+                color: accentColor,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Eye size={18} strokeWidth={2} />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{item}</span>
+          </div>
+        ))}
+
+        <div
+          style={{
+            marginTop: 8,
+            background: "var(--cream-100)",
+            border: "1.5px dashed var(--border)",
+            borderRadius: 10,
+            padding: "16px 20px",
+            textAlign: "left",
+            fontSize: 12,
+            color: "var(--ink-muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          — Creating or modifying records is outside your scope. Contact your Ops Officer to request
+          role changes.
+        </div>
+      </div>
+
+      <ContinueButton onClick={onNext} accentColor={accentColor} />
+    </div>
+  );
+}
+
 // ─── Progress Indicator ───────────────────────────────────────────────────────
 
-function ProgressBar({ step, total }: { step: number; total: number }) {
+function ProgressBar({
+  step,
+  total,
+  accentColor,
+}: {
+  step: number;
+  total: number;
+  accentColor: string;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {Array.from({ length: total }, (_, i) => (
@@ -1544,7 +1847,7 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
           style={{
             height: 3,
             width: i < step ? 24 : 14,
-            background: i < step ? "var(--orange)" : "var(--border)",
+            background: i < step ? accentColor : "var(--border)",
             borderRadius: 2,
             transition: "width 250ms ease, background 250ms ease",
           }}
@@ -1565,22 +1868,125 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
   );
 }
 
+function generateWorkspaceKey(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const genPart = (length: number) => {
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+  return `FNQ-${genPart(4)}-${genPart(4)}`;
+}
+
 // ─── Main OnboardingFlow ──────────────────────────────────────────────────────
 
-export default function OnboardingFlow({
-  currentRole = "Owner",
-  onComplete,
-  onSkip,
-  onNavigate,
-}: Props) {
+export default function OnboardingFlow({ onComplete, onSkip, onNavigate }: Props) {
   const auth = useAuth();
   const [, setSettings] = useSettings();
+  const { currentUser } = useUserStore();
+  const currentRole = (currentUser?.role ?? "viewer").toLowerCase();
+
+  const [workspaceMeta] = useWorkspaceMeta();
+  const [members, updateActiveWorkspaceMembers] = useWorkspaceMembersList();
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState<Direction>("next");
   const [workspaceName, setWorkspaceName] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [stepKey, setStepKey] = useState(0);
+
+  const currentUserMember = useMemo(() => {
+    return members.find((m) => m.userId === auth.user?.id);
+  }, [members, auth.user?.id]);
+
+  // Derived briefing track
+  const derivedTrack = useMemo(() => {
+    const userId = auth.user?.id;
+    if (!userId) return "command";
+
+    const metaRaw =
+      typeof window !== "undefined" ? localStorage.getItem("fieldnotes.workspace.meta") : null;
+    if (!metaRaw) {
+      return "command";
+    }
+
+    try {
+      const meta = JSON.parse(metaRaw);
+      const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+      if (sharedRaw) {
+        const shared = JSON.parse(sharedRaw);
+        const ws = shared[meta.workspaceId];
+        if (ws) {
+          const mList = ws.members || [];
+          const m = mList.find((mem: any) => mem.userId === userId);
+          if (m) {
+            const role = m.role.toLowerCase() as any;
+            if (can(role, "workspace:viewKey")) return "command";
+            if (can(role, "project:create")) return "ops";
+            if (can(role, "suite:create")) return "field";
+            return "intel";
+          }
+        }
+      }
+    } catch (e) {
+      void e;
+    }
+
+    const storeRole = currentRole.toLowerCase() as any;
+    if (can(storeRole, "workspace:viewKey")) return "command";
+    if (can(storeRole, "project:create")) return "ops";
+    if (can(storeRole, "suite:create")) return "field";
+    return "intel";
+  }, [auth.user?.id, currentRole]);
+
+  const [briefingTrack, setBriefingTrack] = useState<"command" | "ops" | "field" | "intel">(
+    "command",
+  );
+
+  useEffect(() => {
+    setBriefingTrack(derivedTrack);
+  }, [derivedTrack]);
+
+  const trackConfig = useMemo(() => {
+    if (briefingTrack === "command") return commandBrief;
+    if (briefingTrack === "ops") return opsBrief;
+    if (briefingTrack === "field") return fieldBrief;
+    return intelBrief;
+  }, [briefingTrack]);
+
+  const TOTAL_STEPS = trackConfig.steps.length;
+
+  useEffect(() => {
+    const userId = auth.user?.id;
+    if (userId) {
+      const saved = localStorage.getItem(`fieldnotes_onboarding_data.${userId}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.workspaceName) setWorkspaceName(parsed.workspaceName);
+          if (parsed.role) setSelectedRole(parsed.role);
+        } catch (e) {
+          void e;
+        }
+      }
+    }
+
+    if (workspaceMeta) {
+      setWorkspaceName(workspaceMeta.workspaceName);
+    }
+    if (currentUserMember) {
+      const jt = currentUserMember.jobTitle?.toLowerCase() || "";
+      if (jt.includes("qa") || jt.includes("tester")) {
+        setSelectedRole("qa_engineer");
+      } else if (jt.includes("dev") || jt.includes("engineer") || jt.includes("programmer")) {
+        setSelectedRole("developer");
+      } else if (jt.includes("manager") || jt.includes("pm") || jt.includes("product")) {
+        setSelectedRole("project_manager");
+      }
+    }
+  }, [auth.user?.id, workspaceMeta, currentUserMember]);
 
   const goNext = useCallback(() => {
     setDirection("next");
@@ -1594,11 +2000,87 @@ export default function OnboardingFlow({
     setStepKey((k) => k + 1);
   }, []);
 
+  const completeWorkspaceSetup = useCallback(() => {
+    const userId = auth.user?.id;
+    const email = auth.user?.email || "";
+    if (!userId) return;
+
+    let jobTitle = "QA Engineer";
+    if (selectedRole === "developer") jobTitle = "Developer";
+    if (selectedRole === "project_manager") jobTitle = "Project Manager";
+
+    const shouldSetupWorkspace = briefingTrack === "command" || !workspaceMeta;
+
+    if (shouldSetupWorkspace) {
+      const newWorkspaceId = crypto.randomUUID();
+      const newWorkspaceKey = generateWorkspaceKey();
+
+      const newMeta: WorkspaceMeta = {
+        workspaceId: newWorkspaceId,
+        workspaceName: workspaceName || "My Workspace",
+        workspaceKey: newWorkspaceKey,
+        ownerId: userId,
+        ownerEmail: email,
+        createdAt: new Date().toISOString(),
+        plan: "standard",
+      };
+
+      const ownerMember: WorkspaceMember = {
+        userId: userId,
+        email: email,
+        displayName: email.split("@")[0] || "Owner",
+        role: "owner",
+        jobTitle: jobTitle,
+        joinedAt: new Date().toISOString(),
+        addedBy: null,
+        avatarColor: getAvatarColor(email.split("@")[0] || "Owner"),
+        status: "active",
+      };
+
+      const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+      const shared = sharedRaw ? JSON.parse(sharedRaw) : {};
+      shared[newWorkspaceId] = {
+        meta: newMeta,
+        members: [ownerMember],
+        pendingInvites: [],
+      };
+      localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
+
+      localStorage.setItem(`fieldnotes.user.${userId}.role`, "owner");
+      updateActiveWorkspaceMeta(newMeta);
+      updateActiveWorkspaceMembers([ownerMember]);
+    } else {
+      const updatedMembers = members.map((m) => {
+        if (m.userId === userId) {
+          return {
+            ...m,
+            displayName: email.split("@")[0] || m.displayName,
+            jobTitle: jobTitle,
+          };
+        }
+        return m;
+      });
+      updateActiveWorkspaceMembers(updatedMembers);
+    }
+
+    window.dispatchEvent(new Event("storage"));
+  }, [
+    auth.user?.id,
+    auth.user?.email,
+    briefingTrack,
+    workspaceMeta,
+    selectedRole,
+    workspaceName,
+    members,
+    updateActiveWorkspaceMembers,
+  ]);
+
   const handleComplete = useCallback(() => {
     const userId = auth.user?.id;
     localStorage.setItem("fieldnotes_onboarding_complete", "true");
     if (userId) {
       localStorage.setItem(`fieldnotes_onboarding_complete.${userId}`, "true");
+      localStorage.setItem(`fieldnotes.user.${userId}.onboardingComplete`, "true");
       localStorage.setItem(
         `fieldnotes_onboarding_data.${userId}`,
         JSON.stringify({
@@ -1618,12 +2100,14 @@ export default function OnboardingFlow({
       role: mappedRole,
     }));
 
+    completeWorkspaceSetup();
+
     onComplete({
       workspaceName,
       role: selectedRole ?? "qa_engineer",
       archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
     });
-  }, [auth.user?.id, onComplete, workspaceName, selectedRole, setSettings]);
+  }, [auth.user?.id, onComplete, workspaceName, selectedRole, setSettings, completeWorkspaceSetup]);
 
   const handleNavigate = useCallback(
     (route: string) => {
@@ -1631,6 +2115,7 @@ export default function OnboardingFlow({
       localStorage.setItem("fieldnotes_onboarding_complete", "true");
       if (userId) {
         localStorage.setItem(`fieldnotes_onboarding_complete.${userId}`, "true");
+        localStorage.setItem(`fieldnotes.user.${userId}.onboardingComplete`, "true");
         localStorage.setItem(
           `fieldnotes_onboarding_data.${userId}`,
           JSON.stringify({
@@ -1650,6 +2135,8 @@ export default function OnboardingFlow({
         role: mappedRole,
       }));
 
+      completeWorkspaceSetup();
+
       if (onNavigate) {
         onNavigate(route);
       } else {
@@ -1660,7 +2147,15 @@ export default function OnboardingFlow({
         });
       }
     },
-    [auth.user?.id, onComplete, onNavigate, workspaceName, selectedRole, setSettings],
+    [
+      auth.user?.id,
+      onComplete,
+      onNavigate,
+      workspaceName,
+      selectedRole,
+      setSettings,
+      completeWorkspaceSetup,
+    ],
   );
 
   const handleSkip = useCallback(() => {
@@ -1668,13 +2163,125 @@ export default function OnboardingFlow({
     localStorage.setItem("fieldnotes_onboarding_complete", "true");
     if (userId) {
       localStorage.setItem(`fieldnotes_onboarding_complete.${userId}`, "true");
+      localStorage.setItem(`fieldnotes.user.${userId}.onboardingComplete`, "true");
+      if (workspaceName.trim()) {
+        localStorage.setItem(
+          `fieldnotes_onboarding_data.${userId}`,
+          JSON.stringify({
+            workspaceName,
+            role: selectedRole ?? "qa_engineer",
+            archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
+          }),
+        );
+      }
+    }
+    // Make sure we trigger setup so Owner gets workspace created even if they skip
+    if (briefingTrack === "command" && workspaceName.trim()) {
+      completeWorkspaceSetup();
     }
     onSkip();
-  }, [auth.user?.id, onSkip]);
+  }, [auth.user?.id, onSkip, workspaceName, selectedRole, briefingTrack, completeWorkspaceSetup]);
 
-  const TOTAL_STEPS = currentRole === "Viewer" ? 3 : 6;
+  const currentStepConfig = trackConfig.steps[step - 1];
+
   const showBack = step >= 2 && step < TOTAL_STEPS;
   const showSkip = step < TOTAL_STEPS;
+
+  const skipLabel = useMemo(() => {
+    if (briefingTrack === "command" || briefingTrack === "ops") return "Skip setup";
+    if (briefingTrack === "field") return "Skip briefing";
+    return "Skip to dashboard";
+  }, [briefingTrack]);
+
+  const renderStep = () => {
+    if (!currentStepConfig) return null;
+
+    switch (currentStepConfig.type) {
+      case "welcome":
+        return (
+          <Step1Welcome
+            briefingTrack={briefingTrack}
+            config={currentStepConfig}
+            onNext={goNext}
+            accentColor={trackConfig.accentColor}
+            iconName={trackConfig.iconName}
+          />
+        );
+      case "workspace_setup":
+        return (
+          <Step2Workspace
+            workspaceName={workspaceName}
+            onChange={setWorkspaceName}
+            onNext={goNext}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      case "specialty":
+        return (
+          <Step3Role
+            selectedRole={selectedRole}
+            onSelect={setSelectedRole}
+            onNext={goNext}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      case "features":
+        return (
+          <Step4Features
+            onNext={goNext}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      case "scope":
+        return (
+          <StepScope
+            onNext={goNext}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      case "loadout":
+        return (
+          <StepLoadout
+            onNext={goNext}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      case "intel_access":
+        return (
+          <StepIntelAccess
+            onNext={goNext}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      case "dna_reveal":
+        return (
+          <Step5DNA
+            role={selectedRole ?? "qa_engineer"}
+            onNext={goNext}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      case "checklist":
+        return (
+          <StepChecklist
+            workspaceName={workspaceName}
+            onComplete={handleComplete}
+            onNavigate={handleNavigate}
+            config={currentStepConfig}
+            accentColor={trackConfig.accentColor}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div
@@ -1710,12 +2317,12 @@ export default function OnboardingFlow({
             letterSpacing: "-0.01em",
           }}
         >
-          QA Mind{" "}
+          QAMind AI{" "}
           <span style={{ color: "var(--ink-faint)", fontWeight: 400, fontSize: 12 }}>QA</span>
         </div>
 
         {/* Progress */}
-        <ProgressBar step={step} total={TOTAL_STEPS} />
+        <ProgressBar step={step} total={TOTAL_STEPS} accentColor={trackConfig.accentColor} />
 
         {/* Skip */}
         {showSkip ? (
@@ -1743,7 +2350,7 @@ export default function OnboardingFlow({
             }
           >
             <X size={14} />
-            Skip
+            {skipLabel}
           </button>
         ) : (
           <div style={{ width: 60 }} />
@@ -1761,43 +2368,7 @@ export default function OnboardingFlow({
       >
         <div style={{ width: "100%", maxWidth: 720 }}>
           {/* Using key to force remount and re-trigger animations on step change */}
-          <div key={stepKey}>
-            {step === 1 && <Step1Welcome onNext={goNext} />}
-            {step === 2 && currentRole !== "Editor" && currentRole !== "Viewer" && (
-              <Step2Workspace
-                workspaceName={workspaceName}
-                onChange={setWorkspaceName}
-                onNext={goNext}
-              />
-            )}
-            {step === 2 && currentRole === "Editor" && <Step2ExtensionPromo onNext={goNext} />}
-            {step === 2 && currentRole === "Viewer" && (
-              <Step4Features currentRole={currentRole} onNext={goNext} />
-            )}
-            {step === 3 && currentRole !== "Viewer" && (
-              <Step3Role selectedRole={selectedRole} onSelect={setSelectedRole} onNext={goNext} />
-            )}
-            {step === 3 && currentRole === "Viewer" && (
-              <Step6Checklist
-                workspaceName={workspaceName || "Workspace"}
-                onComplete={handleComplete}
-                onNavigate={handleNavigate}
-              />
-            )}
-            {step === 4 && currentRole !== "Viewer" && (
-              <Step4Features currentRole={currentRole} onNext={goNext} />
-            )}
-            {step === 5 && currentRole !== "Viewer" && (
-              <Step5DNA role={selectedRole ?? "qa_engineer"} onNext={goNext} />
-            )}
-            {step === 6 && currentRole !== "Viewer" && (
-              <Step6Checklist
-                workspaceName={workspaceName || "Workspace"}
-                onComplete={handleComplete}
-                onNavigate={handleNavigate}
-              />
-            )}
-          </div>
+          <div key={stepKey}>{renderStep()}</div>
         </div>
       </div>
 

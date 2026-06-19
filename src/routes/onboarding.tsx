@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import OnboardingFlow from "@/frontend/components/OnboardingFlow";
-import { useAuth, useCurrentRole } from "@/frontend/store/store";
+import { useAuth } from "@/frontend/store/store";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
     meta: [
-      { title: "Onboarding — QA Mind" },
+      { title: "Onboarding — QAMind AI" },
       { name: "description", content: "Complete your onboarding setup." },
     ],
   }),
@@ -16,7 +16,6 @@ export const Route = createFileRoute("/onboarding")({
 function OnboardingPage() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const currentRole = useCurrentRole();
 
   useEffect(() => {
     if (auth.loading) return;
@@ -26,7 +25,8 @@ function OnboardingPage() {
     } else {
       const onboardingComplete =
         typeof window !== "undefined" &&
-        localStorage.getItem(`fieldnotes_onboarding_complete.${auth.user?.id}`) === "true";
+        localStorage.getItem(`fieldnotes.user.${auth.user?.id}.onboardingComplete`) === "true" &&
+        !!localStorage.getItem("fieldnotes.workspace.meta");
       if (onboardingComplete) {
         navigate({ to: "/" });
       }
@@ -55,17 +55,13 @@ function OnboardingPage() {
 
   const onboardingComplete =
     typeof window !== "undefined" &&
-    localStorage.getItem(`fieldnotes_onboarding_complete.${auth.user?.id}`) === "true";
+    localStorage.getItem(`fieldnotes.user.${auth.user?.id}.onboardingComplete`) === "true" &&
+    !!localStorage.getItem("fieldnotes.workspace.meta");
   if (onboardingComplete) {
     return null;
   }
 
   return (
-    <OnboardingFlow
-      currentRole={currentRole}
-      onComplete={handleComplete}
-      onSkip={handleSkip}
-      onNavigate={handleNavigate}
-    />
+    <OnboardingFlow onComplete={handleComplete} onSkip={handleSkip} onNavigate={handleNavigate} />
   );
 }

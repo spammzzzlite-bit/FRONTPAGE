@@ -121,6 +121,19 @@ export function useAuth() {
 export async function signOut() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("mock_auth");
+    if (currentUserId) {
+      const prefix = `fieldnotes.user.${currentUserId}.`;
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
+    }
+    localStorage.removeItem("fieldnotes.workspace.meta");
+    localStorage.removeItem("fieldnotes.workspace.members");
   }
   await supabase.auth.signOut();
   clearStores();
@@ -128,12 +141,29 @@ export async function signOut() {
 
 export async function deleteUserAccount() {
   if (currentUserId && typeof window !== "undefined") {
+    const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+    if (sharedRaw) {
+      try {
+        const shared = JSON.parse(sharedRaw);
+        for (const wsId of Object.keys(shared)) {
+          const ws = shared[wsId];
+          if (ws.members) {
+            ws.members = ws.members.filter((m: any) => m.userId !== currentUserId);
+          }
+        }
+        localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
+      } catch (err) {
+        void err;
+      }
+    }
+
     // Remove all store data for this user
     for (const store of ALL_STORES) {
       localStorage.removeItem(`${store._baseKey}.${currentUserId}`);
     }
     // Remove onboarding flags
     localStorage.removeItem(`fieldnotes_onboarding_complete.${currentUserId}`);
+    localStorage.removeItem(`fieldnotes.user.${currentUserId}.onboardingComplete`);
     localStorage.removeItem(`fieldnotes_onboarding_data.${currentUserId}`);
   }
 
@@ -264,7 +294,7 @@ export type Workspace = {
   billingStatus: "active" | "past_due" | "canceled";
 };
 
-export type WorkspaceMember = {
+export type LegacyWorkspaceMember = {
   id: string;
   workspaceId: string;
   userId: string; // Refers to Profile.id or Supabase auth.user.id
@@ -284,7 +314,7 @@ export const workspacesStore = createStore<Workspace[]>("ai-test-gen.workspaces"
 ]);
 export const useWorkspaces = workspacesStore.useStore;
 
-export const workspaceMembersStore = createStore<WorkspaceMember[]>(
+export const workspaceMembersStore = createStore<LegacyWorkspaceMember[]>(
   "ai-test-gen.workspaceMembers",
   [
     {
@@ -340,14 +370,219 @@ export const useWorkspaceMembers = workspaceMembersStore.useStore;
  */
 export function useCurrentRole(): WorkspaceRole {
   const { user } = useAuth();
-  const [members] = useWorkspaceMembers();
-
   if (!user) return "Viewer";
 
-  const member = members.find(
-    (m) => m.userId === user.id && m.workspaceId === DEFAULT_WORKSPACE_ID,
-  );
-  return member ? member.role : "Viewer";
+  const stored =
+    typeof window !== "undefined" ? localStorage.getItem(`fieldnotes.user.${user.id}.role`) : null;
+  const role = stored?.toLowerCase();
+  if (role === "owner") return "Owner";
+  if (role === "admin") return "Admin";
+  if (role === "editor") return "Editor";
+  return "Viewer";
+}
+
+/**
+ * Hook to get the current user store for centralized permissions.
+ */
+export function useUserStore() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [role, setRole] = useState<"owner" | "admin" | "editor" | "viewer">("viewer");
+
+  useEffect(() => {
+    if (!userId) {
+      setRole("viewer");
+      return;
+    }
+    const stored = localStorage.getItem(`fieldnotes.user.${userId}.role`);
+    const cleaned = (stored?.toLowerCase() ?? "viewer") as any;
+    if (["owner", "admin", "editor", "viewer"].includes(cleaned)) {
+      setRole(cleaned);
+    } else {
+      setRole("viewer");
+    }
+  }, [userId]);
+
+  return {
+    currentUser: userId ? { id: userId, role } : null,
+  };
+}
+
+export interface WorkspaceMeta {
+  workspaceId: string;
+  workspaceName: string;
+  workspaceKey: string;
+  ownerId: string;
+  ownerEmail: string;
+  createdAt: string;
+  plan: "standard" | "premium";
+}
+
+export interface WorkspaceMember {
+  userId: string;
+  email: string;
+  displayName: string;
+  role: "owner" | "admin" | "editor" | "viewer";
+  jobTitle: string;
+  joinedAt: string;
+  addedBy: string | null;
+  avatarColor: string;
+  status: "active" | "pending";
+  pendingRoleChangeNotification?: boolean;
+}
+
+export function getAvatarColor(name: string): string {
+  const brandColors = ["#C4531A", "#2E7D32", "#1565C0", "#C2185B", "#6A1B9A", "#EF6C00"];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return brandColors[Math.abs(hash) % brandColors.length];
+}
+
+export function updateActiveWorkspaceMembers(members: WorkspaceMember[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("fieldnotes.workspace.members", JSON.stringify(members));
+
+  const metaRaw = localStorage.getItem("fieldnotes.workspace.meta");
+  if (metaRaw) {
+    const meta = JSON.parse(metaRaw);
+    const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+    const shared = sharedRaw ? JSON.parse(sharedRaw) : {};
+    if (shared[meta.workspaceId]) {
+      shared[meta.workspaceId].members = members;
+      localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
+    }
+  }
+
+  // Trigger storage event to update state in other components
+  window.dispatchEvent(new Event("storage"));
+}
+
+export function updateActiveWorkspaceMeta(meta: WorkspaceMeta) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(meta));
+
+  const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+  const shared = sharedRaw ? JSON.parse(sharedRaw) : {};
+  if (shared[meta.workspaceId]) {
+    shared[meta.workspaceId].meta = meta;
+    localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
+  }
+
+  window.dispatchEvent(new Event("storage"));
+}
+
+export function useWorkspaceMeta() {
+  const [meta, setMetaState] = useState<WorkspaceMeta | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = localStorage.getItem("fieldnotes.workspace.meta");
+    return raw ? JSON.parse(raw) : null;
+  });
+
+  useEffect(() => {
+    const handler = () => {
+      const raw = localStorage.getItem("fieldnotes.workspace.meta");
+      setMetaState(raw ? JSON.parse(raw) : null);
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  return [meta, updateActiveWorkspaceMeta] as const;
+}
+
+export function useWorkspaceMembersList() {
+  const [members, setMembersState] = useState<WorkspaceMember[]>(() => {
+    if (typeof window === "undefined") return [];
+    const raw = localStorage.getItem("fieldnotes.workspace.members");
+    return raw ? JSON.parse(raw) : [];
+  });
+
+  useEffect(() => {
+    const handler = () => {
+      const raw = localStorage.getItem("fieldnotes.workspace.members");
+      setMembersState(raw ? JSON.parse(raw) : []);
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  return [members, updateActiveWorkspaceMembers] as const;
+}
+
+export function resolveWorkspaceMembership(userId: string, email: string) {
+  if (typeof window === "undefined") return;
+
+  const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+  const shared = sharedRaw ? JSON.parse(sharedRaw) : {};
+
+  let matchedWorkspaceId: string | null = null;
+  let activeMemberEntry: any = null;
+  let matchedInvite: any = null;
+
+  for (const wsId of Object.keys(shared)) {
+    const ws = shared[wsId];
+    const members = ws.members || [];
+    const pendingInvites = ws.pendingInvites || [];
+
+    const activeMember = members.find((m: any) => m.userId === userId && m.status === "active");
+    if (activeMember) {
+      matchedWorkspaceId = wsId;
+      activeMemberEntry = activeMember;
+      break;
+    }
+
+    const pendingInvite = pendingInvites.find(
+      (inv: any) => inv.email.toLowerCase() === email.toLowerCase() && inv.status === "pending",
+    );
+    if (pendingInvite) {
+      const expiresAt = new Date(pendingInvite.expiresAt);
+      if (expiresAt > new Date()) {
+        matchedWorkspaceId = wsId;
+        matchedInvite = pendingInvite;
+        break;
+      }
+    }
+  }
+
+  if (activeMemberEntry && matchedWorkspaceId) {
+    const ws = shared[matchedWorkspaceId];
+    localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(ws.meta));
+    localStorage.setItem("fieldnotes.workspace.members", JSON.stringify(ws.members));
+    localStorage.setItem(`fieldnotes.user.${userId}.role`, activeMemberEntry.role.toLowerCase());
+  } else if (matchedInvite && matchedWorkspaceId) {
+    const ws = shared[matchedWorkspaceId];
+    ws.pendingInvites = ws.pendingInvites.filter(
+      (inv: any) => inv.inviteId !== matchedInvite.inviteId,
+    );
+
+    const newMember: WorkspaceMember = {
+      userId: userId,
+      email: email,
+      displayName: email.split("@")[0],
+      role: matchedInvite.role,
+      jobTitle: matchedInvite.jobTitle,
+      joinedAt: new Date().toISOString(),
+      addedBy: matchedInvite.invitedBy,
+      avatarColor: getAvatarColor(email.split("@")[0]),
+      status: "active" as const,
+    };
+
+    ws.members = [...(ws.members || []), newMember];
+    localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
+
+    localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(ws.meta));
+    localStorage.setItem("fieldnotes.workspace.members", JSON.stringify(ws.members));
+    localStorage.setItem(`fieldnotes.user.${userId}.role`, matchedInvite.role.toLowerCase());
+
+    window.location.href = "/onboarding";
+  } else {
+    localStorage.removeItem("fieldnotes.workspace.meta");
+    localStorage.removeItem("fieldnotes.workspace.members");
+    localStorage.removeItem(`fieldnotes.user.${userId}.onboardingComplete`);
+    localStorage.removeItem(`fieldnotes_onboarding_complete.${userId}`);
+  }
 }
 
 // ─── Profile definitions ──────────────────────────────────
@@ -1029,6 +1264,15 @@ export function deductTokens(amount: number): boolean {
   return true;
 }
 
+export type TokenDeduction = {
+  id: string;
+  action: string;
+  amount: number;
+  timestamp: number;
+};
+export const tokenDeductionsStore = createStore<TokenDeduction[]>("ai-test-gen.tokenDeductions", []);
+export const useTokenDeductions = tokenDeductionsStore.useStore;
+
 /**
  * deductTokenAction — call this before any user-initiated task to:
  *  1. Deduct 5 tokens (or return false if insufficient)
@@ -1052,6 +1296,15 @@ export function deductTokenAction(actionLabel: string): boolean {
     `5 tokens were deducted for: ${actionLabel}. Check your token balance in the top bar.`,
     "info",
   );
+  tokenDeductionsStore.set((prev) => [
+    {
+      id: crypto.randomUUID(),
+      action: actionLabel,
+      amount: 5,
+      timestamp: Date.now(),
+    },
+    ...prev,
+  ].slice(0, 10));
   return true;
 }
 
@@ -1117,7 +1370,7 @@ export type AppNotification = {
 export const notificationsStore = createStore<AppNotification[]>("ai-test-gen.notifications", [
   {
     id: "1",
-    title: "Welcome to QA Mind!",
+    title: "Welcome to QAMind AI!",
     message: "Create your first project to get started with test case generation.",
     read: false,
     createdAt: Date.now() - 3600000 * 2,
@@ -1186,6 +1439,7 @@ const ALL_STORES: Store<any>[] = [
   activeProjectStore,
   sprintsStore,
   profilesStore,
+  tokenDeductionsStore,
 ];
 
 /**
@@ -1202,6 +1456,233 @@ export function initializeStores(userId: string, userEmail?: string, userName?: 
     }
   }
 
+  // Seeding the bypass-workspace-001 shared storage if not exists
+  if (typeof window !== "undefined") {
+    const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+    const shared = sharedRaw ? JSON.parse(sharedRaw) : {};
+    if (!shared["bypass-workspace-001"]) {
+      const bypassMeta: WorkspaceMeta = {
+        workspaceId: "bypass-workspace-001",
+        workspaceName: "QAMind AI Demo Workspace",
+        workspaceKey: "FNQ-DEMO-0001",
+        ownerId: "agent-user-id-007",
+        ownerEmail: "agent@fieldnotes.qa",
+        createdAt: new Date().toISOString(),
+        plan: "premium",
+      };
+
+      const bypassMembers: WorkspaceMember[] = [
+        {
+          userId: "agent-user-id-007",
+          email: "agent@fieldnotes.qa",
+          displayName: "Agent Owner",
+          role: "owner",
+          jobTitle: "Workspace Owner",
+          joinedAt: new Date().toISOString(),
+          addedBy: null,
+          avatarColor: getAvatarColor("Agent Owner"),
+          status: "active",
+        },
+        {
+          userId: "admin-user-id-008",
+          email: "admin@fieldnotes.qa",
+          displayName: "Demo Admin",
+          role: "admin",
+          jobTitle: "Lead QA Engineer",
+          joinedAt: new Date().toISOString(),
+          addedBy: "agent-user-id-007",
+          avatarColor: getAvatarColor("Demo Admin"),
+          status: "active",
+        },
+        {
+          userId: "editor-user-id-009",
+          email: "editor@fieldnotes.qa",
+          displayName: "Demo Editor",
+          role: "editor",
+          jobTitle: "QA Engineer",
+          joinedAt: new Date().toISOString(),
+          addedBy: "agent-user-id-007",
+          avatarColor: getAvatarColor("Demo Editor"),
+          status: "active",
+        },
+        {
+          userId: "viewer-user-id-010",
+          email: "viewer@fieldnotes.qa",
+          displayName: "Demo Viewer",
+          role: "viewer",
+          jobTitle: "Project Manager",
+          joinedAt: new Date().toISOString(),
+          addedBy: "agent-user-id-007",
+          avatarColor: getAvatarColor("Demo Viewer"),
+          status: "active",
+        },
+      ];
+
+      shared["bypass-workspace-001"] = {
+        meta: bypassMeta,
+        members: bypassMembers,
+        pendingInvites: [],
+      };
+      localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
+    }
+
+    // Checking if the user is a bypass credential user
+    const isBypassUser = [
+      "agent-user-id-007",
+      "admin-user-id-008",
+      "editor-user-id-009",
+      "viewer-user-id-010",
+    ].includes(userId);
+
+    if (isBypassUser) {
+      let role = "viewer";
+      if (userId === "agent-user-id-007") role = "owner";
+      else if (userId === "admin-user-id-008") role = "admin";
+      else if (userId === "editor-user-id-009") role = "editor";
+      else if (userId === "viewer-user-id-010") role = "viewer";
+      localStorage.setItem(`fieldnotes.user.${userId}.role`, role);
+
+      // Pre-populate data if projects are empty
+      const currentProj = projectsStore.get();
+      if (currentProj.length === 0) {
+        const p1Id = "demo-proj-001";
+        const p2Id = "demo-proj-002";
+        const s1Id = "demo-suite-001";
+        const s2Id = "demo-suite-002";
+        const s3Id = "demo-suite-003";
+
+        projectsStore.set([
+          {
+            id: p1Id,
+            name: "Acme Web App Core",
+            createdAt: Date.now() - 5 * 24 * 3600 * 1000,
+            files: [],
+            description: "Core test suite for Acme E-Commerce frontend web application.",
+            status: "active",
+            priority: "high",
+            totalStoryPoints: 24,
+            remainingStoryPoints: 12,
+            startDate: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString().split("T")[0],
+            targetDate: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().split("T")[0],
+            tags: ["web", "react"],
+          },
+          {
+            id: p2Id,
+            name: "Acme Billing Services",
+            createdAt: Date.now() - 2 * 24 * 3600 * 1000,
+            files: [],
+            description: "Backend microservice API suite for billing and subscriptions.",
+            status: "planning",
+            priority: "critical",
+            totalStoryPoints: 16,
+            remainingStoryPoints: 16,
+            startDate: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().split("T")[0],
+            targetDate: new Date(Date.now() + 20 * 24 * 3600 * 1000).toISOString().split("T")[0],
+            tags: ["api", "billing"],
+          },
+        ]);
+        activeProjectStore.set(p1Id);
+
+        suitesStore.set([
+          {
+            id: s1Id,
+            projectId: p1Id,
+            name: "User Authentication Suite",
+            createdAt: Date.now() - 4 * 24 * 3600 * 1000,
+            testCaseIds: ["demo-tc-001", "demo-tc-002", "demo-tc-003"],
+          },
+          {
+            id: s2Id,
+            projectId: p1Id,
+            name: "Shopping Cart & Checkout",
+            createdAt: Date.now() - 3 * 24 * 3600 * 1000,
+            testCaseIds: ["demo-tc-004"],
+          },
+          {
+            id: s3Id,
+            projectId: p2Id,
+            name: "Subscription Lifecycle Webhooks",
+            createdAt: Date.now() - 1 * 24 * 3600 * 1000,
+            testCaseIds: ["demo-tc-005"],
+          },
+        ]);
+
+        testCasesStore.set([
+          {
+            id: "demo-tc-001",
+            suiteId: s1Id,
+            title: "Verify login with valid credentials",
+            steps: "1. Navigate to /login\n2. Enter agent@fieldnotes.qa\n3. Enter password123\n4. Click Submit",
+            expected: "User is redirected to the main dashboard with a success greeting.",
+            priority: "critical",
+            status: "passed",
+            authorStatus: "approved",
+            lastRunStatus: "passed",
+            tags: ["auth", "smoke"],
+            createdAt: Date.now() - 4 * 24 * 3600 * 1000,
+            type: "functional",
+          },
+          {
+            id: "demo-tc-002",
+            suiteId: s1Id,
+            title: "Verify password strength validator",
+            steps: "1. Navigate to /signup\n2. Enter weak password '123'\n3. Observe indicator text",
+            expected: "Password requirements warning is displayed in red.",
+            priority: "medium",
+            status: "passed",
+            authorStatus: "ready",
+            lastRunStatus: "passed",
+            tags: ["validation"],
+            createdAt: Date.now() - 4 * 24 * 3600 * 1000,
+            type: "functional",
+          },
+          {
+            id: "demo-tc-003",
+            suiteId: s1Id,
+            title: "Verify MFA enforcement modal prompt",
+            steps: "1. Log in with a 2FA-enabled account\n2. Wait for redirect\n3. Verify MFA code entry screen",
+            expected: "MFA code input field focuses automatically and requests six digits.",
+            priority: "high",
+            status: "failed",
+            authorStatus: "ready",
+            lastRunStatus: "failed",
+            tags: ["security"],
+            createdAt: Date.now() - 4 * 24 * 3600 * 1000,
+            type: "security",
+          },
+          {
+            id: "demo-tc-004",
+            suiteId: s2Id,
+            title: "Verify card payment rejection",
+            steps: "1. Add item to cart\n2. Proceed to checkout\n3. Submit expired Visa credit card",
+            expected: "Alert warns card has expired; checkout block remains active.",
+            priority: "high",
+            status: "passed",
+            authorStatus: "draft",
+            lastRunStatus: "passed",
+            tags: ["checkout", "payment"],
+            createdAt: Date.now() - 3 * 24 * 3600 * 1000,
+            type: "functional",
+          },
+          {
+            id: "demo-tc-005",
+            suiteId: s3Id,
+            title: "Verify cancel-subscription webhook event processing",
+            steps: "1. Send raw webhook payload to listener\n2. Observe service logger",
+            expected: "Webhook processed status 200, user state sets to cancelled in DB.",
+            priority: "high",
+            status: "passed",
+            authorStatus: "approved",
+            lastRunStatus: "passed",
+            tags: ["webhooks", "backend"],
+            createdAt: Date.now() - 1 * 24 * 3600 * 1000,
+            type: "e2e",
+          },
+        ]);
+      }
+    }
+  }
+
   // Seed user's own profile if empty
   const currentProfiles = profilesStore.get();
   if (currentProfiles.length === 0) {
@@ -1215,6 +1696,23 @@ export function initializeStores(userId: string, userEmail?: string, userName?: 
         role: "Workspace Owner",
       },
     ]);
+  }
+
+  // Seed user's role in namespaced localStorage if not set yet
+  if (typeof window !== "undefined") {
+    const existing = localStorage.getItem(`fieldnotes.user.${userId}.role`);
+    if (!existing) {
+      const member = workspaceMembersStore
+        .get()
+        .find((m) => m.userId === userId && m.workspaceId === DEFAULT_WORKSPACE_ID);
+      const roleToSet = member ? member.role.toLowerCase() : "viewer";
+      localStorage.setItem(`fieldnotes.user.${userId}.role`, roleToSet);
+    }
+  }
+
+  // Resolve workspace membership
+  if (userId) {
+    resolveWorkspaceMembership(userId, userEmail || "");
   }
 
   checkAndRefillTokens();

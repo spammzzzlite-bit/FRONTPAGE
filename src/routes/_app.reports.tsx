@@ -23,7 +23,7 @@ import {
 import { toast } from "./_app";
 
 export const Route = createFileRoute("/_app/reports")({
-  head: () => ({ meta: [{ title: "Reports — QA Mind" }] }),
+  head: () => ({ meta: [{ title: "Reports — QAMind AI" }] }),
   component: ReportsPage,
 });
 
@@ -69,7 +69,7 @@ function ReportsPage() {
     if (!checkAndDeduct("Executive Summary")) return;
 
     const content =
-      `QA MIND — EXECUTIVE SUMMARY REPORT\n` +
+      `QAMind AI — EXECUTIVE SUMMARY REPORT\n` +
       `Generated: ${new Date().toLocaleString()}\n` +
       `==================================================\n\n` +
       `OVERALL METRICS:\n` +
@@ -105,7 +105,7 @@ function ReportsPage() {
     if (!checkAndDeduct("Sprint Burndown Report")) return;
 
     const content =
-      `QA MIND — SPRINT BURNDOWN REPORT\n` +
+      `QAMind AI — SPRINT BURNDOWN REPORT\n` +
       `Generated: ${new Date().toLocaleString()}\n` +
       `==================================================\n\n` +
       `BURNDOWN OVERVIEW:\n` +
