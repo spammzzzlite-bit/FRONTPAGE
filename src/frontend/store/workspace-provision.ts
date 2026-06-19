@@ -12,14 +12,15 @@ function isValidUuid(value: string): boolean {
  * Server-side repair via Supabase RPC (SECURITY DEFINER).
  * Upgrades mistaken Viewer rows, claims sole-member workspaces, and provisions new ones.
  */
-export async function ensureUserWorkspaceAccess(): Promise<void> {
-  const { error } = await supabase.rpc("ensure_user_workspace_access");
+export async function ensureUserWorkspaceAccess(): Promise<boolean> {
+  const { data, error } = await supabase.rpc("ensure_user_workspace_access");
   if (error) {
-    // Function may not exist until scripts/fix-workspace-roles.sql is run in Supabase
     if (error.code !== "PGRST202" && !error.message?.includes("does not exist")) {
       console.warn("ensure_user_workspace_access RPC:", error.message);
     }
+    return false;
   }
+  return !!(data as { ok?: boolean } | null)?.ok;
 }
 
 /**

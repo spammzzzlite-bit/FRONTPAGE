@@ -361,13 +361,6 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM workspace_members WHERE user_id = uid AND status = 'active'
-  ) AND NOT EXISTS (
-    SELECT 1 FROM workspace_members wm
-    JOIN workspaces w ON w.id = wm.workspace_id
-    WHERE lower(wm.email) = lower(user_email)
-      AND wm.status = 'pending'
-      AND w.owner_id IS NOT NULL
-      AND w.owner_id <> uid
   ) THEN
     ws_id := gen_random_uuid();
     ws_key := 'QAM-' || upper(substr(md5(random()::text), 1, 4)) || '-' || upper(substr(md5(random()::text), 1, 4));

@@ -1,8 +1,8 @@
 -- Run in Supabase → SQL Editor (project: lslwjxuhxnevntvjhyrd)
--- Fixes Viewer roles for Perfect QA Services accounts.
--- Uses auth.users email (Google sign-in) — not hardcoded typos.
+-- Rahul & Sharma exist in auth.users but have NO workspace_members rows yet.
+-- This script creates their workspaces and sets them as Owner.
 
--- 1) RPC: self-service repair on each login
+-- 1) RPC: self-service repair on each login (run this block first)
 CREATE OR REPLACE FUNCTION public.ensure_user_workspace_access()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -27,7 +27,6 @@ BEGIN
   FROM auth.users
   WHERE id = uid;
 
-  -- Sync membership email to auth email (fixes old typos in workspace_members.email)
   UPDATE workspace_members
   SET email = user_email
   WHERE user_id = uid AND lower(email) IS DISTINCT FROM lower(user_email);
@@ -85,13 +84,6 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM workspace_members WHERE user_id = uid AND status = 'active'
-  ) AND NOT EXISTS (
-    SELECT 1 FROM workspace_members wm
-    JOIN workspaces w ON w.id = wm.workspace_id
-    WHERE lower(wm.email) = lower(user_email)
-      AND wm.status = 'pending'
-      AND w.owner_id IS NOT NULL
-      AND w.owner_id <> uid
   ) THEN
     ws_id := gen_random_uuid();
     ws_key := 'QAM-' || upper(substr(md5(random()::text), 1, 4)) || '-' || upper(substr(md5(random()::text), 1, 4));
@@ -109,56 +101,78 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.ensure_user_workspace_access() TO authenticated;
 
--- 2) Fix by actual Google/auth email (correct domain: perfectqaservices.com)
-UPDATE workspace_members wm
-SET role = 'owner'
+-- 2) Diagnose: what exists today (any status)
+SELECT
+  u.email AS auth_email,
+  wm.id AS member_id,
+  wm.user_id,
+  wm.email AS member_email,
+  wm.role,
+  wm.status
 FROM auth.users u
-WHERE wm.user_id = u.id
-  AND wm.status = 'active'
+LEFT JOIN workspace_members wm
+  ON wm.user_id = u.id OR lower(wm.email) = lower(u.email)
+WHERE lower(u.email) LIKE '%@perfectqaservices.com'
+ORDER BY u.email, wm.status;
+
+-- 3) BOOTSTRAP — create workspace + owner membership when missing entirely
+DO $$
+DECLARE
+  u RECORD;
+  ws_id uuid;
+  ws_key text;
+BEGIN
+  FOR u IN
+    SELECT
+      id,
+      email,
+      COALESCE(raw_user_meta_data->>'name', split_part(email, '@', 1)) AS display_name
+    FROM auth.users
+    WHERE lower(email) LIKE '%@perfectqaservices.com'
+  LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM workspace_members
+      WHERE user_id = u.id AND status = 'active'
+    ) THEN
+      ws_id := gen_random_uuid();
+      ws_key := 'QAM-' || upper(substr(md5(random()::text), 1, 4)) || '-' || upper(substr(md5(random()::text), 1, 4));
+
+      INSERT INTO workspaces (id, name, workspace_key, owner_id, owner_email)
+      VALUES (ws_id, u.display_name || '''s Workspace', ws_key, u.id, u.email);
+
+      INSERT INTO workspace_members (workspace_id, user_id, email, display_name, role, status)
+      VALUES (ws_id, u.id, u.email, u.display_name, 'owner', 'active');
+
+      RAISE NOTICE 'Created workspace % for %', ws_id, u.email;
+    END IF;
+  END LOOP;
+END $$;
+
+-- 4) Repair existing rows (if any) to owner
+UPDATE workspace_members wm
+SET role = 'owner', status = 'active', user_id = u.id
+FROM auth.users u
+WHERE lower(wm.email) = lower(u.email)
+  AND lower(u.email) LIKE '%@perfectqaservices.com'
+  AND (wm.user_id IS NULL OR wm.user_id = u.id);
+
+UPDATE workspaces w
+SET owner_id = u.id, owner_email = u.email
+FROM auth.users u
+WHERE lower(w.owner_email) = lower(u.email)
   AND lower(u.email) LIKE '%@perfectqaservices.com';
 
--- Fix legacy typo domain on member rows (perfectqsservices → perfectqaservices)
-UPDATE workspace_members
-SET
-  role = 'owner',
-  email = regexp_replace(lower(email), '@perfectqsservices\.com$', '@perfectqaservices.com')
-WHERE status = 'active'
-  AND lower(email) LIKE '%@perfectqsservices.com';
-
--- Align workspace owner_id with owner memberships
-UPDATE workspaces w
-SET owner_id = wm.user_id,
-    owner_email = wm.email
-FROM workspace_members wm
-JOIN auth.users u ON u.id = wm.user_id
-WHERE wm.workspace_id = w.id
-  AND wm.status = 'active'
-  AND wm.role = 'owner'
-  AND lower(u.email) LIKE '%@perfectqaservices.com'
-  AND (w.owner_id IS NULL OR w.owner_id <> wm.user_id);
-
--- 3) Explicit accounts
-UPDATE workspace_members wm
-SET role = 'owner'
-FROM auth.users u
-WHERE wm.user_id = u.id
-  AND wm.status = 'active'
-  AND lower(u.email) IN (
-    'sharma@perfectqaservices.com',
-    'rahul@perfectqaservices.com'
-  );
-
--- 4) Verify (shows auth email + membership role)
+-- 5) Verify — should show role = owner (NOT null)
 SELECT
   u.email AS auth_email,
   wm.email AS member_email,
   wm.role,
   wm.status,
   w.name AS workspace,
-  w.owner_email,
+  w.workspace_key,
   w.owner_id = u.id AS is_workspace_owner
 FROM auth.users u
-LEFT JOIN workspace_members wm ON wm.user_id = u.id AND wm.status = 'active'
-LEFT JOIN workspaces w ON w.id = wm.workspace_id
+INNER JOIN workspace_members wm ON wm.user_id = u.id AND wm.status = 'active'
+INNER JOIN workspaces w ON w.id = wm.workspace_id
 WHERE lower(u.email) LIKE '%@perfectqaservices.com'
-ORDER BY u.email, wm.role;
+ORDER BY u.email;
