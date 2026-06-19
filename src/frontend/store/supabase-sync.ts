@@ -20,8 +20,21 @@ export async function syncWorkspaceFromSupabase(workspaceId: string, userId: str
 
   try {
     // 0. Auto-create workspace and membership if they don't exist
-    const { data: memberData } = await supabase.from('workspace_members').select('id').eq('workspace_id', workspaceId).eq('user_id', userId).maybeSingle();
-    if (!memberData) {
+    const { data: existingByUid } = await supabase
+      .from('workspace_members')
+      .select('id, role, status')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const { data: existingByEmail } = await supabase
+      .from('workspace_members')
+      .select('id, role, status')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    const existing = existingByUid || existingByEmail;
+
+    if (!existing) {
       // Check if workspace exists
       const { data: wsData } = await supabase.from('workspaces').select('id').eq('id', workspaceId).maybeSingle();
       if (!wsData) {
@@ -60,7 +73,9 @@ export async function syncWorkspaceFromSupabase(workspaceId: string, userId: str
       await supabase.from('workspace_members').insert({
         workspace_id: workspaceId,
         user_id: userId,
-        role: 'owner'
+        email: userEmail,
+        role: 'owner',
+        status: 'active'
       });
     }
 
