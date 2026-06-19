@@ -77,7 +77,7 @@
   --c-bg-hover: #DCD3C4;
 
   /* ─── 30% SECONDARY — Ink (Light mode) ─── */
-  --c-text: #2A2420;
+  --c-text: #242428;
   --c-text-muted: #5F574C;
   --c-text-dim: #9c9088;
   --c-border: #DCD3C4;
@@ -100,7 +100,7 @@
   --color-surface: #E9E1D6;
   --color-border: #DCD3C4;
   --color-text-soft: #5F574C;
-  --color-text: #2A2420;
+  --color-text: #242428;
 
   /* ─── Semantic — Pass (Sage) ─── */
   --c-pass: #5E7A4F;

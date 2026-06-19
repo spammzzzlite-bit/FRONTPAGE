@@ -52,7 +52,7 @@ export const Route = createFileRoute("/_app/generate")({
   beforeLoad: () => {
     const role = getStoredRole();
     if (!can(role, "suite:create")) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   head: () => ({ meta: [{ title: "Generate Tests — QAMind AI" }] }),

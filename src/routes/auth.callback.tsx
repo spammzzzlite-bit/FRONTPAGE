@@ -28,7 +28,7 @@ function AuthCallbackPage() {
   const [showInvitesModal, setShowInvitesModal] = useState(false);
 
   const handlePostAuth = async (user: any) => {
-    if (!user) return navigate({ to: "/" });
+    if (!user) return navigate({ to: "/dashboard" });
     const { data: invites } = await supabase
       .from('workspace_members')
       .select('id, workspace_id, role, workspaces(name, workspace_key)')
@@ -39,7 +39,7 @@ function AuthCallbackPage() {
       setPendingInvites(invites as any);
       setShowInvitesModal(true);
     } else {
-      navigate({ to: "/" });
+      navigate({ to: "/dashboard" });
     }
   };
 
@@ -72,7 +72,7 @@ function AuthCallbackPage() {
       if (isFirstTime) {
         navigate({ to: "/onboarding" });
       } else {
-        navigate({ to: "/" });
+        navigate({ to: "/dashboard" });
       }
     } catch (err) {
       toast.error("Failed to join workspace.");

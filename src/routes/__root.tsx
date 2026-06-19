@@ -81,36 +81,43 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Code Whisperer is a web application that provides code generation and assistance.",
+          "QAMind AI generates, runs, and reasons about your tests — surfacing flaky cases and real bugs before your users do.",
       },
-      { name: "author", content: "Lovable" },
+      { name: "author", content: "QAMind AI" },
       { property: "og:title", content: "QAMind AI" },
       {
         property: "og:description",
         content:
-          "Code Whisperer is a web application that provides code generation and assistance.",
+          "Quality assurance, with a mind of its own. Tests that think.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@qamindai" },
       { name: "twitter:title", content: "QAMind AI" },
       {
         name: "twitter:description",
         content:
-          "Code Whisperer is a web application that provides code generation and assistance.",
+          "Quality assurance, with a mind of its own. Tests that think.",
       },
       {
         property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d1fbfd04-d5b8-4d7c-a8ac-eb4bc081f355/id-preview-25eb7206--3c1f569e-80ca-415a-b1e9-e027c4ade1a6.lovable.app-1780474726905.png",
+        content: "/brand/logo-on-dark.png",
       },
       {
         name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d1fbfd04-d5b8-4d7c-a8ac-eb4bc081f355/id-preview-25eb7206--3c1f569e-80ca-415a-b1e9-e027c4ade1a6.lovable.app-1780474726905.png",
+        content: "/brand/logo-on-dark.png",
       },
     ],
     links: [
+      {
+        rel: "icon",
+        type: "image/png",
+        href: "/brand/appicon-primary.png",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/brand/appicon-primary.png",
+      },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",

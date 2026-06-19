@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_app/planner")({
   beforeLoad: () => {
     const role = getStoredRole();
     if (!can(role, "suite:create")) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   head: () => ({ meta: [{ title: "AI Test Planner — QAMind AI" }] }),

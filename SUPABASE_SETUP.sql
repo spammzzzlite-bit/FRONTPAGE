@@ -173,8 +173,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name text,
   email text,
   avatar_url text,
+  onboarding_complete boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_complete boolean DEFAULT false;
 
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS)

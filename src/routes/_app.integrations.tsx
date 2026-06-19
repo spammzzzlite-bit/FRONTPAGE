@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_app/integrations")({
   beforeLoad: () => {
     const role = getStoredRole();
     if (!can(role, "integrations:toggle") && !can(role, "integrations:configure")) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   head: () => ({ meta: [{ title: "Integrations — QAMind AI" }] }),

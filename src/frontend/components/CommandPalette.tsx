@@ -70,7 +70,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       label: "Dashboard",
       section: "Navigate",
       icon: LayoutGrid,
-      action: () => go("/"),
+      action: () => go("/dashboard"),
       keywords: "home workspace",
     },
     {

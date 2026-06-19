@@ -312,9 +312,9 @@ export type Database = {
         Update: { id?: string; project_id?: string; workspace_id?: string; name?: string; goal_description?: string | null; status?: "Upcoming" | "Active" | "Completed" | null; start_date?: string | null; end_date?: string | null; story_points_allocated?: number; sprint_lead_id?: string | null; sprint_members?: string[]; sprint_developers?: string[]; sprint_testers?: string[]; created_at?: string; };
       };
       profiles: {
-        Row: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; created_at: string; };
-        Insert: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; created_at?: string; };
-        Update: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; created_at?: string; };
+        Row: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; onboarding_complete: boolean | null; created_at: string; };
+        Insert: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; onboarding_complete?: boolean | null; created_at?: string; };
+        Update: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; onboarding_complete?: boolean | null; created_at?: string; };
       };
     };
   };

@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_app/suites")({
   beforeLoad: () => {
     const role = getStoredRole();
     if (!can(role, "suite:create")) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   head: () => ({ meta: [{ title: "Test Suites — QAMind AI" }] }),

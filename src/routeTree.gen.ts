@@ -13,7 +13,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthVerifyPendingRouteImport } from './routes/auth.verify-pending'
 import { Route as AuthResetConfirmRouteImport } from './routes/auth.reset-confirm'
 import { Route as AuthResetRouteImport } from './routes/auth.reset'
@@ -30,6 +30,7 @@ import { Route as AppPlannerRouteImport } from './routes/_app.planner'
 import { Route as AppIntegrationsRouteImport } from './routes/_app.integrations'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
 import { Route as AppGenerateRouteImport } from './routes/_app.generate'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppBugsRouteImport } from './routes/_app.bugs'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 import { Route as AppAccountSuperAdminRouteImport } from './routes/_app.account.super-admin'
@@ -53,10 +54,10 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AppRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthVerifyPendingRoute = AuthVerifyPendingRouteImport.update({
   id: '/verify-pending',
@@ -138,6 +139,11 @@ const AppGenerateRoute = AppGenerateRouteImport.update({
   path: '/generate',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBugsRoute = AppBugsRouteImport.update({
   id: '/bugs',
   path: '/bugs',
@@ -155,12 +161,13 @@ const AppAccountSuperAdminRoute = AppAccountSuperAdminRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AppIndexRoute
+  '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/welcome': typeof WelcomeRoute
   '/analytics': typeof AppAnalyticsRoute
   '/bugs': typeof AppBugsRoute
+  '/dashboard': typeof AppDashboardRoute
   '/generate': typeof AppGenerateRoute
   '/help': typeof AppHelpRoute
   '/integrations': typeof AppIntegrationsRoute
@@ -180,11 +187,13 @@ export interface FileRoutesByFullPath {
   '/account/super-admin': typeof AppAccountSuperAdminRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/welcome': typeof WelcomeRoute
   '/analytics': typeof AppAnalyticsRoute
   '/bugs': typeof AppBugsRoute
+  '/dashboard': typeof AppDashboardRoute
   '/generate': typeof AppGenerateRoute
   '/help': typeof AppHelpRoute
   '/integrations': typeof AppIntegrationsRoute
@@ -201,17 +210,18 @@ export interface FileRoutesByTo {
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
-  '/': typeof AppIndexRoute
   '/account/super-admin': typeof AppAccountSuperAdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/welcome': typeof WelcomeRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/bugs': typeof AppBugsRoute
+  '/_app/dashboard': typeof AppDashboardRoute
   '/_app/generate': typeof AppGenerateRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/integrations': typeof AppIntegrationsRoute
@@ -228,7 +238,6 @@ export interface FileRoutesById {
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
-  '/_app/': typeof AppIndexRoute
   '/_app/account/super-admin': typeof AppAccountSuperAdminRoute
 }
 export interface FileRouteTypes {
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/analytics'
     | '/bugs'
+    | '/dashboard'
     | '/generate'
     | '/help'
     | '/integrations'
@@ -259,11 +269,13 @@ export interface FileRouteTypes {
     | '/account/super-admin'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/auth'
     | '/onboarding'
     | '/welcome'
     | '/analytics'
     | '/bugs'
+    | '/dashboard'
     | '/generate'
     | '/help'
     | '/integrations'
@@ -280,16 +292,17 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
-    | '/'
     | '/account/super-admin'
   id:
     | '__root__'
+    | '/'
     | '/_app'
     | '/auth'
     | '/onboarding'
     | '/welcome'
     | '/_app/analytics'
     | '/_app/bugs'
+    | '/_app/dashboard'
     | '/_app/generate'
     | '/_app/help'
     | '/_app/integrations'
@@ -306,11 +319,11 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
-    | '/_app/'
     | '/_app/account/super-admin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
@@ -347,12 +360,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/': {
-      id: '/_app/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/verify-pending': {
       id: '/auth/verify-pending'
@@ -466,6 +479,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGenerateRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/bugs': {
       id: '/_app/bugs'
       path: '/bugs'
@@ -493,6 +513,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppBugsRoute: typeof AppBugsRoute
+  AppDashboardRoute: typeof AppDashboardRoute
   AppGenerateRoute: typeof AppGenerateRoute
   AppHelpRoute: typeof AppHelpRoute
   AppIntegrationsRoute: typeof AppIntegrationsRoute
@@ -505,13 +526,13 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppSuitesRoute: typeof AppSuitesRoute
   AppTraceabilityRoute: typeof AppTraceabilityRoute
-  AppIndexRoute: typeof AppIndexRoute
   AppAccountSuperAdminRoute: typeof AppAccountSuperAdminRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppBugsRoute: AppBugsRoute,
+  AppDashboardRoute: AppDashboardRoute,
   AppGenerateRoute: AppGenerateRoute,
   AppHelpRoute: AppHelpRoute,
   AppIntegrationsRoute: AppIntegrationsRoute,
@@ -524,7 +545,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppSuitesRoute: AppSuitesRoute,
   AppTraceabilityRoute: AppTraceabilityRoute,
-  AppIndexRoute: AppIndexRoute,
   AppAccountSuperAdminRoute: AppAccountSuperAdminRoute,
 }
 
@@ -547,6 +567,7 @@ const AuthRouteChildren: AuthRouteChildren = {
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   OnboardingRoute: OnboardingRoute,

@@ -36,6 +36,7 @@ import { checkSuperAdminStatus } from "@/backend/api/super-admin.functions";
 import { PanelProvider, usePanel } from "@/frontend/components/PanelContext";
 import { PanelShell } from "@/frontend/components/PanelShell";
 import { CommandPalette } from "@/frontend/components/CommandPalette";
+import { QAMindLogo } from "@/frontend/components/brand";
 import { Toaster, toast } from "sonner";
 import {
   useProjects,
@@ -65,7 +66,7 @@ const NAV = [
   {
     group: "Workspace",
     items: [
-      { to: "/", label: "Dashboard", icon: LayoutGrid, exact: true },
+      { to: "/dashboard", label: "Dashboard", icon: LayoutGrid, exact: true },
       { to: "/projects", label: "My Projects", icon: FolderClosed },
       { to: "/suites", label: "Test Suites", icon: Layers },
       { to: "/planner", label: "Test Plan", icon: ClipboardList },
@@ -159,6 +160,11 @@ const ROLE_NAV_LABELS: Record<string, readonly string[]> = {
   ],
 };
 
+function isOnboardingCompleteLocally(userId: string | undefined): boolean {
+  if (!userId || typeof window === "undefined") return false;
+  return localStorage.getItem(`fieldnotes.user.${userId}.onboardingComplete`) === "true";
+}
+
 function AppLayout() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -169,8 +175,8 @@ function AppLayout() {
     if (auth.loading) return;
 
     if (!auth.session) {
-      // 1. Redirection if user is not signed in
-      navigate({ to: "/auth" });
+      // 1. Send guests to the public homepage (sign in from there)
+      navigate({ to: "/" });
     } else if (!auth.user?.email_confirmed_at) {
       // 2. Gatekeeper: if email is not verified, redirect to verification pending screen
       if (auth.user?.email) {
@@ -205,6 +211,12 @@ function AppLayout() {
       // 4. Force new users to complete onboarding sequence before dashboard access
       const checkOnboarding = async () => {
         if (!auth.user?.id) return;
+
+        if (isOnboardingCompleteLocally(auth.user.id)) {
+          setOnboardingComplete(true);
+          return;
+        }
+
         const { data, error } = await supabase
           .from("profiles")
           .select("onboarding_complete")
@@ -523,10 +535,10 @@ function AppShell() {
       {/* Mobile top bar (optional, keeping minimal for mobile) */}
       <div className="flex items-center justify-between border-b border-[var(--c-border)] px-4 py-3 md:hidden">
         <Link
-          to="/"
-          className="font-display text-[26px] transition-transform duration-300 hover:scale-[1.02] text-[var(--c-text)]"
+          to="/dashboard"
+          className="transition-transform duration-300 hover:scale-[1.02]"
         >
-          QAMind <span style={{ color: "#C2552E" }}>AI</span>
+          <QAMindLogo size="lg" />
         </Link>
         <button
           onClick={() => setMobileOpen(true)}
@@ -538,13 +550,8 @@ function AppShell() {
 
       {/* Topbar */}
       <header className="sticky top-0 z-20 hidden h-[52px] shrink-0 items-center gap-4 bg-[var(--c-topbar)] px-4 md:flex md:px-6">
-        <Link to="/" className="mr-4 flex w-[186px] shrink-0 items-center text-white">
-          <span
-            className="font-display transition-transform duration-300 hover:scale-[1.02] text-white"
-            style={{ fontSize: "20px", letterSpacing: "-0.01em" }}
-          >
-            QAMind <span style={{ color: "#C2552E" }}>AI</span>
-          </span>
+        <Link to="/dashboard" className="mr-4 flex w-[186px] shrink-0 items-center">
+          <QAMindLogo variant="onDark" className="transition-transform duration-300 hover:scale-[1.02]" />
         </Link>
         <button
           onClick={() => setPageSearchOpen(true)}
@@ -599,7 +606,7 @@ function AppShell() {
           >
             {mobileOpen && (
               <div className="flex items-center justify-between border-b border-[var(--c-border)] px-5 py-5 md:hidden">
-                <span className="font-display text-lg text-[var(--c-text)]">QAMind <span style={{ color: "#C2552E" }}>AI</span></span>
+                <QAMindLogo size="sm" />
                 <button onClick={() => setMobileOpen(false)}>
                   <X className="h-4 w-4" />
                 </button>
@@ -634,7 +641,7 @@ function AppShell() {
                           }}
                           className="flex h-[34px] items-center gap-[8px] rounded-[6px] px-[10px] text-[13.5px] transition-all duration-[var(--t-fast)] hover:translate-x-[4px] w-full"
                         >
-                          <it.icon className="h-[16px] w-[16px] shrink-0" />
+                          <it.icon className="h-[16px] w-[16px] shrink-0" strokeWidth={1.75} />
                           <span className="flex-1 truncate">{it.label}</span>
                           {it.label === "Bugs" && openBugsCount > 0 && (
                             <span className="rounded-full bg-[var(--c-fail)] px-1.5 py-[1px] font-mono text-[9px] font-bold text-white shrink-0 leading-none">
@@ -783,7 +790,7 @@ function AppShell() {
                 onClick={async (e) => {
                   e.stopPropagation();
                   await signOut();
-                  navigate({ to: "/welcome" });
+                  navigate({ to: "/" });
                 }}
                 title="Sign out"
                 className="absolute right-[10px] text-[var(--c-text-muted)] opacity-0 transition-opacity hover:text-[var(--c-accent)] group-hover:opacity-100"
@@ -916,7 +923,7 @@ function AppShell() {
               <button
                 onClick={async () => {
                   await signOut();
-                  navigate({ to: "/welcome" });
+                  navigate({ to: "/" });
                 }}
                 className="text-[12px] text-[var(--c-text-muted)] hover:underline"
               >

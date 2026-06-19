@@ -39,7 +39,7 @@ export const Route = createFileRoute("/_app/account/super-admin")({
   beforeLoad: () => {
     const role = getStoredRole();
     if (!can(role, "superadmin:access")) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   head: () => ({ meta: [{ title: "Super Admin Portal — QAMind AI" }] }),
@@ -398,7 +398,7 @@ function SuperAdminPage() {
           administrator.
         </p>
         <button
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => navigate({ to: "/dashboard" })}
           className="rounded-[8px] bg-[var(--c-text)] px-6 py-2.5 text-[13px] font-medium text-[var(--c-bg)] hover:opacity-90 transition-all"
         >
           Return to Dashboard

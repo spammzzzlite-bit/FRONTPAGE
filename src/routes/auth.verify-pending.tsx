@@ -58,7 +58,7 @@ function VerifyPendingPage() {
   // If verified, redirect to app
   useEffect(() => {
     if (auth.user?.email_confirmed_at) {
-      navigate({ to: "/" });
+      navigate({ to: "/dashboard" });
     }
   }, [auth.user?.email_confirmed_at, navigate]);
 

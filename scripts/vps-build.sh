@@ -11,6 +11,8 @@ npm -v
 
 echo "==> Extracting application..."
 mkdir -p "$APP_DIR"
+# Remove legacy route files superseded by newer deploys
+rm -f "$APP_DIR/src/routes/_app.index.tsx"
 tar xzf "$ARCHIVE" -C "$APP_DIR"
 
 echo "==> Checking .env..."

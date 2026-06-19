@@ -263,6 +263,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name VARCHAR(255),
   email VARCHAR(255),
   avatar_url TEXT,
+  onboarding_complete BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT false;
 

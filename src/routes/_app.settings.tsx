@@ -1185,7 +1185,7 @@ function SettingsPage() {
                       await supabase.auth.signOut();
                       localStorage.clear();
                       toast.success("Account deleted successfully.");
-                      navigate({ to: "/welcome" });
+                      navigate({ to: "/" });
                     } catch (err) {
                       toast.error("An error occurred while deleting your account.");
                     }
@@ -1247,7 +1247,7 @@ function SettingsPage() {
                   }
                   await signOut();
                   toast.success("You have successfully left the workspace.");
-                  navigate({ to: "/welcome" });
+                  navigate({ to: "/" });
                 }}
                 className="rounded-[8px] bg-[var(--c-fail)] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[#8A3232]"
               >

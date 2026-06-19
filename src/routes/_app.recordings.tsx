@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_app/recordings")({
   beforeLoad: () => {
     const role = getStoredRole();
     if (!can(role, "suite:create")) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   component: RecordingsPage,

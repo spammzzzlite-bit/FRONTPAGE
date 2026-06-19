@@ -14,6 +14,24 @@ export const Route = createFileRoute("/onboarding")({
   component: OnboardingPage,
 });
 
+function isOnboardingCompleteLocally(userId: string | undefined): boolean {
+  if (!userId || typeof window === "undefined") return false;
+  return localStorage.getItem(`fieldnotes.user.${userId}.onboardingComplete`) === "true";
+}
+
+async function persistOnboardingComplete(user: {
+  id: string;
+  email?: string | null;
+  user_metadata?: { name?: string };
+}) {
+  await supabase.from("profiles").upsert({
+    id: user.id,
+    email: user.email ?? null,
+    full_name: user.user_metadata?.name ?? null,
+    onboarding_complete: true,
+  });
+}
+
 function OnboardingPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -29,14 +47,31 @@ function OnboardingPage() {
     } else {
       const checkOnboarding = async () => {
         if (!auth.user?.id) return;
-        const { data } = await supabase
+
+        if (isOnboardingCompleteLocally(auth.user.id)) {
+          navigate({ to: "/dashboard" });
+          return;
+        }
+
+        const { data, error } = await supabase
           .from("profiles")
           .select("onboarding_complete")
           .eq("id", auth.user.id)
           .single();
 
+        if (error && error.code === "PGRST116") {
+          await supabase.from("profiles").upsert({
+            id: auth.user.id,
+            email: auth.user.email,
+            full_name: auth.user.user_metadata?.name || "",
+            onboarding_complete: false,
+          });
+          setIsReady(true);
+          return;
+        }
+
         if (data?.onboarding_complete) {
-          navigate({ to: "/" });
+          navigate({ to: "/dashboard" });
         } else {
           setIsReady(true);
         }
@@ -47,16 +82,16 @@ function OnboardingPage() {
 
   const handleComplete = async () => {
     if (auth.user?.id) {
-      await supabase.from("profiles").update({ onboarding_complete: true }).eq("id", auth.user.id);
+      await persistOnboardingComplete(auth.user);
     }
-    navigate({ to: "/" });
+    navigate({ to: "/dashboard" });
   };
 
   const handleSkip = async () => {
     if (auth.user?.id) {
-      await supabase.from("profiles").update({ onboarding_complete: true }).eq("id", auth.user.id);
+      await persistOnboardingComplete(auth.user);
     }
-    navigate({ to: "/" });
+    navigate({ to: "/dashboard" });
   };
 
   const handleNavigate = (route: string) => {

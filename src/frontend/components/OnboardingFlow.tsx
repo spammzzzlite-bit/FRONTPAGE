@@ -36,6 +36,7 @@ import { opsBrief } from "../../config/onboarding/opsBrief";
 import { fieldBrief } from "../../config/onboarding/fieldBrief";
 import { intelBrief } from "../../config/onboarding/intelBrief";
 import type { OnboardingStep } from "../../config/onboarding/types";
+import { QAMindLogo } from "@/frontend/components/brand";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -303,7 +304,7 @@ function Step1Welcome({ briefingTrack, config, onNext, accentColor, iconName }: 
 
       <h1
         style={{
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "'Bricolage Grotesque', sans-serif",
           fontSize: "clamp(30px, 4.5vw, 48px)",
           fontWeight: 700,
           color: "var(--ink)",
@@ -403,7 +404,7 @@ function Step2Workspace({
 
       <h2
         style={{
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "'Bricolage Grotesque', sans-serif",
           fontSize: "clamp(28px, 4vw, 42px)",
           fontWeight: 700,
           color: "var(--ink)",
@@ -484,7 +485,7 @@ function Step3Role({
 
       <h2
         style={{
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "'Bricolage Grotesque', sans-serif",
           fontSize: "clamp(26px, 4vw, 40px)",
           fontWeight: 700,
           color: "var(--ink)",
@@ -666,7 +667,7 @@ function Step4Features({
 
       <h2
         style={{
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "'Bricolage Grotesque', sans-serif",
           fontSize: "clamp(26px, 4vw, 40px)",
           fontWeight: 700,
           color: "var(--ink)",
@@ -904,7 +905,7 @@ function Step5DNA({
           <StepLabel accentColor={accentColor}>QA DNA</StepLabel>
           <h2
             style={{
-              fontFamily: "Playfair Display, Georgia, serif",
+              fontFamily: "'Bricolage Grotesque', sans-serif",
               fontSize: "clamp(24px, 3.5vw, 36px)",
               fontWeight: 700,
               color: "var(--ink)",
@@ -1065,7 +1066,7 @@ function Step5DNA({
 
               <div
                 style={{
-                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontFamily: "'Bricolage Grotesque', sans-serif",
                   fontSize: "clamp(20px, 3vw, 28px)",
                   fontWeight: 700,
                   color: "var(--ink)",
@@ -1217,7 +1218,7 @@ function StepChecklist({
 
         <h2
           style={{
-            fontFamily: "Playfair Display, Georgia, serif",
+            fontFamily: "'Bricolage Grotesque', sans-serif",
             fontSize: "clamp(26px, 4vw, 40px)",
             fontWeight: 700,
             color: "var(--ink)",
@@ -1466,7 +1467,7 @@ function StepScope({
 
       <h2
         style={{
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "'Bricolage Grotesque', sans-serif",
           fontSize: "clamp(26px, 4vw, 40px)",
           fontWeight: 700,
           color: "var(--ink)",
@@ -1649,7 +1650,7 @@ function StepLoadout({
 
       <h2
         style={{
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "'Bricolage Grotesque', sans-serif",
           fontSize: "clamp(26px, 4vw, 40px)",
           fontWeight: 700,
           color: "var(--ink)",
@@ -1756,7 +1757,7 @@ function StepIntelAccess({
 
       <h2
         style={{
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "'Bricolage Grotesque', sans-serif",
           fontSize: "clamp(26px, 4vw, 40px)",
           fontWeight: 700,
           color: "var(--ink)",
@@ -2259,18 +2260,7 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
         }}
       >
         {/* Logo */}
-        <div
-          style={{
-            fontFamily: "Playfair Display, Georgia, serif",
-            fontWeight: 700,
-            fontSize: 16,
-            color: "var(--ink)",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          QAMind AI{" "}
-          <span style={{ color: "var(--ink-faint)", fontWeight: 400, fontSize: 12 }}>QA</span>
-        </div>
+        <QAMindLogo size="sm" />
 
         {/* Progress */}
         <ProgressBar step={step} total={TOTAL_STEPS} accentColor={trackConfig.accentColor} />

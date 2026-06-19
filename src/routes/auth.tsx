@@ -7,6 +7,7 @@ import { isValidEmail, parseAuthError } from "@/frontend/store/auth";
 import { useAuth, getAvatarColor } from "@/frontend/store/store";
 import { toast } from "sonner";
 import { PendingInvitesModal, type PendingInvite } from "@/frontend/components/PendingInvitesModal";
+import { QAMindLogo } from "@/frontend/components/brand";
 
 const search = z.object({
   mode: z.enum(["signin", "signup", "join"]).optional(),
@@ -53,7 +54,7 @@ function AuthPage() {
   const [showInvitesModal, setShowInvitesModal] = useState(false);
 
   const handlePostAuth = async (user: any) => {
-    if (!user) return navigate({ to: "/" });
+    if (!user) return navigate({ to: "/dashboard" });
     const { data: invites } = await supabase
       .from('workspace_members')
       .select('id, workspace_id, role, workspaces(name, workspace_key)')
@@ -64,7 +65,7 @@ function AuthPage() {
       setPendingInvites(invites as any);
       setShowInvitesModal(true);
     } else {
-      navigate({ to: "/" });
+      navigate({ to: "/dashboard" });
     }
   };
 
@@ -97,7 +98,7 @@ function AuthPage() {
       if (isFirstTime) {
         navigate({ to: "/onboarding" });
       } else {
-        navigate({ to: "/" });
+        navigate({ to: "/dashboard" });
       }
     } catch (err) {
       toast.error("Failed to join workspace.");
@@ -128,7 +129,7 @@ function AuthPage() {
     if (auth.loading || !isExactAuth) return;
     if (auth.session) {
       if (auth.user?.email_confirmed_at) {
-        navigate({ to: "/" });
+        navigate({ to: "/dashboard" });
       } else {
         navigate({ to: "/auth/verify-pending", search: { email: auth.user?.email } });
       }
@@ -770,8 +771,8 @@ function AuthPage() {
           </svg>
         </div>
 
-        <Link to="/welcome" className="relative font-display text-2xl font-bold z-10">
-          QAMind <span style={{ color: "#C2552E" }}>AI</span>
+        <Link to="/" className="relative z-10 transition-transform duration-300 hover:scale-[1.02]">
+          <QAMindLogo variant="onDark" size="lg" />
         </Link>
         <div className="relative space-y-8 z-10">
           <p className="font-display text-3xl leading-snug opacity-0 animate-[fade-in-up_600ms_var(--ease-out)_both]">
@@ -787,7 +788,7 @@ function AuthPage() {
       <main className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <Link
-            to="/welcome"
+            to="/"
             className="label-eyebrow text-[var(--c-text-muted)] hover:text-[var(--c-accent)] transition-colors duration-[var(--t-instant)]"
           >
             ← Back to home

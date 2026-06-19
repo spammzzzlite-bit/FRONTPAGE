@@ -56,7 +56,7 @@ const searchSchema = z.object({
   projectId: z.string().optional(),
 });
 
-export const Route = createFileRoute("/_app/")({
+export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({
     meta: [{ title: "Dashboard — QAMind AI" }],
   }),
@@ -212,16 +212,16 @@ function Dashboard() {
       } else {
         const fallbackId = projects[0].id;
         setActiveProjectId(fallbackId);
-        navigate({ to: "/", search: { projectId: fallbackId }, replace: true });
+        navigate({ to: "/dashboard", search: { projectId: fallbackId }, replace: true });
       }
     } else {
       const savedId = activeProjectId;
       if (savedId && projects.some((p) => p.id === savedId)) {
-        navigate({ to: "/", search: { projectId: savedId }, replace: true });
+        navigate({ to: "/dashboard", search: { projectId: savedId }, replace: true });
       } else {
         const fallbackId = projects[0].id;
         setActiveProjectId(fallbackId);
-        navigate({ to: "/", search: { projectId: fallbackId }, replace: true });
+        navigate({ to: "/dashboard", search: { projectId: fallbackId }, replace: true });
       }
     }
   }, [projectId, projects, activeProjectId, setActiveProjectId, navigate]);
@@ -998,7 +998,7 @@ function Masthead({ projects, activeProject }: { projects: any[]; activeProject?
                     activeProject={activeProject}
                     onSelect={(id) => {
                       setActiveProjectId(id);
-                      navigate({ to: "/", search: { projectId: id } });
+                      navigate({ to: "/dashboard", search: { projectId: id } });
                     }}
                   />
                 </div>
