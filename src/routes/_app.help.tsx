@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { PageHeader } from "./_app.projects";
 
 export const Route = createFileRoute("/_app/help")({
-  head: () => ({ meta: [{ title: "Help & Docs — QA Mind" }] }),
+  head: () => ({ meta: [{ title: "Help & Docs — QAMind AI" }] }),
   component: HelpPage,
 });
 

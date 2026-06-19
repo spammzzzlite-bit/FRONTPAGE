@@ -26,6 +26,7 @@ import {
   Video,
   ShieldCheck,
   ShieldAlert,
+  Star,
 } from "lucide-react";
 import { useAuth, signOut, initializeStores } from "@/frontend/store/store";
 import { supabase } from "@/backend/supabase";
@@ -46,7 +47,9 @@ import {
   markNotificationAsRead,
   setPlan,
   useBugs,
+  useUserStore,
 } from "@/frontend/store/store";
+import { can } from "@/lib/permissions";
 import { DetailedNewProjectModal } from "./_app.projects";
 
 export const Route = createFileRoute("/_app")({
@@ -90,9 +93,80 @@ const NAV = [
   },
 ] as const;
 
+const ROLE_NAV_LABELS: Record<string, readonly string[]> = {
+  owner: [
+    "Dashboard",
+    "My Projects",
+    "Test Suites",
+    "Generate Tests",
+    "Test Plan",
+    "Recordings",
+    "Test Runs",
+    "Bugs",
+    "Integrations",
+    "Analytics",
+    "Regression",
+    "Traceability",
+    "Reports",
+    "Settings",
+    "Help & Docs",
+  ],
+  admin: [
+    "Dashboard",
+    "My Projects",
+    "Test Suites",
+    "Generate Tests",
+    "Test Plan",
+    "Recordings",
+    "Test Runs",
+    "Bugs",
+    "Integrations",
+    "Analytics",
+    "Regression",
+    "Traceability",
+    "Reports",
+    "Settings",
+    "Help & Docs",
+  ],
+  editor: [
+    "Dashboard",
+    "My Projects",
+    "Test Suites",
+    "Generate Tests",
+    "Test Plan",
+    "Recordings",
+    "Test Runs",
+    "Bugs",
+    "Analytics",
+    "Regression",
+    "Traceability",
+    "Reports",
+    "Settings",
+    "Help & Docs",
+  ],
+  viewer: [
+    "Dashboard",
+    "Test Runs",
+    "Bugs",
+    "Analytics",
+    "Regression",
+    "Traceability",
+    "Reports",
+    "Settings",
+    "Help & Docs",
+  ],
+};
+
 function AppLayout() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const [onboardingComplete, setOnboardingComplete] = useState(() => {
+    if (typeof window === "undefined" || !auth.user?.id) return false;
+    return (
+      localStorage.getItem(`fieldnotes.user.${auth.user.id}.onboardingComplete`) === "true" &&
+      !!localStorage.getItem("fieldnotes.workspace.meta")
+    );
+  });
 
   // Authentication and onboarding gatekeeper. Runs whenever auth session, loading state, or user metadata updates.
   useEffect(() => {
@@ -116,19 +190,16 @@ function AppLayout() {
       }
 
       // 4. Force new users to complete onboarding sequence before dashboard access
-      const onboardingComplete =
+      const completed =
         typeof window !== "undefined" &&
-        localStorage.getItem(`fieldnotes_onboarding_complete.${auth.user?.id}`) === "true";
-      if (!onboardingComplete) {
-        navigate({ to: "/welcome" });
+        localStorage.getItem(`fieldnotes.user.${auth.user?.id}.onboardingComplete`) === "true" &&
+        !!localStorage.getItem("fieldnotes.workspace.meta");
+      setOnboardingComplete(completed);
+      if (!completed) {
+        navigate({ to: "/onboarding" });
       }
     }
   }, [auth.session, auth.user, auth.loading, navigate]);
-
-  const onboardingComplete = auth.user
-    ? typeof window !== "undefined" &&
-      localStorage.getItem(`fieldnotes_onboarding_complete.${auth.user.id}`) === "true"
-    : false;
 
   // Show generic loading spinner until auth state resolves, email is verified, and onboarding is completed.
   if (auth.loading || !auth.session || !auth.user?.email_confirmed_at || !onboardingComplete) {
@@ -350,15 +421,27 @@ function AppShell() {
     }
   }, [auth.session?.access_token]);
 
-  const hasProjects = projects.length > 0;
-  const GATED_LABELS = new Set(["Dashboard", "Settings", "Help & Docs", "SuperAdmin"]);
+  const { currentUser } = useUserStore();
+  const role = currentUser?.role ?? "viewer";
 
-  const filteredNav = hasProjects
-    ? NAV
-    : NAV.map((g) => ({
-        ...g,
-        items: g.items.filter((it) => GATED_LABELS.has(it.label)),
-      })).filter((g) => g.items.length > 0);
+  const hasProjects = projects.length > 0;
+  const GATED_LABELS = new Set(["Dashboard", "Settings", "Help & Docs", "SuperAdmin", "Analytics", "Regression", "Traceability", "Reports"]);
+
+  const roleLabels = ROLE_NAV_LABELS[role] || ROLE_NAV_LABELS.viewer;
+
+  const filteredNav = NAV.map((g) => ({
+    ...g,
+    items: g.items.filter((it) => {
+      let isAllowed = roleLabels.includes(it.label);
+      if (it.label === "SuperAdmin") {
+        isAllowed = isSuperAdmin;
+      }
+      if (!hasProjects && !GATED_LABELS.has(it.label)) {
+        isAllowed = false;
+      }
+      return isAllowed;
+    }),
+  })).filter((g) => g.items.length > 0);
 
   // Close mobile sidebar on navigation
   useEffect(() => {
@@ -409,7 +492,7 @@ function AppShell() {
           to="/"
           className="font-display text-[26px] transition-transform duration-300 hover:scale-[1.02]"
         >
-          QA Mind
+          QAMind AI
         </Link>
         <button
           onClick={() => setMobileOpen(true)}
@@ -426,7 +509,7 @@ function AppShell() {
             className="font-display font-medium transition-transform duration-300 hover:scale-[1.02]"
             style={{ fontSize: "20px", letterSpacing: "-0.01em" }}
           >
-            QA Mind
+            QAMind AI
           </span>
         </Link>
         <button
@@ -461,12 +544,14 @@ function AppShell() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setNewProjectModalOpen(true)}
-            className="rounded-[8px] bg-[var(--c-accent)] px-4 py-1.5 text-[13px] font-medium text-white transition-all duration-[var(--t-normal)] ease-[var(--ease)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[0_4px_12px_rgba(196,85,26,0.35)]"
-          >
-            + New project
-          </button>
+          {can(role, "project:create") && (
+            <button
+              onClick={() => setNewProjectModalOpen(true)}
+              className="rounded-[8px] bg-[var(--c-accent)] px-4 py-1.5 text-[13px] font-medium text-white transition-all duration-[var(--t-normal)] ease-[var(--ease)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[0_4px_12px_rgba(196,85,26,0.35)]"
+            >
+              + New project
+            </button>
+          )}
         </div>
       </header>
 
@@ -480,17 +565,49 @@ function AppShell() {
           >
             {mobileOpen && (
               <div className="flex items-center justify-between border-b border-[var(--c-border)] px-5 py-5 md:hidden">
-                <span className="font-display text-lg">QA Mind</span>
+                <span className="font-display text-lg">QAMind AI</span>
                 <button onClick={() => setMobileOpen(false)}>
                   <X className="h-4 w-4" />
                 </button>
               </div>
             )}
-            <nav className="flex-1 overflow-y-auto px-3 py-2">
+             <nav className="flex-1 overflow-y-auto px-3 py-2">
               {filteredNav.map((g) => (
                 <div key={g.group} className="mb-2">
-                  <p className="mb-[4px] mt-[20px] px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--c-text-dim)]">
-                    {g.group}
+                  <p className="mb-[4px] mt-[20px] px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--c-text-dim)] flex items-center justify-between">
+                    <span>
+                      {g.group}
+                      {(() => {
+                        const isOwnerOrAdmin = can(role, "project:create");
+                        const isEditor = can(role, "suite:create") && !can(role, "project:create");
+                        const isViewer = !can(role, "suite:create");
+                        let hint = "";
+                        if (isOwnerOrAdmin) {
+                          if (g.group === "Workspace") hint = "Command Scope";
+                          if (g.group === "Insights") hint = "Intel Scope";
+                          if (g.group === "Account") hint = "Admin Access";
+                        } else if (isEditor) {
+                          if (g.group === "Workspace") hint = "Field Scope";
+                          if (g.group === "Insights") hint = "Field Scope";
+                          if (g.group === "Account") hint = "Standard Access";
+                        } else if (isViewer) {
+                          if (g.group === "Workspace") hint = "Intel Scope";
+                          if (g.group === "Insights") hint = "Intel Scope";
+                          if (g.group === "Account") hint = "Read-Only Access";
+                        }
+                        if (!hint) return null;
+                        return (
+                          <span className="text-[9px] lowercase italic text-[var(--c-text-dim)] font-sans ml-1.5 normal-case font-normal opacity-85">
+                            ({hint})
+                          </span>
+                        );
+                      })()}
+                    </span>
+                    {g.group === "Workspace" && can(role, "workspace:viewKey") && (
+                      <span className="rounded-full bg-amber-500/15 text-[8.5px] text-amber-600 dark:text-amber-400 px-1.5 py-0.2 font-mono font-medium uppercase tracking-wider scale-90">
+                        Owner Control
+                      </span>
+                    )}
                   </p>
                   <ul className="space-y-[2px]">
                     {g.items.map((it) => (
@@ -522,6 +639,32 @@ function AppShell() {
                 </div>
               ))}
             </nav>
+
+            {/* Viewer Special Access Card */}
+            {!can(role, "suite:create") && (
+              <div className="mx-3 my-2 rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-4 space-y-3 shadow-[var(--shadow-sm)]">
+                <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--c-text-muted)] font-bold">
+                  Your Access
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-[12px] text-[var(--c-text-muted)]">
+                    <span className="text-[12px] text-[var(--c-text-dim)]">👁</span>
+                    <span>View runs & bugs</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[12px] text-[var(--c-text-muted)]">
+                    <span className="text-[12px] text-[var(--c-text-dim)]">👁</span>
+                    <span>Read reports</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[12px] text-[var(--c-text-muted)]">
+                    <span className="text-[12px] text-[var(--c-text-dim)]">👁</span>
+                    <span>Monitor analytics</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-[var(--c-text-dim)] leading-normal pt-2 border-t border-[var(--c-border)]/50">
+                  Need more access? Contact your workspace Owner.
+                </p>
+              </div>
+            )}
 
             {/* Token & Plan Widget */}
             <div className="border-t border-[var(--c-border)] px-4 py-4 space-y-2.5 bg-[rgba(26,23,20,0.02)]">
@@ -570,15 +713,62 @@ function AppShell() {
                   {userName[0]?.toUpperCase()}
                 </div>
               )}
-              <div className="min-w-0 flex-1 pr-6 flex items-center justify-between">
-                <p className="max-w-[100px] truncate text-[13px] font-medium text-[var(--c-text)]">
-                  {userName}
-                </p>
-                <span
-                  className={`rounded-full px-1.5 py-0.2 font-mono text-[8px] font-semibold tracking-wider ${tokens.plan === "Premium" ? "bg-amber-100/80 text-amber-800" : "bg-gray-100 text-gray-700"}`}
-                >
-                  {tokens.plan}
-                </span>
+              <div className="min-w-0 flex-1 pr-6 flex flex-col justify-center">
+                <div className="flex items-center justify-between w-full">
+                  <p className="max-w-[100px] truncate text-[13px] font-medium text-[var(--c-text)]">
+                    {userName}
+                  </p>
+                  {can(role, "settings:plan") ? (
+                    <Link
+                      to="/settings"
+                      hash="plan"
+                      onClick={(e) => e.stopPropagation()}
+                      className={`rounded-full px-2 py-0.5 font-mono text-[8px] font-bold tracking-wider transition-all hover:-translate-y-[0.5px] ${
+                        tokens.plan === "Premium"
+                          ? "bg-amber-500 text-white hover:bg-amber-600 shadow-sm animate-pulse"
+                          : "bg-gray-200 text-gray-800 hover:bg-gray-300 border border-gray-300"
+                      }`}
+                    >
+                      {tokens.plan}
+                    </Link>
+                  ) : (
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-mono text-[8px] font-bold tracking-wider ${
+                        tokens.plan === "Premium"
+                          ? "bg-amber-500/20 text-amber-600"
+                          : "bg-gray-200/50 text-gray-600"
+                      }`}
+                    >
+                      {tokens.plan}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1.5 flex">
+                  {(() => {
+                    const rBadge = (() => {
+                      switch (role) {
+                        case "owner":
+                          return { bg: "#F59E0B", text: "#FFFFFF", label: "Owner" };
+                        case "admin":
+                          return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" };
+                        case "editor":
+                          return { bg: "#3B82F6", text: "#FFFFFF", label: "Editor" };
+                        case "viewer":
+                        default:
+                          return { bg: "#64748B", text: "#FFFFFF", label: "Viewer" };
+                      }
+                    })();
+                    return (
+                      <span
+                        style={{ backgroundColor: rBadge.bg, color: rBadge.text }}
+                        className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-sans text-[8px] font-bold uppercase tracking-wider"
+                      >
+                        {can(role, "workspace:viewKey") && <Star className="h-[8px] w-[8px] fill-current" />}
+                        {rBadge.label}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
               <button
                 onClick={async (e) => {

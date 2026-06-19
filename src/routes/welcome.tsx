@@ -2,18 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { PAGE_TEXT } from "../content";
-import { useAuth } from "@/frontend/store/store";
+import { useAuth, signOut } from "@/frontend/store/store";
 
 export const Route = createFileRoute("/welcome")({
   head: () => ({
     meta: [
-      { title: "QA Mind - Quality engineering, written down" },
+      { title: "QAMind AI - Quality engineering, written down" },
       {
         name: "description",
         content:
           "A quieter test-case workspace. Built for QA teams who'd rather read a one-pager than a dashboard.",
       },
-      { property: "og:title", content: "QA Mind - Quality engineering, written down" },
+      { property: "og:title", content: "QAMind AI - Quality engineering, written down" },
       { property: "og:description", content: "A quieter test-case workspace for QA teams." },
     ],
   }),
@@ -797,7 +797,8 @@ function Welcome() {
   const onboardingComplete =
     isAuthenticated &&
     typeof window !== "undefined" &&
-    localStorage.getItem(`fieldnotes_onboarding_complete.${auth.user?.id}`) === "true";
+    localStorage.getItem(`fieldnotes.user.${auth.user?.id}.onboardingComplete`) === "true" &&
+    !!localStorage.getItem("fieldnotes.workspace.meta");
 
   useLenis(scriptsReady, reduced);
   useMotionSystem(scriptsReady, reduced, rootRef);
@@ -947,7 +948,7 @@ function Welcome() {
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link to="/welcome" className="flex items-baseline gap-2">
-            <span className="font-display text-[22px] text-[var(--c-text)]">QA Mind</span>
+            <span className="font-display text-[22px] text-[var(--c-text)]">QAMind AI</span>
             <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--c-text-muted)] sm:inline">
               Vol. 01
             </span>
@@ -981,11 +982,22 @@ function Welcome() {
             <ThemeToggle />
             {isAuthenticated ? (
               <>
-                <Link to={onboardingComplete ? "/" : "/onboarding"} className="fn-nav-action">
+                <Link
+                  to="/auth"
+                  search={{ mode: "signin" }}
+                  onClick={async () => {
+                    await signOut();
+                  }}
+                  className="fn-nav-action"
+                >
                   Sign in
                 </Link>
                 <Link
-                  to={onboardingComplete ? "/" : "/onboarding"}
+                  to="/auth"
+                  search={{ mode: "signup" }}
+                  onClick={async () => {
+                    await signOut();
+                  }}
                   className="fn-nav-action is-primary relative overflow-hidden group"
                 >
                   <span className="relative z-10">Open an account</span>
@@ -994,7 +1006,7 @@ function Welcome() {
               </>
             ) : (
               <>
-                <Link to="/auth" className="fn-nav-action">
+                <Link to="/auth" search={{ mode: "signin" }} className="fn-nav-action">
                   Sign in
                 </Link>
                 <a
@@ -1065,6 +1077,10 @@ function Welcome() {
                     </a>
                     <Link
                       to="/auth"
+                      search={{ mode: "signup" }}
+                      onClick={async () => {
+                        await signOut();
+                      }}
                       data-magnetic
                       className="hero-cta fn-button fn-hover-target border border-[var(--c-border-strong)] bg-transparent text-[var(--c-text)]"
                     >
@@ -1174,9 +1190,9 @@ function Welcome() {
 
             <div className="space-y-5 text-base leading-relaxed text-[var(--c-text-muted)] md:col-span-7 md:col-start-6">
               <p>
-                QA Mind is published by a small studio of QA engineers and one designer who used to
-                lay out a print magazine. We started this after one too many tools tried to sell us
-                a co-pilot.
+                QAMind AI is published by a small studio of QA engineers and one designer who used
+                to lay out a print magazine. We started this after one too many tools tried to sell
+                us a co-pilot.
               </p>
               <p>
                 {PAGE_TEXT.stillnessQuotes[1]} Charts only when they help. Numbers only when they
@@ -1200,7 +1216,7 @@ function Welcome() {
       <footer id="contact" className="dim-target bg-[#1A1714] text-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-4">
           <div className="md:col-span-2">
-            <p className="font-display text-3xl">QA Mind</p>
+            <p className="font-display text-3xl">QAMind AI</p>
             <p className="mt-2 text-sm text-[rgba(255,255,255,0.6)]">
               A test-case workspace, in plain language.
             </p>
@@ -1266,7 +1282,7 @@ function Welcome() {
         </div>
         <div className="border-t border-[rgba(255,255,255,0.1)] fn-hr-draw">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 text-xs text-[rgba(255,255,255,0.6)]">
-            <span>&copy; {new Date().getFullYear()} QA Mind Press</span>
+            <span>&copy; {new Date().getFullYear()} QAMind AI Press</span>
             <span className="font-mono">ISSN 2998-0142</span>
           </div>
         </div>

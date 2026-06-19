@@ -36,13 +36,14 @@ import {
   TooltipTrigger,
 } from "@/frontend/components/ui/tooltip";
 import { supabase } from "@/backend/supabase";
+import { useAssertPermission, TokenCostLabel } from "@/lib/permissions";
 
 const searchSchema = z.object({
   projectId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/_app/runs")({
-  head: () => ({ meta: [{ title: "Test Runs — QA Mind" }] }),
+  head: () => ({ meta: [{ title: "Test Runs — QAMind AI" }] }),
   validateSearch: searchSchema,
   component: RunsPage,
 });
@@ -107,6 +108,7 @@ Received: null
 /* ─── RunsPage Component ───────────────────────────────────── */
 
 function RunsPage() {
+  const assertPerm = useAssertPermission();
   const { projectId } = Route.useSearch();
   const [runs] = useRuns();
   const [projects] = useProjects();
@@ -168,6 +170,7 @@ function RunsPage() {
 
   const handleInlineStartRun = () => {
     if (!selectedProjId) return;
+    if (!assertPerm("tests:run")) return;
     if (!deductTokenAction(`Execute test run`)) return;
 
     let run;
@@ -404,7 +407,7 @@ function RunsPage() {
               className="inline-flex items-center gap-2 rounded-[8px] bg-[var(--c-accent)] px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-[var(--c-accent-dark)] disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--c-accent)]"
             >
               <Play className="h-3.5 w-3.5 fill-current" />
-              Execute Test Run
+              <TokenCostLabel baseText="Execute Test Run" />
             </button>
           </div>
         </div>
@@ -783,6 +786,7 @@ function RunsPage() {
 /* ─── Run Detail (panel) ────────────────────────────────── */
 
 function RunDetail({ run }: { run: TestRun }) {
+  const assertPerm = useAssertPermission();
   const [testCases] = useTestCases();
   const passed = run.results.filter((r) => r.status === "passed").length;
   const failed = run.results.filter((r) => r.status === "failed").length;
@@ -826,6 +830,7 @@ function RunDetail({ run }: { run: TestRun }) {
         {failed > 0 && (
           <button
             onClick={() => {
+              if (!assertPerm("tests:run")) return;
               const failedIds = run.results
                 .filter((r) => r.status === "failed")
                 .map((r) => r.testCaseId);
@@ -840,7 +845,7 @@ function RunDetail({ run }: { run: TestRun }) {
             }}
             className="flex items-center gap-2 rounded-md bg-[var(--c-bg-hover)] px-3 py-1.5 text-xs font-medium text-[var(--c-text)] transition-all hover:bg-[var(--c-border)]"
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Re-run Failed
+            <RefreshCw className="h-3.5 w-3.5" /> <TokenCostLabel baseText="Re-run Failed" />
           </button>
         )}
       </div>
@@ -909,6 +914,7 @@ function NewRunSelectionModal({
   onClose: () => void;
   onRunComplete?: (run: TestRun) => void;
 }) {
+  const assertPerm = useAssertPermission();
   const [projects] = useProjects();
   const [suites] = useSuites();
   const [testCases] = useTestCases();
@@ -968,6 +974,7 @@ function NewRunSelectionModal({
 
   const handleStartRun = () => {
     if (!selectedProjId) return;
+    if (!assertPerm("tests:run")) return;
     if (!deductTokenAction(`Start test run for project`)) return;
 
     let run;
@@ -1344,7 +1351,7 @@ function NewRunSelectionModal({
               onClick={handleStartRun}
               className="rounded-[8px] bg-[var(--c-accent)] px-[16px] py-[8px] text-[13px] font-medium text-white hover:bg-[var(--c-accent-dark)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
-              Start Run
+              <TokenCostLabel baseText="Start Run" />
             </button>
           )}
         </div>

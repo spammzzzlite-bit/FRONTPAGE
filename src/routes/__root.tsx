@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "FieldNotes" },
+      { title: "QAMind AI" },
       {
         name: "description",
         content:
           "Code Whisperer is a web application that provides code generation and assistance.",
       },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "FieldNotes" },
+      { property: "og:title", content: "QAMind AI" },
       {
         property: "og:description",
         content:
@@ -93,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "FieldNotes" },
+      { name: "twitter:title", content: "QAMind AI" },
       {
         name: "twitter:description",
         content:

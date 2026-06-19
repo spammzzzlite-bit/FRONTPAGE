@@ -4,10 +4,11 @@ import { z } from "zod";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/backend/supabase";
 import { isValidEmail, parseAuthError } from "@/frontend/store/auth";
-import { useAuth } from "@/frontend/store/store";
+import { useAuth, getAvatarColor } from "@/frontend/store/store";
+import { toast } from "sonner";
 
 const search = z.object({
-  mode: z.enum(["signin", "signup"]).optional(),
+  mode: z.enum(["signin", "signup", "join"]).optional(),
   email: z.string().optional(),
   message: z.string().optional(),
 });
@@ -15,8 +16,8 @@ const search = z.object({
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — QA Mind" },
-      { name: "description", content: "Sign in to your QA Mind workspace." },
+      { title: "Sign in — QAMind AI" },
+      { name: "description", content: "Sign in to your QAMind AI workspace." },
     ],
   }),
   validateSearch: (s) => search.parse(s),
@@ -35,10 +36,12 @@ function AuthPage() {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [workspaceKey, setWorkspaceKey] = useState("");
 
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [workspaceKeyError, setWorkspaceKeyError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formMessage, setFormMessage] = useState<string | null>(message || null);
 
@@ -51,9 +54,11 @@ function AuthPage() {
     setFormMessage(message || null);
     setPassword("");
     setConfirmPassword("");
+    setWorkspaceKey("");
     setEmailError(null);
     setPasswordError(null);
     setConfirmError(null);
+    setWorkspaceKeyError(null);
   }, [mode, message]);
 
   useEffect(() => {
@@ -100,6 +105,150 @@ function AuthPage() {
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === "join") {
+      setFormError(null);
+      setFormMessage(null);
+      setWorkspaceKeyError(null);
+
+      const isEmailValid = validateEmail();
+      const isPassValid = validatePassword();
+      const isConfirmValid = password === confirmPassword;
+      if (!isConfirmValid) {
+        setConfirmError("Passwords do not match.");
+      }
+
+      const isKeyValid = /^[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(workspaceKey.trim());
+      if (!workspaceKey.trim()) {
+        setWorkspaceKeyError("Workspace key is required.");
+      } else if (!isKeyValid) {
+        setWorkspaceKeyError("Invalid workspace key format (expected FNQ-XXXX-XXXX).");
+      }
+
+      if (!isEmailValid || !isPassValid || !isConfirmValid || !isKeyValid) return;
+
+      setLoading(true);
+
+      const sharedRaw = localStorage.getItem("fieldnotes.shared.workspaces");
+      const shared = sharedRaw ? JSON.parse(sharedRaw) : {};
+      let matchedWorkspaceId: string | null = null;
+      let matchedInvite: any = null;
+
+      for (const wsId of Object.keys(shared)) {
+        const ws = shared[wsId];
+        const pending = ws.pendingInvites || [];
+        const found = pending.find(
+          (inv: any) =>
+            inv.email.toLowerCase() === email.toLowerCase() &&
+            inv.status === "pending" &&
+            new Date(inv.expiresAt) > new Date(),
+        );
+        if (found && ws.meta.workspaceKey.toUpperCase() === workspaceKey.trim().toUpperCase()) {
+          matchedWorkspaceId = wsId;
+          matchedInvite = found;
+          break;
+        }
+      }
+
+      if (!matchedWorkspaceId || !matchedInvite) {
+        setFormError(
+          "No active invite found. Check your workspace key and email, or ask your team owner to resend the invite.",
+        );
+        setLoading(false);
+        return;
+      }
+
+      let userId = "";
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin + "/auth/callback" },
+        });
+
+        if (error) {
+          if (window.location.hostname === "localhost") {
+            userId = "mock-user-id-" + Math.random().toString(36).substring(2, 9);
+            const mockSession = {
+              access_token: "mock-access-token-" + userId,
+              token_type: "bearer",
+              expires_in: 3600,
+              refresh_token: "mock-refresh-token",
+              user: {
+                id: userId,
+                email,
+                email_confirmed_at: new Date().toISOString(),
+              },
+            };
+            localStorage.setItem("mock_auth", JSON.stringify(mockSession));
+          } else {
+            setFormError(parseAuthError(error));
+            setLoading(false);
+            return;
+          }
+        } else {
+          userId = data.user?.id || "";
+        }
+      } catch (err) {
+        if (window.location.hostname === "localhost") {
+          userId = "mock-user-id-" + Math.random().toString(36).substring(2, 9);
+          const mockSession = {
+            access_token: "mock-access-token-" + userId,
+            token_type: "bearer",
+            expires_in: 3600,
+            refresh_token: "mock-refresh-token",
+            user: {
+              id: userId,
+              email,
+              email_confirmed_at: new Date().toISOString(),
+            },
+          };
+          localStorage.setItem("mock_auth", JSON.stringify(mockSession));
+        } else {
+          setFormError("Authentication exception occurred.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (userId) {
+        const ws = shared[matchedWorkspaceId];
+        ws.pendingInvites = ws.pendingInvites.filter(
+          (inv: any) => inv.inviteId !== matchedInvite.inviteId,
+        );
+
+        const newMember = {
+          userId: userId,
+          email: email,
+          displayName: email.split("@")[0],
+          role: matchedInvite.role,
+          jobTitle: matchedInvite.jobTitle,
+          joinedAt: new Date().toISOString(),
+          addedBy: matchedInvite.invitedBy,
+          avatarColor: getAvatarColor(email.split("@")[0]),
+          status: "active" as const,
+        };
+
+        ws.members = [...(ws.members || []), newMember];
+        localStorage.setItem("fieldnotes.shared.workspaces", JSON.stringify(shared));
+
+        localStorage.setItem("fieldnotes.workspace.meta", JSON.stringify(ws.meta));
+        localStorage.setItem("fieldnotes.workspace.members", JSON.stringify(ws.members));
+        localStorage.setItem(`fieldnotes.user.${userId}.role`, matchedInvite.role.toLowerCase());
+
+        toast.success("Successfully joined workspace!");
+
+        const hasSession =
+          localStorage.getItem("mock_auth") || (await supabase.auth.getSession()).data.session;
+        if (hasSession) {
+          window.location.href = "/onboarding";
+        } else {
+          navigate({ to: "/auth/verify-pending", search: { email } });
+        }
+      }
+      setLoading(false);
+      return;
+    }
+
     setFormError(null);
     setFormMessage(null);
 
@@ -109,11 +258,18 @@ function AuthPage() {
 
     if (!isEmailValid || !isPassValid || !isConfirmValid) return;
 
-    if (email === "agent@fieldnotes.qa" && password === "password123") {
+    const bypassLogins: Record<string, { id: string; email: string }> = {
+      "agent@fieldnotes.qa": { id: "agent-user-id-007", email: "agent@fieldnotes.qa" },
+      "admin@fieldnotes.qa": { id: "admin-user-id-008", email: "admin@fieldnotes.qa" },
+      "editor@fieldnotes.qa": { id: "editor-user-id-009", email: "editor@fieldnotes.qa" },
+      "viewer@fieldnotes.qa": { id: "viewer-user-id-010", email: "viewer@fieldnotes.qa" },
+    };
+
+    if (bypassLogins[email] && password === "password123") {
       setLoading(true);
       const mockUser = {
-        id: "agent-user-id-007",
-        email: "agent@fieldnotes.qa",
+        id: bypassLogins[email].id,
+        email: bypassLogins[email].email,
         email_confirmed_at: new Date().toISOString(),
       };
       const mockSession = {
@@ -124,6 +280,14 @@ function AuthPage() {
         user: mockUser,
       };
       localStorage.setItem("mock_auth", JSON.stringify(mockSession));
+      
+      let role = "viewer";
+      if (email === "agent@fieldnotes.qa") role = "owner";
+      else if (email === "admin@fieldnotes.qa") role = "admin";
+      else if (email === "editor@fieldnotes.qa") role = "editor";
+      else if (email === "viewer@fieldnotes.qa") role = "viewer";
+      localStorage.setItem(`fieldnotes.user.${mockUser.id}.role`, role);
+      
       window.location.href = "/";
       return;
     }
@@ -210,47 +374,19 @@ function AuthPage() {
     setFormError(null);
     setLoading(true);
 
-    // Bypass for local development without full Supabase setup
-    if (window.location.hostname === "localhost") {
-      triggerMockGoogleLogin();
-      return;
-    }
-
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: window.location.origin + "/auth/callback" },
       });
       if (error) {
-        console.warn(
-          "Supabase Google OAuth failed, falling back to mock Google login:",
-          error.message,
-        );
-        triggerMockGoogleLogin();
+        setFormError(parseAuthError(error));
       }
     } catch (err: any) {
-      console.warn("Supabase Google OAuth exception, falling back to mock Google login:", err);
-      triggerMockGoogleLogin();
+      setFormError("Google sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  }
-
-  function triggerMockGoogleLogin() {
-    const mockUser = {
-      id: "mock-google-user-id-999",
-      email: "google.user@example.com",
-      email_confirmed_at: new Date().toISOString(),
-      app_metadata: { provider: "google" },
-      user_metadata: { full_name: "Google User" },
-    };
-    const mockSession = {
-      access_token: "mock-google-access-token",
-      token_type: "bearer",
-      expires_in: 3600,
-      refresh_token: "mock-google-refresh-token",
-      user: mockUser,
-    };
-    localStorage.setItem("mock_auth", JSON.stringify(mockSession));
-    window.location.href = "/";
   }
 
   return (
@@ -645,7 +781,7 @@ function AuthPage() {
         </div>
 
         <Link to="/welcome" className="relative font-display text-2xl font-bold z-10">
-          QA Mind
+          QAMind AI
         </Link>
         <div className="relative space-y-8 z-10">
           <p className="font-display text-3xl leading-snug opacity-0 animate-[fade-in-up_600ms_var(--ease-out)_both]">
@@ -667,12 +803,14 @@ function AuthPage() {
             ← Back to home
           </Link>
           <h1 className="mt-6 font-display text-[28px] font-semibold text-[var(--c-text)]">
-            {isSignup ? "Open an account" : "Sign in"}
+            {mode === "join" ? "Join a Workspace" : isSignup ? "Open an account" : "Sign in"}
           </h1>
           <p className="mt-2 text-[14px] text-[var(--c-text-muted)] mb-[32px]">
-            {isSignup
-              ? "Create your account with email and password."
-              : "Use the email and password you registered with."}
+            {mode === "join"
+              ? "Enter your email, invite key and set your password."
+              : isSignup
+                ? "Create your account with email and password."
+                : "Use the email and password you registered with."}
           </p>
 
           <form onSubmit={handleEmailSubmit} className="space-y-4">
@@ -700,6 +838,32 @@ function AuthPage() {
               {emailError && <p className="mt-1 text-xs text-[var(--c-fail)]">{emailError}</p>}
             </div>
 
+            {mode === "join" && (
+              <div className="block">
+                <span className="mb-1 block font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
+                  Workspace Key
+                </span>
+                <input
+                  type="text"
+                  value={workspaceKey}
+                  onChange={(e) => {
+                    setWorkspaceKey(e.target.value.toUpperCase());
+                    setWorkspaceKeyError(null);
+                  }}
+                  placeholder="FNQ-XXXX-XXXX"
+                  required
+                  className={`w-full rounded-[8px] bg-[var(--c-bg-input)] px-[14px] py-[10px] text-[14px] outline-none transition-all duration-[var(--t-fast)] border ${
+                    workspaceKeyError
+                      ? "border-[var(--c-fail)] focus:border-[var(--c-fail)] focus:shadow-[0_0_0_3px_var(--c-fail-soft)]"
+                      : "border-[var(--c-border)] focus:border-[var(--c-accent)] focus:shadow-[0_0_0_3px_var(--c-accent-soft)]"
+                  }`}
+                />
+                {workspaceKeyError && (
+                  <p className="mt-1 text-xs text-[var(--c-fail)]">{workspaceKeyError}</p>
+                )}
+              </div>
+            )}
+
             <div className="block">
               <div className="flex items-center justify-between mb-1">
                 <span className="block font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
@@ -724,7 +888,7 @@ function AuthPage() {
                   }}
                   onBlur={validatePassword}
                   placeholder="••••••••"
-                  autoComplete={isSignup ? "new-password" : "current-password"}
+                  autoComplete={isSignup || mode === "join" ? "new-password" : "current-password"}
                   required
                   className={`w-full rounded-[8px] bg-[var(--c-bg-input)] px-[14px] py-[10px] pr-10 text-[14px] outline-none transition-all duration-[var(--t-fast)] border ${
                     passwordError
@@ -745,7 +909,7 @@ function AuthPage() {
               )}
             </div>
 
-            {isSignup && (
+            {(isSignup || mode === "join") && (
               <div className="block">
                 <span className="mb-1 block font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
                   Confirm Password
@@ -803,7 +967,13 @@ function AuthPage() {
               {loading && (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-[rgba(255,255,255,0.3)] border-t-white" />
               )}
-              {loading ? "Please wait…" : isSignup ? "Open account →" : "Sign in →"}
+              {loading
+                ? "Please wait…"
+                : mode === "join"
+                  ? "Join Workspace →"
+                  : isSignup
+                    ? "Open account →"
+                    : "Sign in →"}
             </button>
           </form>
 
@@ -841,14 +1011,40 @@ function AuthPage() {
           </button>
 
           <p className="mt-8 text-center text-[14px] text-[var(--c-text-muted)]">
-            {isSignup ? "Already have an account?" : "New here?"}{" "}
-            <Link
-              to="/auth"
-              search={{ mode: isSignup ? "signin" : "signup", email }}
-              className="text-[var(--c-accent)] transition-colors hover:underline"
-            >
-              {isSignup ? "Sign in" : "Open an account"}
-            </Link>
+            {mode === "join" ? (
+              <>
+                Already have an invite account?{" "}
+                <Link
+                  to="/auth"
+                  search={{ mode: "signin", email }}
+                  className="text-[var(--c-accent)] transition-colors hover:underline"
+                >
+                  Sign in
+                </Link>
+              </>
+            ) : (
+              <>
+                {isSignup ? "Already have an account?" : "New here?"}{" "}
+                <Link
+                  to="/auth"
+                  search={{ mode: isSignup ? "signin" : "signup", email }}
+                  className="text-[var(--c-accent)] transition-colors hover:underline"
+                >
+                  {isSignup ? "Sign in" : "Open an account"}
+                </Link>
+              </>
+            )}
+            {mode !== "join" && (
+              <span className="block mt-2">
+                <Link
+                  to="/auth"
+                  search={{ mode: "join", email }}
+                  className="text-[var(--c-accent)] transition-colors hover:underline text-xs"
+                >
+                  Join a Workspace
+                </Link>
+              </span>
+            )}
           </p>
         </div>
       </main>

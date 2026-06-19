@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import {
   Upload,
@@ -47,9 +47,16 @@ import {
 } from "@/frontend/components/ui/dropdown-menu";
 import { exportToExcel } from "@/frontend/store/export";
 import { supabase } from "@/backend/supabase";
+import { PermissionGate, useAssertPermission, TokenCostLabel, can, getStoredRole } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_app/generate")({
-  head: () => ({ meta: [{ title: "Generate Tests — QA Mind" }] }),
+  beforeLoad: () => {
+    const role = getStoredRole();
+    if (!can(role, "suite:create")) {
+      throw redirect({ to: "/" });
+    }
+  },
+  head: () => ({ meta: [{ title: "Generate Tests — QAMind AI" }] }),
   component: GeneratePage,
 });
 
@@ -392,6 +399,7 @@ function getTestCasesForModule(moduleName: string): Partial<TestCase>[] {
 /* ─── Main Component ───────────────────────────────────────── */
 
 function GeneratePage() {
+  const assertPerm = useAssertPermission();
   const [featureDescription, setFeatureDescription] = useState("");
   const [inputTab, setInputTab] = useState<string>("text");
   const [text, setText] = useState("");
@@ -510,6 +518,10 @@ function GeneratePage() {
   async function generate() {
     if (!selectedProjectId) {
       toast.error("Please select a project first.");
+      return;
+    }
+
+    if (!assertPerm("tests:generate")) {
       return;
     }
 
@@ -979,7 +991,7 @@ ${systemLogs}`;
               disabled={!hasInput()}
               className="inline-flex items-center gap-2 rounded-[8px] bg-[var(--c-text)] px-[24px] py-[12px] text-[14px] font-medium text-[var(--c-bg)] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:opacity-90 hover:shadow-[var(--shadow-md)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
             >
-              Generate test cases
+              <TokenCostLabel baseText="Generate test cases" />
             </button>
           )}
         </div>

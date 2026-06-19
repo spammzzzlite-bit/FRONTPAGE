@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Layers,
@@ -32,13 +32,21 @@ import { usePanel } from "@/frontend/components/PanelContext";
 import { EmptyState } from "@/frontend/components/EmptyState";
 import { PageHeader, Modal } from "./_app.projects";
 import { toast } from "./_app";
+import { useAssertPermission, TokenCostLabel, can, getStoredRole } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_app/suites")({
-  head: () => ({ meta: [{ title: "Test Suites — QA Mind" }] }),
+  beforeLoad: () => {
+    const role = getStoredRole();
+    if (!can(role, "suite:create")) {
+      throw redirect({ to: "/" });
+    }
+  },
+  head: () => ({ meta: [{ title: "Test Suites — QAMind AI" }] }),
   component: SuitesPage,
 });
 
 function SuitesPage() {
+  const assertPerm = useAssertPermission();
   const [projects] = useProjects();
   const [suites] = useSuites();
   const [testCases] = useTestCases();
@@ -49,6 +57,7 @@ function SuitesPage() {
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim() || !newProjectId) return;
+    if (!assertPerm("suite:create")) return;
     if (!deductTokenAction(`Create test suite "${newName.trim()}"`)) return;
     const s = createSuite(newProjectId, newName.trim());
     setNewName("");
@@ -79,7 +88,7 @@ function SuitesPage() {
             className="rounded-full bg-[var(--c-text)] px-[16px] py-[8px] text-[13px] font-medium text-[var(--c-bg)] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:opacity-90 hover:shadow-[var(--shadow-md)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
             disabled={projects.length === 0}
           >
-            + New suite
+            <TokenCostLabel baseText="+ New suite" />
           </button>
         }
       />
@@ -176,7 +185,7 @@ function SuitesPage() {
                 type="submit"
                 className="rounded-[8px] bg-[var(--c-text)] px-[16px] py-[8px] text-[13px] font-medium text-[var(--c-bg)] transition-all hover:opacity-90"
               >
-                Create suite
+                <TokenCostLabel baseText="Create suite" />
               </button>
             </div>
           </form>
@@ -195,6 +204,7 @@ function SuiteRow({
   projectName: string;
   testCases: TestCase[];
 }) {
+  const assertPerm = useAssertPermission();
   const [expanded, setExpanded] = useState(false);
   const [showAddCase, setShowAddCase] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -251,12 +261,13 @@ function SuiteRow({
           </button>
           <button
             onClick={() => {
+              if (!assertPerm("tests:run")) return;
               if (testCases.length === 0) {
                 toast.error("Add at least one test case to this suite first");
                 return;
               }
-              const run = createMockRun(suite.projectId, suite.id);
               if (!deductTokenAction(`Run suite "${suite.name}"`)) return;
+              const run = createMockRun(suite.projectId, suite.id);
               toast.success(`Run ${run.id} completed`);
             }}
             className="p-2 text-[var(--c-text-muted)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-soft)] rounded-[6px] transition-colors"
