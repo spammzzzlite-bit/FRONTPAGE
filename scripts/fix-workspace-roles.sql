@@ -108,7 +108,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.ensure_user_workspace_access() TO authenticated;
 
--- 2) Immediate fix for Perfect QA Services accounts
+-- 2) Immediate fix for Perfect QA Services accounts (case-insensitive)
 UPDATE workspace_members
 SET role = 'owner'
 WHERE lower(email) IN (
@@ -116,6 +116,16 @@ WHERE lower(email) IN (
   'rahul@perfectqsservices.com'
 )
 AND status = 'active';
+
+-- Also match Google sign-in casing variants
+UPDATE workspace_members
+SET role = 'owner'
+WHERE status = 'active'
+  AND role <> 'owner'
+  AND (
+    lower(email) LIKE 'sharma@%perfectqsservices.com'
+    OR lower(email) LIKE 'rahul@%perfectqsservices.com'
+  );
 
 UPDATE workspaces w
 SET owner_id = wm.user_id,
