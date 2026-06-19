@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from "react";
 import { z } from "zod";
 import { supabase } from "@/backend/supabase";
 import { useAuth } from "@/frontend/store/store";
+import { toast } from "sonner";
+import { PendingInvitesModal, type PendingInvite } from "@/frontend/components/PendingInvitesModal";
 
 const search = z.object({ code: z.string().optional() });
 
@@ -22,17 +24,79 @@ function AuthCallbackPage() {
   const [loading, setLoading] = useState(false);
   const exchanged = useRef(false);
 
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [showInvitesModal, setShowInvitesModal] = useState(false);
+
+  const handlePostAuth = async (user: any) => {
+    if (!user) return navigate({ to: "/" });
+    const { data: invites } = await supabase
+      .from('workspace_members')
+      .select('id, workspace_id, role, workspaces(name, workspace_key)')
+      .eq('email', user.email)
+      .eq('status', 'pending');
+
+    if (invites && invites.length > 0) {
+      setPendingInvites(invites as any);
+      setShowInvitesModal(true);
+    } else {
+      navigate({ to: "/" });
+    }
+  };
+
+  const handleJoinInvite = async (invite: PendingInvite) => {
+    setLoading(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      if (!user) throw new Error("No user session");
+
+      await supabase
+        .from('workspace_members')
+        .update({
+          user_id: user.id,
+          status: 'active',
+          joined_at: new Date().toISOString()
+        })
+        .eq('id', invite.id);
+
+      const { data: activeWorkspaces } = await supabase
+        .from('workspace_members')
+        .select('id')
+        .eq('email', user.email)
+        .eq('status', 'active')
+        .neq('id', invite.id);
+
+      const isFirstTime = !activeWorkspaces || activeWorkspaces.length === 0;
+
+      setShowInvitesModal(false);
+      if (isFirstTime) {
+        navigate({ to: "/onboarding" });
+      } else {
+        navigate({ to: "/" });
+      }
+    } catch (err) {
+      toast.error("Failed to join workspace.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateOwn = () => {
+    setShowInvitesModal(false);
+    navigate({ to: "/onboarding" });
+  };
+
   useEffect(() => {
     if (!code || exchanged.current) return;
     exchanged.current = true;
 
     async function exchange() {
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(code!);
+        const { error, data } = await supabase.auth.exchangeCodeForSession(code!);
         if (error) throw error;
         setStatus("success");
-        setTimeout(() => {
-          navigate({ to: "/" });
+        setTimeout(async () => {
+          await handlePostAuth(data.session?.user);
         }, 1500);
       } catch (err) {
         console.error(err);
@@ -44,7 +108,7 @@ function AuthCallbackPage() {
 
   useEffect(() => {
     if (!code && auth.user?.email_confirmed_at) {
-      navigate({ to: "/" });
+      handlePostAuth(auth.user);
     }
   }, [code, auth.user, navigate]);
 
@@ -137,6 +201,15 @@ function AuthCallbackPage() {
           </div>
         )}
       </div>
+
+      {showInvitesModal && (
+        <PendingInvitesModal
+          invites={pendingInvites}
+          onJoin={handleJoinInvite}
+          onCreateOwn={handleCreateOwn}
+          isLoading={loading}
+        />
+      )}
     </div>
   );
 }

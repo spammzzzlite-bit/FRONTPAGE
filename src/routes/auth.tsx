@@ -6,6 +6,7 @@ import { supabase } from "@/backend/supabase";
 import { isValidEmail, parseAuthError } from "@/frontend/store/auth";
 import { useAuth, getAvatarColor } from "@/frontend/store/store";
 import { toast } from "sonner";
+import { PendingInvitesModal, type PendingInvite } from "@/frontend/components/PendingInvitesModal";
 
 const search = z.object({
   mode: z.enum(["signin", "signup", "join"]).optional(),
@@ -47,6 +48,68 @@ function AuthPage() {
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [showInvitesModal, setShowInvitesModal] = useState(false);
+
+  const handlePostAuth = async (user: any) => {
+    if (!user) return navigate({ to: "/" });
+    const { data: invites } = await supabase
+      .from('workspace_members')
+      .select('id, workspace_id, role, workspaces(name, workspace_key)')
+      .eq('email', user.email)
+      .eq('status', 'pending');
+
+    if (invites && invites.length > 0) {
+      setPendingInvites(invites as any);
+      setShowInvitesModal(true);
+    } else {
+      navigate({ to: "/" });
+    }
+  };
+
+  const handleJoinInvite = async (invite: PendingInvite) => {
+    setLoading(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      if (!user) throw new Error("No user session");
+
+      await supabase
+        .from('workspace_members')
+        .update({
+          user_id: user.id,
+          status: 'active',
+          joined_at: new Date().toISOString()
+        })
+        .eq('id', invite.id);
+
+      const { data: activeWorkspaces } = await supabase
+        .from('workspace_members')
+        .select('id')
+        .eq('email', user.email)
+        .eq('status', 'active')
+        .neq('id', invite.id);
+
+      const isFirstTime = !activeWorkspaces || activeWorkspaces.length === 0;
+
+      setShowInvitesModal(false);
+      if (isFirstTime) {
+        navigate({ to: "/onboarding" });
+      } else {
+        navigate({ to: "/" });
+      }
+    } catch (err) {
+      toast.error("Failed to join workspace.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateOwn = () => {
+    setShowInvitesModal(false);
+    navigate({ to: "/onboarding" });
+  };
 
   useEffect(() => {
     setIsSignup(mode === "signup");
@@ -255,7 +318,7 @@ function AuthPage() {
         } else {
           // Case A: New user created
           if (data.session) {
-            navigate({ to: "/" });
+            await handlePostAuth(data.session.user);
           } else {
             navigate({ to: "/auth/verify-pending", search: { email } });
           }
@@ -286,7 +349,7 @@ function AuthPage() {
             navigate({ to: "/auth/verify-pending", search: { email } });
           } else {
             // Case A: Success
-            navigate({ to: "/" });
+            await handlePostAuth(data.user);
           }
         }
       }
@@ -975,6 +1038,15 @@ function AuthPage() {
           </p>
         </div>
       </main>
+      
+      {showInvitesModal && (
+        <PendingInvitesModal
+          invites={pendingInvites}
+          onJoin={handleJoinInvite}
+          onCreateOwn={handleCreateOwn}
+          isLoading={loading}
+        />
+      )}
     </div>
   );
 }

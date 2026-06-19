@@ -1074,9 +1074,7 @@ function Masthead({ projects, activeProject }: { projects: any[]; activeProject?
 
   const isGoogleUser =
     auth.user?.app_metadata?.provider === "google" ||
-    auth.user?.identities?.some((id) => id.provider === "google") ||
-    auth.user?.email === "google.user@email.com" ||
-    auth.user?.email === "google.user@example.com";
+    auth.user?.identities?.some((id) => id.provider === "google");
 
   return (
     <header className="border-b-[2px] border-[var(--c-text)] pb-6 mt-[20px]">
