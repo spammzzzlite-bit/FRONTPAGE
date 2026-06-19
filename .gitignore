@@ -19,6 +19,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# VPS scripts with production secrets (keep local only)
+scripts/vps-rebuild-env.sh
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
