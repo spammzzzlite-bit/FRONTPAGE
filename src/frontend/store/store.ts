@@ -6,7 +6,10 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/backend/supabase";
 import { clearUserSessionData, qamindStorage } from "@/lib/storage-keys";
 import type { Session, User } from "@supabase/supabase-js";
-import { syncWorkspaceFromSupabase, fetchWorkspaceData } from "./supabase-sync";
+// NOTE: supabase-sync.ts is NOT imported at the top level to avoid a
+// circular dependency (supabase-sync.ts → store.ts → supabase-sync.ts)
+// that causes ReferenceErrors in Vite/Rollup production builds.
+// fetchWorkspaceData is dynamically imported inside initializeStores().
 import { provisionWorkspaceForNewUser, ensureUserWorkspaceAccess } from "./workspace-provision";
 
 // ─── User-scoped localStorage stores ──────────────────────
@@ -1557,6 +1560,8 @@ export async function initializeStores(userId: string, userEmail?: string, userN
       });
       
       // Fetch workspace data from Supabase directly
+      // Dynamic import to avoid circular dependency (supabase-sync → store)
+      const { fetchWorkspaceData } = await import("./supabase-sync");
       await fetchWorkspaceData(meta.workspaceId);
       
       // Also fetch workspace members from Supabase
