@@ -56,10 +56,10 @@ function AuthPage() {
   const handlePostAuth = async (user: any) => {
     if (!user) return navigate({ to: "/dashboard" });
     const { data: invites } = await supabase
-      .from('workspace_members')
-      .select('id, workspace_id, role, workspaces(name, workspace_key)')
-      .eq('email', user.email)
-      .eq('status', 'pending');
+      .from("workspace_members")
+      .select("id, workspace_id, role, workspaces(name, workspace_key)")
+      .eq("email", user.email)
+      .eq("status", "pending");
 
     if (invites && invites.length > 0) {
       setPendingInvites(invites as any);
@@ -77,20 +77,20 @@ function AuthPage() {
       if (!user) throw new Error("No user session");
 
       await supabase
-        .from('workspace_members')
+        .from("workspace_members")
         .update({
           user_id: user.id,
-          status: 'active',
-          joined_at: new Date().toISOString()
+          status: "active",
+          joined_at: new Date().toISOString(),
         })
-        .eq('id', invite.id);
+        .eq("id", invite.id);
 
       const { data: activeWorkspaces } = await supabase
-        .from('workspace_members')
-        .select('id')
-        .eq('email', user.email)
-        .eq('status', 'active')
-        .neq('id', invite.id);
+        .from("workspace_members")
+        .select("id")
+        .eq("email", user.email)
+        .eq("status", "active")
+        .neq("id", invite.id);
 
       const isFirstTime = !activeWorkspaces || activeWorkspaces.length === 0;
 
@@ -199,13 +199,15 @@ function AuthPage() {
         // Find matching pending invite in Supabase
         const { data: pendingInvite, error: inviteError } = await supabase
           .from("workspace_members")
-          .select(`
+          .select(
+            `
             workspace_id,
             role,
             workspaces!inner (
               workspace_key
             )
-          `)
+          `,
+          )
           .eq("email", email)
           .eq("status", "pending")
           .eq("workspaces.workspace_key", workspaceKey.trim().toUpperCase())
@@ -254,7 +256,7 @@ function AuthPage() {
           .from("workspace_members")
           .update({
             user_id: userId,
-            status: "active"
+            status: "active",
           })
           .eq("email", email)
           .eq("workspace_id", matchedWorkspaceId);
@@ -280,8 +282,6 @@ function AuthPage() {
     const isConfirmValid = isSignup ? validateConfirmPassword() : true;
 
     if (!isEmailValid || !isPassValid || !isConfirmValid) return;
-
-
 
     setLoading(true);
     try {
@@ -374,7 +374,8 @@ function AuthPage() {
         setFormError(parseAuthError(error));
       }
     } catch (err: any) {
-      setFormError("Google sign-in failed. Please try again.");
+      console.error("Google Auth Error:", err);
+      setFormError(`Google sign-in failed: ${err?.message || "Please try again."}`);
     } finally {
       setLoading(false);
     }
@@ -978,7 +979,7 @@ function AuthPage() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-[8px] border-[1.5px] border-[var(--c-border)] bg-[var(--c-bg-card)] py-[10px] text-[14px] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:border-[var(--c-border-strong)] hover:bg-[var(--c-bg-hover)] disabled:opacity-60 disabled:hover:-translate-y-0"
+            className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] border-[1.5px] border-[var(--c-border)] bg-[var(--c-bg-card)] py-[10px] text-[14px] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:border-[var(--c-border-strong)] hover:bg-[var(--c-bg-hover)] disabled:opacity-60 disabled:hover:-translate-y-0"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
               <path
@@ -1039,7 +1040,7 @@ function AuthPage() {
           </p>
         </div>
       </main>
-      
+
       {showInvitesModal && (
         <PendingInvitesModal
           invites={pendingInvites}

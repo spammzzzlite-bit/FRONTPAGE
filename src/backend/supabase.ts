@@ -139,14 +139,38 @@ export type Database = {
         };
       };
       project_files: {
-        Row: { id: string; project_id: string; name: string; size: number; added_at: string; };
-        Insert: { id?: string; project_id: string; name: string; size: number; added_at?: string; };
-        Update: { id?: string; project_id?: string; name?: string; size?: number; added_at?: string; };
+        Row: { id: string; project_id: string; name: string; size: number; added_at: string };
+        Insert: { id?: string; project_id: string; name: string; size: number; added_at?: string };
+        Update: {
+          id?: string;
+          project_id?: string;
+          name?: string;
+          size?: number;
+          added_at?: string;
+        };
       };
       test_suites: {
-        Row: { id: string; project_id: string; workspace_id: string; name: string; created_at: string; };
-        Insert: { id?: string; project_id: string; workspace_id: string; name: string; created_at?: string; };
-        Update: { id?: string; project_id?: string; workspace_id?: string; name?: string; created_at?: string; };
+        Row: {
+          id: string;
+          project_id: string;
+          workspace_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          workspace_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          workspace_id?: string;
+          name?: string;
+          created_at?: string;
+        };
       };
       test_cases: {
         Row: {
@@ -161,7 +185,15 @@ export type Database = {
           last_run_status: "passed" | "failed" | "skipped" | null;
           last_run_id: string | null;
           tags: string[];
-          type: "functional" | "regression" | "smoke" | "performance" | "security" | "integration" | "e2e" | null;
+          type:
+            | "functional"
+            | "regression"
+            | "smoke"
+            | "performance"
+            | "security"
+            | "integration"
+            | "e2e"
+            | null;
           assigned_to: string | null;
           requirement_id: string | null;
           source_recording_id: string | null;
@@ -180,7 +212,15 @@ export type Database = {
           last_run_status?: "passed" | "failed" | "skipped" | null;
           last_run_id?: string | null;
           tags?: string[];
-          type?: "functional" | "regression" | "smoke" | "performance" | "security" | "integration" | "e2e" | null;
+          type?:
+            | "functional"
+            | "regression"
+            | "smoke"
+            | "performance"
+            | "security"
+            | "integration"
+            | "e2e"
+            | null;
           assigned_to?: string | null;
           requirement_id?: string | null;
           source_recording_id?: string | null;
@@ -199,7 +239,15 @@ export type Database = {
           last_run_status?: "passed" | "failed" | "skipped" | null;
           last_run_id?: string | null;
           tags?: string[];
-          type?: "functional" | "regression" | "smoke" | "performance" | "security" | "integration" | "e2e" | null;
+          type?:
+            | "functional"
+            | "regression"
+            | "smoke"
+            | "performance"
+            | "security"
+            | "integration"
+            | "e2e"
+            | null;
           assigned_to?: string | null;
           requirement_id?: string | null;
           source_recording_id?: string | null;
@@ -249,9 +297,30 @@ export type Database = {
         };
       };
       test_run_results: {
-        Row: { id: string; run_id: string; test_case_id: string; status: "passed" | "failed" | "skipped"; duration: number; error_message: string | null; };
-        Insert: { id?: string; run_id: string; test_case_id: string; status: "passed" | "failed" | "skipped"; duration?: number; error_message?: string | null; };
-        Update: { id?: string; run_id?: string; test_case_id?: string; status?: "passed" | "failed" | "skipped"; duration?: number; error_message?: string | null; };
+        Row: {
+          id: string;
+          run_id: string;
+          test_case_id: string;
+          status: "passed" | "failed" | "skipped";
+          duration: number;
+          error_message: string | null;
+        };
+        Insert: {
+          id?: string;
+          run_id: string;
+          test_case_id: string;
+          status: "passed" | "failed" | "skipped";
+          duration?: number;
+          error_message?: string | null;
+        };
+        Update: {
+          id?: string;
+          run_id?: string;
+          test_case_id?: string;
+          status?: "passed" | "failed" | "skipped";
+          duration?: number;
+          error_message?: string | null;
+        };
       };
       bugs: {
         Row: {
@@ -307,14 +376,80 @@ export type Database = {
         };
       };
       sprints: {
-        Row: { id: string; project_id: string; workspace_id: string; name: string; goal_description: string | null; status: "Upcoming" | "Active" | "Completed" | null; start_date: string | null; end_date: string | null; story_points_allocated: number; sprint_lead_id: string | null; sprint_members: string[]; sprint_developers: string[]; sprint_testers: string[]; created_at: string; };
-        Insert: { id?: string; project_id: string; workspace_id: string; name: string; goal_description?: string | null; status?: "Upcoming" | "Active" | "Completed" | null; start_date?: string | null; end_date?: string | null; story_points_allocated?: number; sprint_lead_id?: string | null; sprint_members?: string[]; sprint_developers?: string[]; sprint_testers?: string[]; created_at?: string; };
-        Update: { id?: string; project_id?: string; workspace_id?: string; name?: string; goal_description?: string | null; status?: "Upcoming" | "Active" | "Completed" | null; start_date?: string | null; end_date?: string | null; story_points_allocated?: number; sprint_lead_id?: string | null; sprint_members?: string[]; sprint_developers?: string[]; sprint_testers?: string[]; created_at?: string; };
+        Row: {
+          id: string;
+          project_id: string;
+          workspace_id: string;
+          name: string;
+          goal_description: string | null;
+          status: "Upcoming" | "Active" | "Completed" | null;
+          start_date: string | null;
+          end_date: string | null;
+          story_points_allocated: number;
+          sprint_lead_id: string | null;
+          sprint_members: string[];
+          sprint_developers: string[];
+          sprint_testers: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          workspace_id: string;
+          name: string;
+          goal_description?: string | null;
+          status?: "Upcoming" | "Active" | "Completed" | null;
+          start_date?: string | null;
+          end_date?: string | null;
+          story_points_allocated?: number;
+          sprint_lead_id?: string | null;
+          sprint_members?: string[];
+          sprint_developers?: string[];
+          sprint_testers?: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          workspace_id?: string;
+          name?: string;
+          goal_description?: string | null;
+          status?: "Upcoming" | "Active" | "Completed" | null;
+          start_date?: string | null;
+          end_date?: string | null;
+          story_points_allocated?: number;
+          sprint_lead_id?: string | null;
+          sprint_members?: string[];
+          sprint_developers?: string[];
+          sprint_testers?: string[];
+          created_at?: string;
+        };
       };
       profiles: {
-        Row: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; onboarding_complete: boolean | null; created_at: string; };
-        Insert: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; onboarding_complete?: boolean | null; created_at?: string; };
-        Update: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; onboarding_complete?: boolean | null; created_at?: string; };
+        Row: {
+          id: string;
+          full_name: string | null;
+          email: string | null;
+          avatar_url: string | null;
+          onboarding_complete: boolean | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name?: string | null;
+          email?: string | null;
+          avatar_url?: string | null;
+          onboarding_complete?: boolean | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          full_name?: string | null;
+          email?: string | null;
+          avatar_url?: string | null;
+          onboarding_complete?: boolean | null;
+          created_at?: string;
+        };
       };
     };
   };

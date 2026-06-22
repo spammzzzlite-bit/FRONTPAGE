@@ -87,8 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "QAMind AI" },
       {
         property: "og:description",
-        content:
-          "Quality assurance, with a mind of its own. Tests that think.",
+        content: "Quality assurance, with a mind of its own. Tests that think.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -96,8 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "QAMind AI" },
       {
         name: "twitter:description",
-        content:
-          "Quality assurance, with a mind of its own. Tests that think.",
+        content: "Quality assurance, with a mind of its own. Tests that think.",
       },
       {
         property: "og:image",

@@ -1873,12 +1873,16 @@ function ProgressBar({
 
 // ─── Main OnboardingFlow ──────────────────────────────────────────────────────
 
-export default function OnboardingFlow({ onComplete, onSkip, onNavigate, currentRole: propRole }: Props) {
+export default function OnboardingFlow({
+  onComplete,
+  onSkip,
+  onNavigate,
+  currentRole: propRole,
+}: Props) {
   const auth = useAuth();
   const [, setSettings] = useSettings();
   const { currentUser } = useUserStore();
   const currentRole = (propRole || currentUser?.role || "viewer").toLowerCase();
-
 
   const [workspaceMeta, updateWorkspaceMeta] = useWorkspaceMeta();
   const [members, updateActiveWorkspaceMembers] = useWorkspaceMembersList();
@@ -1980,13 +1984,13 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
           .from("workspaces")
           .update({ name: workspaceName })
           .eq("id", workspaceMeta.workspaceId);
-          
+
         updateWorkspaceMeta({
           ...workspaceMeta,
-          workspaceName: workspaceName
+          workspaceName: workspaceName,
         });
       }
-      
+
       // Update member job title in Supabase
       await supabase
         .from("workspace_members")
@@ -2092,9 +2096,7 @@ export default function OnboardingFlow({ onComplete, onSkip, onNavigate, current
         ? {
             workspaceName,
             role: selectedRole ?? "qa_engineer",
-            archetype: selectedRole
-              ? ARCHETYPES[selectedRole].title
-              : ARCHETYPES.qa_engineer.title,
+            archetype: selectedRole ? ARCHETYPES[selectedRole].title : ARCHETYPES.qa_engineer.title,
           }
         : undefined,
     );

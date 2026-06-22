@@ -278,7 +278,9 @@ function Dashboard() {
         return (
           <div className="w-full max-w-md border-2 border-dashed border-[var(--c-border)] bg-[var(--c-bg-card)] p-10 text-center">
             <FolderPlus className="mx-auto h-10 w-10 text-[var(--c-text-muted)]" />
-            <h2 className="mt-6 font-display text-3xl text-[var(--c-text)] font-semibold">No projects yet.</h2>
+            <h2 className="mt-6 font-display text-3xl text-[var(--c-text)] font-semibold">
+              No projects yet.
+            </h2>
             <p className="mt-2 text-sm text-[var(--c-text-muted)] leading-relaxed">
               Start by creating your first project to scope your test coverage.
             </p>
@@ -294,7 +296,9 @@ function Dashboard() {
         return (
           <div className="w-full max-w-md border-2 border-dashed border-[var(--c-border)] bg-[var(--c-bg-card)] p-10 text-center">
             <FolderClosed className="mx-auto h-10 w-10 text-[var(--c-text-muted)]" />
-            <h2 className="mt-6 font-display text-3xl text-[var(--c-text)] font-semibold">No projects yet.</h2>
+            <h2 className="mt-6 font-display text-3xl text-[var(--c-text)] font-semibold">
+              No projects yet.
+            </h2>
             <p className="mt-2 text-sm text-[var(--c-text-muted)] leading-relaxed">
               Your team hasn't created any projects. Ask your Admin or Owner to get started.
             </p>
@@ -304,9 +308,12 @@ function Dashboard() {
         return (
           <div className="w-full max-w-md border-2 border-dashed border-[var(--c-border)] bg-[var(--c-bg-card)] p-10 text-center">
             <FolderClosed className="mx-auto h-10 w-10 text-[var(--c-text-muted)]" />
-            <h2 className="mt-6 font-display text-3xl text-[var(--c-text)] font-semibold">Nothing to monitor yet.</h2>
+            <h2 className="mt-6 font-display text-3xl text-[var(--c-text)] font-semibold">
+              Nothing to monitor yet.
+            </h2>
             <p className="mt-2 text-sm text-[var(--c-text-muted)] leading-relaxed">
-              No projects have been created in this workspace. Check back when your team has set up their first project.
+              No projects have been created in this workspace. Check back when your team has set up
+              their first project.
             </p>
           </div>
         );
@@ -316,9 +323,7 @@ function Dashboard() {
     return (
       <div className="mx-auto max-w-7xl space-y-10">
         <Masthead projects={projects} activeProject={activeProject} />
-        <div className="flex items-center justify-center py-16">
-          {renderEmptyState()}
-        </div>
+        <div className="flex items-center justify-center py-16">{renderEmptyState()}</div>
         <DetailedNewProjectModal open={showNewProject} onClose={() => setShowNewProject(false)} />
       </div>
     );
@@ -438,16 +443,26 @@ function Dashboard() {
         const actions = [];
         if (can(role, "project:create")) {
           actions.push(
-            { label: "Generate Tests", to: "/generate", icon: Sparkles, animate: isMounted && showGenerateCta },
+            {
+              label: "Generate Tests",
+              to: "/generate",
+              icon: Sparkles,
+              animate: isMounted && showGenerateCta,
+            },
             { label: "New Test Plan", to: "/planner", icon: ClipboardList },
             { label: "View Reports", to: "/reports", icon: BookOpen },
-            { label: "Manage Team", to: "/settings", hash: "members", icon: Users }
+            { label: "Manage Team", to: "/settings", hash: "members", icon: Users },
           );
         } else if (can(role, "suite:create") && !can(role, "project:create")) {
           actions.push(
-            { label: "Generate Tests", to: "/generate", icon: Sparkles, animate: isMounted && showGenerateCta },
+            {
+              label: "Generate Tests",
+              to: "/generate",
+              icon: Sparkles,
+              animate: isMounted && showGenerateCta,
+            },
             { label: "New Test Plan", to: "/planner", icon: ClipboardList },
-            { label: "Run Tests", to: "/runs", icon: Play }
+            { label: "Run Tests", to: "/runs", icon: Play },
           );
         }
 
@@ -616,8 +631,10 @@ function Dashboard() {
               : lastProjectRun.status === "passed"
                 ? "bg-sage"
                 : "bg-rust";
-            const activeMembers = members.filter((m) =>
-              ["owner", "admin", "editor"].includes((m.role || "").toLowerCase()) && m.status === "active"
+            const activeMembers = members.filter(
+              (m) =>
+                ["owner", "admin", "editor"].includes((m.role || "").toLowerCase()) &&
+                m.status === "active",
             );
 
             return (
@@ -687,7 +704,7 @@ function Dashboard() {
                         ? `${lastProjectRun.id} · ${formatRelativeTime(lastProjectRun.startedAt)}`
                         : "Never run"}
                     </p>
-                    
+
                     {/* Active Members Indicator (Owner / Admin only) */}
                     {can(role, "project:create") && activeMembers.length > 0 && (
                       <div className="absolute right-0 flex items-center -space-x-1.5 pointer-events-none group-hover:opacity-0 transition-opacity duration-200">
@@ -923,7 +940,9 @@ function ProjectSwitcher({
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <ArrowRight className={`h-4 w-4 transition-transform duration-[var(--t-fast)] ${open ? "rotate-[-90deg]" : "rotate-90"}`} />
+        <ArrowRight
+          className={`h-4 w-4 transition-transform duration-[var(--t-fast)] ${open ? "rotate-[-90deg]" : "rotate-90"}`}
+        />
       </button>
 
       {/* Dropdown panel */}
@@ -935,7 +954,9 @@ function ProjectSwitcher({
           style={{ maxHeight: "260px", overflowY: "auto" }}
         >
           <div className="px-3 pt-3 pb-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--c-text-dim)]">Switch project</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--c-text-dim)]">
+              Switch project
+            </p>
           </div>
           {projects.map((p: any) => {
             const isActive = p.id === activeProject.id;
@@ -959,7 +980,9 @@ function ProjectSwitcher({
                 />
                 <span className="flex-1 truncate font-medium">{p.name}</span>
                 {isActive && (
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-[var(--c-accent)] opacity-70">active</span>
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-[var(--c-accent)] opacity-70">
+                    active
+                  </span>
                 )}
               </button>
             );
@@ -1013,11 +1036,23 @@ function Masthead({ projects, activeProject }: { projects: any[]; activeProject?
             const wsName = workspaceMeta?.workspaceName || "Workspace";
             switch (role) {
               case "owner":
-                return <div className="text-[12px] text-[var(--c-text-muted)] mt-1.5 font-mono">Command Center &middot; {wsName}</div>;
+                return (
+                  <div className="text-[12px] text-[var(--c-text-muted)] mt-1.5 font-mono">
+                    Command Center &middot; {wsName}
+                  </div>
+                );
               case "admin":
-                return <div className="text-[12px] text-[var(--c-text-muted)] mt-1.5 font-mono">Operations View &middot; {wsName}</div>;
+                return (
+                  <div className="text-[12px] text-[var(--c-text-muted)] mt-1.5 font-mono">
+                    Operations View &middot; {wsName}
+                  </div>
+                );
               case "editor":
-                return <div className="text-[12px] text-[var(--c-text-muted)] mt-1.5 font-mono">Field View &middot; {wsName}</div>;
+                return (
+                  <div className="text-[12px] text-[var(--c-text-muted)] mt-1.5 font-mono">
+                    Field View &middot; {wsName}
+                  </div>
+                );
               case "viewer":
               default:
                 return (
@@ -1071,7 +1106,6 @@ function StatCard({
   error?: boolean;
   onRetry?: () => void;
 }) {
-
   const animatedValue = useCountUp(value);
   const [sparklineData, setSparklineData] = useState<
     { value: number | null; label: string }[] | null
@@ -1200,7 +1234,8 @@ function TokenBalanceCard() {
   const isZero = balance === 0;
   const isLow = balance < 20 && balance > 0;
 
-  let cardStyle = "border-[var(--c-border)] bg-[var(--c-bg-card)] hover:border-[var(--c-border-strong)]";
+  let cardStyle =
+    "border-[var(--c-border)] bg-[var(--c-bg-card)] hover:border-[var(--c-border-strong)]";
   if (isZero) {
     cardStyle = "stat-card-failed";
   } else if (isLow) {

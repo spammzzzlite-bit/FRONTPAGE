@@ -53,72 +53,82 @@
   --color-rust: var(--rust);
   --color-sage: var(--sage);
   /* ─── Brand Typefaces ─── */
-  --font-display: 'Bricolage Grotesque', sans-serif;
-  --font-body: 'Hanken Grotesk', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-display: "Bricolage Grotesque", sans-serif;
+  --font-body: "Hanken Grotesk", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
   /* Legacy aliases — keep existing TSX classes working */
-  --font-serif: 'Bricolage Grotesque', sans-serif;
-  --font-sans: 'Hanken Grotesk', sans-serif;
+  --font-serif: "Bricolage Grotesque", sans-serif;
+  --font-sans: "Hanken Grotesk", sans-serif;
 
   /* ─── Typography Scale ─── */
-  --text-display: 60px; --lh-display: 1.05; --ls-display: -0.025em;
-  --text-heading: 44px; --lh-heading: 1.15; --ls-heading: -0.034em;
-  --text-subhead: 26px; --lh-subhead: 1.3;  --ls-subhead: 0;
-  --text-body: 16px;    --lh-body: 1.6;     --ls-body: 0;
-  --text-label: 13px;   --lh-label: 1;      --ls-label: 0.125em;
+  --text-display: 60px;
+  --lh-display: 1.05;
+  --ls-display: -0.025em;
+  --text-heading: 44px;
+  --lh-heading: 1.15;
+  --ls-heading: -0.034em;
+  --text-subhead: 26px;
+  --lh-subhead: 1.3;
+  --ls-subhead: 0;
+  --text-body: 16px;
+  --lh-body: 1.6;
+  --ls-body: 0;
+  --text-label: 13px;
+  --lh-label: 1;
+  --ls-label: 0.125em;
 }
 
 :root {
   /* ─── 60% DOMINANT — Warm paper (Light mode) ─── */
-  --c-bg: #EFE8DF;
-  --c-bg-card: #E9E1D6;
-  --c-bg-sidebar: #E3DBD0;
-  --c-bg-input: #E9E1D6;
-  --c-bg-hover: #DCD3C4;
+  --c-bg: #efe8df;
+  --c-bg-card: #e9e1d6;
+  --c-bg-sidebar: #e3dbd0;
+  --c-bg-input: #e9e1d6;
+  --c-bg-hover: #dcd3c4;
 
   /* ─── 30% SECONDARY — Ink (Light mode) ─── */
   --c-text: #242428;
-  --c-text-muted: #5F574C;
+  --c-text-muted: #5f574c;
   --c-text-dim: #9c9088;
-  --c-border: #DCD3C4;
-  --c-border-strong: #C8BFB2;
-  --c-topbar: #2A2420;
+  --c-border: #dcd3c4;
+  --c-border-strong: #c8bfb2;
+  --c-topbar: #2a2420;
 
   /* ─── 10% ACCENT — Terracotta (never changes between modes) ─── */
-  --c-accent: #C2552E;
-  --c-accent-hover: #D9744A;
-  --c-accent-pressed: #9E4220;
-  --c-accent-dark: #9E422088;
-  --c-accent-soft: #F0DDD4;
-  --c-accent-text: #C2552E;
+  --c-accent: #c2552e;
+  --c-accent-hover: #d9744a;
+  --c-accent-pressed: #9e4220;
+  --c-accent-dark: #9e422088;
+  --c-accent-soft: #f0ddd4;
+  --c-accent-text: #c2552e;
 
   /* ─── Brand Color System (spec) ─── */
-  --color-accent: #C2552E;
-  --color-accent-hover: #D9744A;
-  --color-accent-pressed: #9E4220;
-  --color-bg: #EFE8DF;
-  --color-surface: #E9E1D6;
-  --color-border: #DCD3C4;
-  --color-text-soft: #5F574C;
+  --color-accent: #c2552e;
+  --color-accent-hover: #d9744a;
+  --color-accent-pressed: #9e4220;
+  --color-bg: #efe8df;
+  --color-surface: #e9e1d6;
+  --color-border: #dcd3c4;
+  --color-text-soft: #5f574c;
   --color-text: #242428;
 
   /* ─── Semantic — Pass (Sage) ─── */
-  --c-pass: #5E7A4F;
-  --c-pass-soft: #DCE7DB;
-  --color-pass-text-light: #5E7A4F;
-  --color-pass-bg-light: #DCE7DB;
+  --c-pass: #5e7a4f;
+  --c-pass-soft: #dce7db;
+  --color-pass-text-light: #5e7a4f;
+  --color-pass-bg-light: #dce7db;
 
   /* ─── Semantic — Fail (Clay) ─── */
-  --c-fail: #B04E3D;
-  --c-fail-soft: #F0DCD7;
-  --color-fail-text-light: #B04E3D;
-  --color-fail-bg-light: #F0DCD7;
+  --c-fail: #b04e3d;
+  --c-fail-soft: #f0dcd7;
+  --color-fail-text-light: #b04e3d;
+  --color-fail-bg-light: #f0dcd7;
 
   /* ─── Semantic — Flaky (Gold) ─── */
-  --c-warn: #8E7E38;
-  --c-warn-soft: #ECE5CD;
-  --color-flaky-text-light: #8E7E38;
-  --color-flaky-bg-light: #ECE5CD;
+  --c-warn: #8e7e38;
+  --c-warn-soft: #ece5cd;
+  --color-flaky-text-light: #8e7e38;
+  --color-flaky-bg-light: #ece5cd;
 
   /* ─── Shadows — subtle, warm-toned ─── */
   --shadow-sm: 0 1px 2px rgba(42, 36, 32, 0.05);
@@ -178,51 +188,51 @@
 .dark,
 [data-theme="dark"] {
   /* ─── Espresso background (Dark mode) ─── */
-  --c-bg: #1A1613;
-  --c-bg-card: #221C16;
-  --c-bg-sidebar: #1D1914;
-  --c-bg-input: #281F18;
-  --c-bg-hover: #2E2720;
+  --c-bg: #1a1613;
+  --c-bg-card: #221c16;
+  --c-bg-sidebar: #1d1914;
+  --c-bg-input: #281f18;
+  --c-bg-hover: #2e2720;
 
   /* ─── Cream text (Dark mode) ─── */
-  --c-text: #ECE3D6;
-  --c-text-muted: #B5AB9B;
+  --c-text: #ece3d6;
+  --c-text-muted: #b5ab9b;
   --c-text-dim: #7d7268;
-  --c-border: #362B1F;
-  --c-border-strong: #4A3C30;
-  --c-topbar: #110E0B;
+  --c-border: #362b1f;
+  --c-border-strong: #4a3c30;
+  --c-topbar: #110e0b;
 
   /* ─── Terracotta — NEVER CHANGES between modes ─── */
-  --c-accent: #C2552E;
-  --c-accent-hover: #D9744A;
-  --c-accent-pressed: #9E4220;
-  --c-accent-dark: #9E422088;
-  --c-accent-soft: #311A10;
-  --c-accent-text: #C2552E;
+  --c-accent: #c2552e;
+  --c-accent-hover: #d9744a;
+  --c-accent-pressed: #9e4220;
+  --c-accent-dark: #9e422088;
+  --c-accent-soft: #311a10;
+  --c-accent-text: #c2552e;
 
   /* ─── Brand Color System (dark mode) ─── */
-  --color-bg: #1A1613;
-  --color-surface: #221C16;
-  --color-border: #362B1F;
-  --color-text-soft: #B5AB9B;
-  --color-text: #ECE3D6;
+  --color-bg: #1a1613;
+  --color-surface: #221c16;
+  --color-border: #362b1f;
+  --color-text-soft: #b5ab9b;
+  --color-text: #ece3d6;
 
   /* ─── Semantic — Pass (Sage dark) ─── */
-  --c-pass: #86A56E;
-  --c-pass-soft: #15241A;
-  --color-pass-text-dark: #86A56E;
-  --color-pass-bg-dark: #15241A;
+  --c-pass: #86a56e;
+  --c-pass-soft: #15241a;
+  --color-pass-text-dark: #86a56e;
+  --color-pass-bg-dark: #15241a;
 
   /* ─── Semantic — Fail (Clay dark) ─── */
-  --c-fail: #CC6243;
-  --c-fail-soft: #2C1613;
-  --color-fail-text-dark: #CC6243;
-  --color-fail-bg-dark: #2C1613;
+  --c-fail: #cc6243;
+  --c-fail-soft: #2c1613;
+  --color-fail-text-dark: #cc6243;
+  --color-fail-bg-dark: #2c1613;
 
   /* ─── Semantic — Flaky (Gold dark) ─── */
-  --c-warn: #C9A84E;
+  --c-warn: #c9a84e;
   --c-warn-soft: #262016;
-  --color-flaky-text-dark: #C9A84E;
+  --color-flaky-text-dark: #c9a84e;
   --color-flaky-bg-dark: #262016;
 
   /* ─── Shadow configurations ─── */
@@ -235,28 +245,28 @@
 /* System-level dark mode auto detection */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --c-bg: #1A1613;
-    --c-bg-card: #221C16;
-    --c-bg-sidebar: #1D1914;
-    --c-bg-input: #281F18;
-    --c-bg-hover: #2E2720;
-    --c-text: #ECE3D6;
-    --c-text-muted: #B5AB9B;
+    --c-bg: #1a1613;
+    --c-bg-card: #221c16;
+    --c-bg-sidebar: #1d1914;
+    --c-bg-input: #281f18;
+    --c-bg-hover: #2e2720;
+    --c-text: #ece3d6;
+    --c-text-muted: #b5ab9b;
     --c-text-dim: #7d7268;
-    --c-border: #362B1F;
-    --c-border-strong: #4A3C30;
-    --c-topbar: #110E0B;
-    --c-accent: #C2552E;
-    --c-accent-hover: #D9744A;
-    --c-accent-pressed: #9E4220;
-    --c-accent-dark: #9E422088;
-    --c-accent-soft: #311A10;
-    --c-accent-text: #C2552E;
-    --c-pass: #86A56E;
-    --c-pass-soft: #15241A;
-    --c-fail: #CC6243;
-    --c-fail-soft: #2C1613;
-    --c-warn: #C9A84E;
+    --c-border: #362b1f;
+    --c-border-strong: #4a3c30;
+    --c-topbar: #110e0b;
+    --c-accent: #c2552e;
+    --c-accent-hover: #d9744a;
+    --c-accent-pressed: #9e4220;
+    --c-accent-dark: #9e422088;
+    --c-accent-soft: #311a10;
+    --c-accent-text: #c2552e;
+    --c-pass: #86a56e;
+    --c-pass-soft: #15241a;
+    --c-fail: #cc6243;
+    --c-fail-soft: #2c1613;
+    --c-warn: #c9a84e;
     --c-warn-soft: #262016;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -342,7 +352,8 @@
   }
 
   /* ─── H3/H4 Subheadings — Hanken Grotesk ─── */
-  h3, h4 {
+  h3,
+  h4 {
     font-family: var(--font-body);
     font-size: var(--text-subhead);
     font-weight: 600;
@@ -359,7 +370,8 @@
   }
 
   /* ─── Inline code ─── */
-  code, pre {
+  code,
+  pre {
     font-family: var(--font-mono);
     font-size: var(--text-label);
     font-weight: 400;
@@ -377,7 +389,9 @@
   }
 
   /* ─── Inputs ─── */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     font-family: var(--font-body);
     font-size: var(--text-body);
     font-weight: 400;

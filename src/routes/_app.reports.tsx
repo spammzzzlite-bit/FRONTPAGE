@@ -113,13 +113,18 @@ function ReportsPage() {
               const endD = s.endDate ? new Date(s.endDate) : null;
               const duration =
                 startD && endD
-                  ? Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                  ? Math.max(
+                      1,
+                      Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+                    )
                   : 0;
               return `  - ${s.name}: ${s.status} (${s.startDate} to ${s.endDate}, ${duration} days)`;
             })
             .join("\n");
 
-          return `* ${p.name} (${p.status.toUpperCase()})\n` + (sprintLines || "  No sprints scheduled.");
+          return (
+            `* ${p.name} (${p.status.toUpperCase()})\n` + (sprintLines || "  No sprints scheduled.")
+          );
         })
         .join("\n\n");
 
@@ -338,7 +343,9 @@ function ReportsPage() {
                       </td>
                       <td className="px-6 py-4 font-mono font-medium">{p.startDate || "N/A"}</td>
                       <td className="px-6 py-4 font-mono font-medium">{p.targetDate || "N/A"}</td>
-                      <td className="px-6 py-4 font-mono font-semibold text-[var(--c-accent)]">{suitesCount}</td>
+                      <td className="px-6 py-4 font-mono font-semibold text-[var(--c-accent)]">
+                        {suitesCount}
+                      </td>
                     </tr>
                   );
                 })}

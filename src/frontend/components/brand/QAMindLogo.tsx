@@ -30,10 +30,7 @@ export function QAMindLogo({
   image = false,
 }: QAMindLogoProps) {
   if (image) {
-    const src =
-      variant === "onLight"
-        ? "/brand/logo-on-light.png"
-        : "/brand/logo-on-dark.png";
+    const src = variant === "onLight" ? "/brand/logo-on-light.png" : "/brand/logo-on-dark.png";
     const heights = { sm: 24, md: 28, lg: 32, xl: 40 };
     return (
       <img
@@ -73,11 +70,7 @@ const appIconSrc: Record<NonNullable<QAMindAppIconProps["variant"]>, string> = {
   light: "/brand/appicon-light.png",
 };
 
-export function QAMindAppIcon({
-  variant = "primary",
-  size = 32,
-  className,
-}: QAMindAppIconProps) {
+export function QAMindAppIcon({ variant = "primary", size = 32, className }: QAMindAppIconProps) {
   return (
     <img
       src={appIconSrc[variant]}

@@ -13,7 +13,7 @@ import { qamindStorage } from "@/lib/storage-keys";
 export type UserRole = "owner" | "admin" | "editor" | "viewer";
 
 export const PERMISSIONS: Record<string, UserRole[]> = {
-  "project:create": ["owner", "admin"],
+  "project:create": ["owner", "admin", "editor"],
   "project:edit": ["owner", "admin"],
   "project:delete": ["owner"],
   "suite:create": ["owner", "admin", "editor"],
@@ -55,7 +55,9 @@ export function getStoredRole(): UserRole {
   if (mockAuth) {
     try {
       userId = JSON.parse(mockAuth).user?.id;
-    } catch (_) {}
+    } catch (_) {
+      // ignore JSON parse error
+    }
   }
   if (!userId) {
     for (let i = 0; i < localStorage.length; i++) {

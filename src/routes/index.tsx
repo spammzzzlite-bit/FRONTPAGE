@@ -931,7 +931,10 @@ function Welcome() {
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link to="/" className="flex items-baseline gap-2">
-            <QAMindLogo size="lg" className="transition-transform duration-300 hover:scale-[1.02]" />
+            <QAMindLogo
+              size="lg"
+              className="transition-transform duration-300 hover:scale-[1.02]"
+            />
           </Link>
 
           <nav
@@ -1218,10 +1221,7 @@ function Welcome() {
                 </a>
               </li>
               <li>
-                <a
-                  href="https://qamind.ai"
-                  className="hover:text-white transition-colors"
-                >
+                <a href="https://qamind.ai" className="hover:text-white transition-colors">
                   qamind.ai
                 </a>
               </li>

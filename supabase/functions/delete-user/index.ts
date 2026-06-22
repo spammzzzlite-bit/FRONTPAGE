@@ -1,4 +1,5 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck — Deno Edge Function: imports and globals are Deno-only
 // SETUP REQUIRED:
 // 1. Install Supabase CLI: npm install -g supabase
 // 2. Login: supabase login
@@ -42,7 +43,7 @@ serve(async (req) => {
         global: {
           headers: { Authorization: `Bearer ${token}` },
         },
-      }
+      },
     );
 
     const { data: userData, error: userError } = await userClient.auth.getUser();
@@ -59,7 +60,7 @@ serve(async (req) => {
     // 2. CREATE SERVICE ROLE CLIENT
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // 3. OWNERSHIP SAFETY CHECK
@@ -82,7 +83,9 @@ serve(async (req) => {
           .neq("user_id", user.id);
 
         if (membersError) {
-          throw new Error(`Failed to check members for workspace ${workspace.id}: ${membersError.message}`);
+          throw new Error(
+            `Failed to check members for workspace ${workspace.id}: ${membersError.message}`,
+          );
         }
 
         if (count && count > 0) {
@@ -94,7 +97,7 @@ serve(async (req) => {
             {
               status: 400,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
+            },
           );
         }
       }
@@ -107,7 +110,8 @@ serve(async (req) => {
       .delete()
       .eq("user_id", user.id);
 
-    if (delMembersErr) throw new Error(`Failed to delete workspace_members: ${delMembersErr.message}`);
+    if (delMembersErr)
+      throw new Error(`Failed to delete workspace_members: ${delMembersErr.message}`);
 
     // b. Delete any solo workspaces they own
     const { error: delWorkspacesErr } = await adminClient
@@ -115,23 +119,23 @@ serve(async (req) => {
       .delete()
       .eq("owner_id", user.id);
 
-    if (delWorkspacesErr) throw new Error(`Failed to delete workspaces: ${delWorkspacesErr.message}`);
+    if (delWorkspacesErr)
+      throw new Error(`Failed to delete workspaces: ${delWorkspacesErr.message}`);
 
     // c. Delete from public.users (Cascades to profiles automatically)
-    const { error: delPublicUsersErr } = await adminClient
-      .from("users")
-      .delete()
-      .eq("id", user.id);
+    const { error: delPublicUsersErr } = await adminClient.from("users").delete().eq("id", user.id);
 
     if (delPublicUsersErr) {
       // In a robust implementation, missing user here shouldn't fail the overall operation (Idempotency),
       // so we just log it if we want, but we can also just ignore if no rows were deleted.
-      console.log(`Note: Deleting from public.users returned an issue or 0 rows. ${delPublicUsersErr.message}`);
+      console.log(
+        `Note: Deleting from public.users returned an issue or 0 rows. ${delPublicUsersErr.message}`,
+      );
     }
 
     // 5. DELETE THE AUTH ACCOUNT
     const { error: delAuthErr } = await adminClient.auth.admin.deleteUser(user.id);
-    
+
     // Idempotency: if auth user doesn't exist anymore, deleteUser might fail. We should ignore it.
     if (delAuthErr && !delAuthErr.message.includes("User not found")) {
       throw new Error(`Failed to delete auth identity: ${delAuthErr.message}`);

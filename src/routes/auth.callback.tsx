@@ -30,10 +30,10 @@ function AuthCallbackPage() {
   const handlePostAuth = async (user: any) => {
     if (!user) return navigate({ to: "/dashboard" });
     const { data: invites } = await supabase
-      .from('workspace_members')
-      .select('id, workspace_id, role, workspaces(name, workspace_key)')
-      .eq('email', user.email)
-      .eq('status', 'pending');
+      .from("workspace_members")
+      .select("id, workspace_id, role, workspaces(name, workspace_key)")
+      .eq("email", user.email)
+      .eq("status", "pending");
 
     if (invites && invites.length > 0) {
       setPendingInvites(invites as any);
@@ -61,20 +61,20 @@ function AuthCallbackPage() {
       if (!user) throw new Error("No user session");
 
       await supabase
-        .from('workspace_members')
+        .from("workspace_members")
         .update({
           user_id: user.id,
-          status: 'active',
-          joined_at: new Date().toISOString()
+          status: "active",
+          joined_at: new Date().toISOString(),
         })
-        .eq('id', invite.id);
+        .eq("id", invite.id);
 
       const { data: activeWorkspaces } = await supabase
-        .from('workspace_members')
-        .select('id')
-        .eq('email', user.email)
-        .eq('status', 'active')
-        .neq('id', invite.id);
+        .from("workspace_members")
+        .select("id")
+        .eq("email", user.email)
+        .eq("status", "active")
+        .neq("id", invite.id);
 
       const isFirstTime = !activeWorkspaces || activeWorkspaces.length === 0;
 

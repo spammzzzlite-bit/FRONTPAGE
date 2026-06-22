@@ -80,53 +80,62 @@ function SettingsPage() {
   // Sync settings and members from Supabase on mount/auth load
   useEffect(() => {
     if (!auth.user) return;
-    
+
     const userMeta = auth.user.user_metadata || {};
     const prefs = userMeta.preferences || {};
-    
+
     if (workspaceMeta?.workspaceId) {
       // 1. Fetch workspace details (AI model, plan, name, settings)
-      supabase.from('workspaces')
-        .select('*')
-        .eq('id', workspaceMeta.workspaceId)
+      supabase
+        .from("workspaces")
+        .select("*")
+        .eq("id", workspaceMeta.workspaceId)
         .maybeSingle()
         .then(({ data: wsData, error }) => {
           if (wsData && !error) {
             const wsSettings = wsData.settings || {};
-            setSettings(prev => ({
+            setSettings((prev) => ({
               ...prev,
               aiModel: wsSettings.aiModel || prev.aiModel,
-              coverageEnabled: wsSettings.coverageEnabled !== undefined ? wsSettings.coverageEnabled : prev.coverageEnabled,
-              workspaceName: wsData.name || prev.workspaceName
+              coverageEnabled:
+                wsSettings.coverageEnabled !== undefined
+                  ? wsSettings.coverageEnabled
+                  : prev.coverageEnabled,
+              workspaceName: wsData.name || prev.workspaceName,
             }));
-            
-            if (wsData.name !== workspaceMeta.workspaceName || wsData.workspace_key !== workspaceMeta.workspaceKey || wsData.plan !== workspaceMeta.plan) {
+
+            if (
+              wsData.name !== workspaceMeta.workspaceName ||
+              wsData.workspace_key !== workspaceMeta.workspaceKey ||
+              wsData.plan !== workspaceMeta.plan
+            ) {
               updateWorkspaceMeta({
                 ...workspaceMeta,
                 workspaceName: wsData.name,
                 workspaceKey: wsData.workspace_key,
-                plan: (wsData.plan || 'standard') as any
+                plan: (wsData.plan || "standard") as any,
               });
             }
           }
         });
 
       // 2. Fetch workspace members list from Supabase
-      supabase.from('workspace_members')
-        .select('*')
-        .eq('workspace_id', workspaceMeta.workspaceId)
+      supabase
+        .from("workspace_members")
+        .select("*")
+        .eq("workspace_id", workspaceMeta.workspaceId)
         .then(({ data: membersData, error }) => {
           if (membersData && !error) {
             const mappedMembers = membersData.map((m: any) => ({
               userId: m.user_id || m.id,
               email: m.email,
-              displayName: m.display_name || m.email.split('@')[0],
+              displayName: m.display_name || m.email.split("@")[0],
               role: m.role,
-              jobTitle: m.job_title || 'QA Engineer',
+              jobTitle: m.job_title || "QA Engineer",
               joinedAt: m.joined_at,
               addedBy: m.added_by,
               avatarColor: m.avatar_color || getAvatarColor(m.display_name || m.email),
-              status: m.status || 'active'
+              status: m.status || "active",
             }));
             updateMembers(mappedMembers);
           }
@@ -134,7 +143,7 @@ function SettingsPage() {
     }
 
     // Merge preferences from user metadata
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       userName: userMeta.name || prev.userName,
       userEmail: auth.user?.email || prev.userEmail,
@@ -143,8 +152,9 @@ function SettingsPage() {
       defaultProjectView: prefs.defaultProjectView || prev.defaultProjectView,
       timezone: prefs.timezone || prev.timezone,
       dateFormat: prefs.dateFormat || prev.dateFormat,
-      twoFactorEnabled: prefs.twoFactorEnabled !== undefined ? prefs.twoFactorEnabled : prev.twoFactorEnabled,
-      notifications: prefs.notifications || prev.notifications
+      twoFactorEnabled:
+        prefs.twoFactorEnabled !== undefined ? prefs.twoFactorEnabled : prev.twoFactorEnabled,
+      notifications: prefs.notifications || prev.notifications,
     }));
   }, [auth.user, workspaceMeta?.workspaceId]);
 
@@ -169,37 +179,37 @@ function SettingsPage() {
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!auth.user) return;
-    
+
     const emailChanged = profileEmail !== auth.user.email;
-    
+
     try {
       // 1. Update public.users
       const { error: userErr } = await supabase
-        .from('users')
+        .from("users")
         .update({ name: profileName })
-        .eq('id', auth.user.id);
-        
+        .eq("id", auth.user.id);
+
       if (userErr) throw userErr;
 
       // 2. Update workspace_members if we have a membership entry
       if (workspaceMeta?.workspaceId) {
         const { error: memErr } = await supabase
-          .from('workspace_members')
+          .from("workspace_members")
           .update({ display_name: profileName, job_title: profileRole })
-          .eq('workspace_id', workspaceMeta.workspaceId)
-          .eq('user_id', auth.user.id);
-          
+          .eq("workspace_id", workspaceMeta.workspaceId)
+          .eq("user_id", auth.user.id);
+
         if (memErr) throw memErr;
       }
-      
+
       // 3. Update auth user metadata
       const { error: authErr } = await supabase.auth.updateUser({
         email: emailChanged ? profileEmail : undefined,
-        data: { name: profileName, username: profileUsername, role: profileRole }
+        data: { name: profileName, username: profileUsername, role: profileRole },
       });
-      
+
       if (authErr) throw authErr;
-      
+
       setSettings((prev) => ({
         ...prev,
         userName: profileName,
@@ -207,17 +217,21 @@ function SettingsPage() {
         username: profileUsername,
         role: profileRole,
       }));
-      
+
       // Update local members list for own displayName
       if (workspaceMeta?.workspaceId) {
-        const updated = members.map(m => m.userId === auth.user?.id ? {
-          ...m,
-          displayName: profileName,
-          jobTitle: profileRole
-        } : m);
+        const updated = members.map((m) =>
+          m.userId === auth.user?.id
+            ? {
+                ...m,
+                displayName: profileName,
+                jobTitle: profileRole,
+              }
+            : m,
+        );
         updateMembers(updated);
       }
-      
+
       toast.success("Profile settings updated successfully.");
       if (emailChanged) {
         toast.info(`Verification email sent to ${profileEmail}. Please check your inbox.`);
@@ -231,18 +245,18 @@ function SettingsPage() {
   async function saveSecurity(e: React.FormEvent) {
     e.preventDefault();
     if (!auth.user) return;
-    
+
     if (newPassword && newPassword !== confirmPassword) {
       toast.error("New passwords do not match!");
       return;
     }
-    
+
     try {
       // Get current preferences to merge
       const userMeta = auth.user.user_metadata || {};
       const prefs = userMeta.preferences || {};
       const updatedPrefs = { ...prefs, twoFactorEnabled: twoFactor };
-      
+
       // 1. Update password if provided
       if (newPassword) {
         const { error: passErr } = await supabase.auth.updateUser({ password: newPassword });
@@ -252,13 +266,13 @@ function SettingsPage() {
         setNewPassword("");
         setConfirmPassword("");
       }
-      
+
       // 2. Update preferences (2FA toggle)
       const { error: prefsErr } = await supabase.auth.updateUser({
-        data: { ...userMeta, preferences: updatedPrefs }
+        data: { ...userMeta, preferences: updatedPrefs },
       });
       if (prefsErr) throw prefsErr;
-      
+
       setSettings((prev) => ({
         ...prev,
         twoFactorEnabled: twoFactor,
@@ -277,7 +291,7 @@ function SettingsPage() {
   async function savePreferences(e: React.FormEvent) {
     e.preventDefault();
     if (!auth.user) return;
-    
+
     try {
       const userMeta = auth.user.user_metadata || {};
       const prefs = userMeta.preferences || {};
@@ -285,30 +299,34 @@ function SettingsPage() {
         ...prefs,
         defaultProjectView: prefView,
         timezone: prefTimezone,
-        dateFormat: prefDateFormat
+        dateFormat: prefDateFormat,
       };
-      
+
       // 1. Update user preferences
       const { error: prefsErr } = await supabase.auth.updateUser({
-        data: { ...userMeta, preferences: updatedPrefs }
+        data: { ...userMeta, preferences: updatedPrefs },
       });
       if (prefsErr) throw prefsErr;
-      
+
       // 2. Update workspace settings for coverage enabled if can toggle
       if (canToggleCoverage && workspaceMeta?.workspaceId) {
         // Fetch current workspace settings
-        const { data: ws } = await supabase.from('workspaces').select('settings').eq('id', workspaceMeta.workspaceId).maybeSingle();
+        const { data: ws } = await supabase
+          .from("workspaces")
+          .select("settings")
+          .eq("id", workspaceMeta.workspaceId)
+          .maybeSingle();
         const wsSettings = ws?.settings || {};
         const updatedWsSettings = { ...wsSettings, coverageEnabled: prefCoverage };
-        
+
         const { error: wsErr } = await supabase
-          .from('workspaces')
+          .from("workspaces")
           .update({ settings: updatedWsSettings })
-          .eq('id', workspaceMeta.workspaceId);
-          
+          .eq("id", workspaceMeta.workspaceId);
+
         if (wsErr) throw wsErr;
       }
-      
+
       setSettings((prev) => ({
         ...prev,
         defaultProjectView: prefView as any,
@@ -325,25 +343,25 @@ function SettingsPage() {
 
   async function toggleNotification(key: keyof typeof settings.notifications) {
     if (!auth.user) return;
-    
+
     try {
       const userMeta = auth.user.user_metadata || {};
       const prefs = userMeta.preferences || {};
       const currentNotifications = prefs.notifications || settings.notifications;
       const updatedNotifications = {
         ...currentNotifications,
-        [key]: !currentNotifications[key]
+        [key]: !currentNotifications[key],
       };
       const updatedPrefs = {
         ...prefs,
-        notifications: updatedNotifications
+        notifications: updatedNotifications,
       };
-      
+
       const { error: prefsErr } = await supabase.auth.updateUser({
-        data: { ...userMeta, preferences: updatedPrefs }
+        data: { ...userMeta, preferences: updatedPrefs },
       });
       if (prefsErr) throw prefsErr;
-      
+
       setSettings((prev) => ({
         ...prev,
         notifications: updatedNotifications,
@@ -358,17 +376,21 @@ function SettingsPage() {
   async function handleModelChange(val: string) {
     if (workspaceMeta?.workspaceId) {
       try {
-        const { data: ws } = await supabase.from('workspaces').select('settings').eq('id', workspaceMeta.workspaceId).maybeSingle();
+        const { data: ws } = await supabase
+          .from("workspaces")
+          .select("settings")
+          .eq("id", workspaceMeta.workspaceId)
+          .maybeSingle();
         const wsSettings = ws?.settings || {};
         const updatedWsSettings = { ...wsSettings, aiModel: val };
-        
+
         const { error: wsErr } = await supabase
-          .from('workspaces')
+          .from("workspaces")
           .update({ settings: updatedWsSettings })
-          .eq('id', workspaceMeta.workspaceId);
-          
+          .eq("id", workspaceMeta.workspaceId);
+
         if (wsErr) throw wsErr;
-        
+
         setSettings((prev) => ({ ...prev, aiModel: val }));
         toast.success(`Active AI Model set to ${val}`);
       } catch (err: any) {
@@ -383,16 +405,16 @@ function SettingsPage() {
 
   async function handleTogglePlan() {
     const nextPlan = tokens.plan === "Standard" ? "Premium" : "Standard";
-    
+
     if (workspaceMeta?.workspaceId) {
       try {
         const { error: wsErr } = await supabase
-          .from('workspaces')
+          .from("workspaces")
           .update({ plan: nextPlan.toLowerCase() as any })
-          .eq('id', workspaceMeta.workspaceId);
-          
+          .eq("id", workspaceMeta.workspaceId);
+
         if (wsErr) throw wsErr;
-        
+
         setPlan(nextPlan);
         toast.success(`Plan changed to ${nextPlan}. Token balance initialized.`);
       } catch (err: any) {
@@ -437,8 +459,8 @@ function SettingsPage() {
                   </h3>
                 </div>
                 <p className="text-[13px] text-[var(--c-text-muted)]">
-                  Manage your workspace invite key. Share this key with team members to let them join
-                  your organization.
+                  Manage your workspace invite key. Share this key with team members to let them
+                  join your organization.
                 </p>
 
                 <div className="space-y-3">
@@ -475,17 +497,17 @@ function SettingsPage() {
                             try {
                               // 1. Update workspaces key in Supabase
                               const { error: wsErr } = await supabase
-                                .from('workspaces')
+                                .from("workspaces")
                                 .update({ workspace_key: newKey })
-                                .eq('id', workspaceMeta.workspaceId);
+                                .eq("id", workspaceMeta.workspaceId);
                               if (wsErr) throw wsErr;
 
                               // 2. Clear pending invites in Supabase workspace_members table
                               const { error: delErr } = await supabase
-                                .from('workspace_members')
+                                .from("workspace_members")
                                 .delete()
-                                .eq('workspace_id', workspaceMeta.workspaceId)
-                                .eq('status', 'pending');
+                                .eq("workspace_id", workspaceMeta.workspaceId)
+                                .eq("status", "pending");
                               if (delErr) throw delErr;
 
                               // Save locally and update in shared workspaces
@@ -496,7 +518,9 @@ function SettingsPage() {
                               );
                             } catch (err: any) {
                               console.error(err);
-                              toast.error(`Failed to regenerate invite key: ${err.message || String(err)}`);
+                              toast.error(
+                                `Failed to regenerate invite key: ${err.message || String(err)}`,
+                              );
                             }
                           }
                         }}
@@ -780,7 +804,9 @@ function SettingsPage() {
                       for project runs.
                     </p>
                   </div>
-                  <label className={`relative inline-flex items-center ${canToggleCoverage ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
+                  <label
+                    className={`relative inline-flex items-center ${canToggleCoverage ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
+                  >
                     <input
                       type="checkbox"
                       checked={prefCoverage}
@@ -888,7 +914,8 @@ function SettingsPage() {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}{" "}
-                            · {new Date(d.timestamp).toLocaleDateString([], {
+                            ·{" "}
+                            {new Date(d.timestamp).toLocaleDateString([], {
                               month: "short",
                               day: "numeric",
                             })}
@@ -953,65 +980,84 @@ function SettingsPage() {
 
           {/* Danger Zone */}
           <div className="space-y-4">
-            {can(currentRole.toLowerCase() as any, "settings:delete_own_account") && (() => {
-              const isOwner = currentRole.toLowerCase() === "owner";
-              const activeMembers = members.filter(m => m.status === 'active' && m.userId !== auth.user?.id);
-              const hasOtherMembers = activeMembers.length > 0;
-              const disabledTooltip = isOwner && hasOtherMembers ? "Transfer ownership to another member before deleting your account." : undefined;
-              
-              return (
-                <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 space-y-3 transition-colors hover:border-[var(--c-fail)]/30">
-                  <div className="flex items-center gap-2 text-[var(--c-text)]">
-                    <ShieldAlert className="h-5 w-5 text-[var(--c-fail)]" />
-                    <h3 className="font-display text-[20px] font-semibold leading-none">Delete My Account</h3>
-                  </div>
-                  <p className="text-[12px] text-[var(--c-text-muted)] leading-normal">
-                    Permanently delete your personal account and remove your access.
-                  </p>
-                  
-                  {disabledTooltip ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div style={{ display: "inline-block", cursor: "not-allowed", width: "100%" }}>
-                            <div style={{ pointerEvents: "none", opacity: 0.5, width: "100%" }}>
-                              <button
-                                disabled
-                                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] py-2 text-[12px] font-medium"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Delete Account
-                              </button>
+            {can(currentRole.toLowerCase() as any, "settings:delete_own_account") &&
+              (() => {
+                const isOwner = currentRole.toLowerCase() === "owner";
+                const activeMembers = members.filter(
+                  (m) => m.status === "active" && m.userId !== auth.user?.id,
+                );
+                const hasOtherMembers = activeMembers.length > 0;
+                const disabledTooltip =
+                  isOwner && hasOtherMembers
+                    ? "Transfer ownership to another member before deleting your account."
+                    : undefined;
+
+                return (
+                  <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 space-y-3 transition-colors hover:border-[var(--c-fail)]/30">
+                    <div className="flex items-center gap-2 text-[var(--c-text)]">
+                      <ShieldAlert className="h-5 w-5 text-[var(--c-fail)]" />
+                      <h3 className="font-display text-[20px] font-semibold leading-none">
+                        Delete My Account
+                      </h3>
+                    </div>
+                    <p className="text-[12px] text-[var(--c-text-muted)] leading-normal">
+                      Permanently delete your personal account and remove your access.
+                    </p>
+
+                    {disabledTooltip ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              style={{
+                                display: "inline-block",
+                                cursor: "not-allowed",
+                                width: "100%",
+                              }}
+                            >
+                              <div style={{ pointerEvents: "none", opacity: 0.5, width: "100%" }}>
+                                <button
+                                  disabled
+                                  className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] py-2 text-[12px] font-medium"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" /> Delete Account
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="flex flex-col gap-2 items-center">
-                            <p>{disabledTooltip}</p>
-                            <span className="text-[12px] text-[var(--c-accent)]">Check My Membership below</span>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <button
-                      onClick={() => setShowDeleteModal(true)}
-                      className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] hover:bg-[var(--c-fail)]/5 hover:border-[var(--c-fail)] py-2 text-[12px] font-medium transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete Account
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="flex flex-col gap-2 items-center">
+                              <p>{disabledTooltip}</p>
+                              <span className="text-[12px] text-[var(--c-accent)]">
+                                Check My Membership below
+                              </span>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <button
+                        onClick={() => setShowDeleteModal(true)}
+                        className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[8px] border border-[var(--c-fail)]/30 bg-transparent text-[var(--c-fail)] hover:bg-[var(--c-fail)]/5 hover:border-[var(--c-fail)] py-2 text-[12px] font-medium transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete Account
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
             {can(currentRole.toLowerCase() as any, "settings:delete_workspace") && (
               <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 space-y-3 transition-colors hover:border-[var(--c-fail)]/30">
                 <div className="flex items-center gap-2 text-[var(--c-text)]">
                   <ShieldAlert className="h-5 w-5 text-[var(--c-fail)]" />
-                  <h3 className="font-display text-[20px] font-semibold leading-none">Delete Workspace</h3>
+                  <h3 className="font-display text-[20px] font-semibold leading-none">
+                    Delete Workspace
+                  </h3>
                 </div>
                 <p className="text-[12px] text-[var(--c-text-muted)] leading-normal">
-                  Permanently wipe all projects, tests, activities, settings, and tokens for the entire workspace.
+                  Permanently wipe all projects, tests, activities, settings, and tokens for the
+                  entire workspace.
                 </p>
                 <button
                   onClick={() => setShowDeleteModal(true)}
@@ -1028,16 +1074,14 @@ function SettingsPage() {
             <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 space-y-4">
               <div className="flex items-center gap-2 border-b border-[var(--c-border)] pb-3">
                 <Users className="h-5 w-5 text-[var(--c-accent)]" />
-                <h3 className="font-display text-[20px] text-[var(--c-text)]">
-                  My Membership
-                </h3>
+                <h3 className="font-display text-[20px] text-[var(--c-text)]">My Membership</h3>
               </div>
 
               {(() => {
                 const currentUserMember = members.find((m) => m.userId === auth.user?.id);
                 const inviter = members.find((m) => m.userId === currentUserMember?.addedBy);
                 const inviterName = inviter
-                  ? (inviter.displayName || inviter.email.split("@")[0])
+                  ? inviter.displayName || inviter.email.split("@")[0]
                   : "Workspace Owner";
                 const joinDate = currentUserMember?.joinedAt
                   ? new Date(currentUserMember.joinedAt).toLocaleDateString([], {
@@ -1068,9 +1112,7 @@ function SettingsPage() {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[var(--c-text-muted)]">Added By</span>
-                        <span className="font-medium text-[var(--c-text)]">
-                          {inviterName}
-                        </span>
+                        <span className="font-medium text-[var(--c-text)]">{inviterName}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[var(--c-text-muted)]">Date Joined</span>
@@ -1095,102 +1137,109 @@ function SettingsPage() {
       </div>
 
       {/* Danger Zone Confirmation Modal */}
-      {showDeleteModal && (() => {
-        const isOwner = currentRole.toLowerCase() === "owner";
-        const activeMembers = members.filter(m => m.status === 'active' && m.userId !== auth.user?.id);
-        const hasOtherMembers = activeMembers.length > 0;
-        const willDeleteWorkspace = isOwner && !hasOtherMembers;
+      {showDeleteModal &&
+        (() => {
+          const isOwner = currentRole.toLowerCase() === "owner";
+          const activeMembers = members.filter(
+            (m) => m.status === "active" && m.userId !== auth.user?.id,
+          );
+          const hasOtherMembers = activeMembers.length > 0;
+          const willDeleteWorkspace = isOwner && !hasOtherMembers;
 
-        return (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(26,23,20,0.4)] p-4 backdrop-blur-[4px] animate-[fade-in-up_var(--t-normal)_var(--ease-out)_both]"
-            onClick={() => setShowDeleteModal(false)}
-          >
+          return (
             <div
-              className="w-full max-w-md rounded-[16px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-[28px] shadow-[var(--shadow-lg)]"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(26,23,20,0.4)] p-4 backdrop-blur-[4px] animate-[fade-in-up_var(--t-normal)_var(--ease-out)_both]"
+              onClick={() => setShowDeleteModal(false)}
             >
-              <div className="mb-[24px] flex items-center justify-between">
-                <p className="font-display text-[26px] text-[var(--c-fail)]">Delete Account</p>
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="rounded-full p-2 text-[var(--c-text-muted)] transition-colors hover:bg-[var(--c-bg-hover)]"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <p className="mb-4 text-[13px] text-[var(--c-text-muted)] leading-relaxed">
-                This action is permanent and cannot be undone. All your projects, suites, test cases,
-                and history will be deleted.
-                {willDeleteWorkspace && (
-                  <span className="font-medium text-[var(--c-fail)] block mt-2">
-                    Note: Since you are the sole member, deleting your account will also permanently delete this workspace.
-                  </span>
-                )}
-              </p>
-            <p className="mb-4 text-[13px] font-mono text-[var(--c-text-muted)]">
-              Type <span className="font-semibold text-[var(--c-text)]">"{expectedUsername}"</span>{" "}
-              to confirm:
-            </p>
-            <input
-              autoFocus
-              type="text"
-              value={confirmUsername}
-              onChange={(e) => setConfirmUsername(e.target.value)}
-              placeholder="Type username here..."
-              className="w-full rounded-[8px] border border-[var(--c-border)] bg-[var(--c-bg-input)] px-[14px] py-[10px] text-[14px] outline-none transition-all focus:border-[var(--c-fail)] focus:shadow-[0_0_0_3px_rgba(168,59,59,0.15)]"
-            />
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="rounded-[8px] border-[1.5px] border-[var(--c-border)] bg-transparent px-[16px] py-[8px] text-[13px] font-medium transition-all hover:bg-[var(--c-bg-hover)]"
+              <div
+                className="w-full max-w-md rounded-[16px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-[28px] shadow-[var(--shadow-lg)]"
+                onClick={(e) => e.stopPropagation()}
               >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (confirmUsername === expectedUsername) {
-                    setShowDeleteModal(false);
-                    try {
-                      const { data: sessionData } = await supabase.auth.getSession();
-                      const accessToken = sessionData.session?.access_token;
-                      
-                      const { error } = await supabase.functions.invoke("delete-user", {
-                        headers: {
-                          Authorization: `Bearer ${accessToken}`,
-                        },
-                      });
+                <div className="mb-[24px] flex items-center justify-between">
+                  <p className="font-display text-[26px] text-[var(--c-fail)]">Delete Account</p>
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="rounded-full p-2 text-[var(--c-text-muted)] transition-colors hover:bg-[var(--c-bg-hover)]"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <p className="mb-4 text-[13px] text-[var(--c-text-muted)] leading-relaxed">
+                  This action is permanent and cannot be undone. All your projects, suites, test
+                  cases, and history will be deleted.
+                  {willDeleteWorkspace && (
+                    <span className="font-medium text-[var(--c-fail)] block mt-2">
+                      Note: Since you are the sole member, deleting your account will also
+                      permanently delete this workspace.
+                    </span>
+                  )}
+                </p>
+                <p className="mb-4 text-[13px] font-mono text-[var(--c-text-muted)]">
+                  Type{" "}
+                  <span className="font-semibold text-[var(--c-text)]">"{expectedUsername}"</span>{" "}
+                  to confirm:
+                </p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={confirmUsername}
+                  onChange={(e) => setConfirmUsername(e.target.value)}
+                  placeholder="Type username here..."
+                  className="w-full rounded-[8px] border border-[var(--c-border)] bg-[var(--c-bg-input)] px-[14px] py-[10px] text-[14px] outline-none transition-all focus:border-[var(--c-fail)] focus:shadow-[0_0_0_3px_rgba(168,59,59,0.15)]"
+                />
+                <div className="mt-6 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(false)}
+                    className="rounded-[8px] border-[1.5px] border-[var(--c-border)] bg-transparent px-[16px] py-[8px] text-[13px] font-medium transition-all hover:bg-[var(--c-bg-hover)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (confirmUsername === expectedUsername) {
+                        setShowDeleteModal(false);
+                        try {
+                          const { data: sessionData } = await supabase.auth.getSession();
+                          const accessToken = sessionData.session?.access_token;
 
-                      if (error) {
-                        const errMsg = (error as any).message || String(error);
-                        if (errMsg.includes("transfer_ownership_required")) {
-                          toast.error("You must transfer workspace ownership before deleting your account.");
-                        } else {
+                          const { error } = await supabase.functions.invoke("delete-user", {
+                            headers: {
+                              Authorization: `Bearer ${accessToken}`,
+                            },
+                          });
+
+                          if (error) {
+                            const errMsg = (error as any).message || String(error);
+                            if (errMsg.includes("transfer_ownership_required")) {
+                              toast.error(
+                                "You must transfer workspace ownership before deleting your account.",
+                              );
+                            } else {
+                              toast.error("An error occurred while deleting your account.");
+                            }
+                            return;
+                          }
+
+                          await supabase.auth.signOut();
+                          localStorage.clear();
+                          toast.success("Account deleted successfully.");
+                          navigate({ to: "/" });
+                        } catch (err) {
                           toast.error("An error occurred while deleting your account.");
                         }
-                        return;
                       }
-
-                      await supabase.auth.signOut();
-                      localStorage.clear();
-                      toast.success("Account deleted successfully.");
-                      navigate({ to: "/" });
-                    } catch (err) {
-                      toast.error("An error occurred while deleting your account.");
-                    }
-                  }
-                }}
-                disabled={confirmUsername !== expectedUsername}
-                className="rounded-[8px] bg-[var(--c-fail)] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[#8A3232] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Delete permanently
-              </button>
+                    }}
+                    disabled={confirmUsername !== expectedUsername}
+                    className="rounded-[8px] bg-[var(--c-fail)] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[#8A3232] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Delete permanently
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      );
-      })()}
+          );
+        })()}
 
       {/* Leave Workspace Confirmation Modal */}
       {showLeaveModal && (
@@ -1212,7 +1261,11 @@ function SettingsPage() {
               </button>
             </div>
             <p className="mb-6 text-[13px] text-[var(--c-text-muted)] leading-relaxed">
-              You will lose access to <strong className="text-[var(--c-text)]">{workspaceMeta?.workspaceName || "this workspace"}</strong> immediately. This cannot be undone.
+              You will lose access to{" "}
+              <strong className="text-[var(--c-text)]">
+                {workspaceMeta?.workspaceName || "this workspace"}
+              </strong>{" "}
+              immediately. This cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <button
@@ -1296,7 +1349,8 @@ const getRoleValue = (r: string) => {
 const getRoleBadgeStyle = (roleStr: string) => {
   const role = roleStr.toLowerCase() as any;
   if (can(role, "workspace:viewKey")) return { bg: "#F59E0B", text: "#FFFFFF", label: "Owner" };
-  if (can(role, "project:create")) return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" }; // app's primary orange
+  if (can(role, "project:create"))
+    return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" }; // app's primary orange
   if (can(role, "suite:create")) return { bg: "#3B82F6", text: "#FFFFFF", label: "Editor" };
   return { bg: "#64748B", text: "#FFFFFF", label: "Viewer" }; // viewer / slate
 };
@@ -1346,11 +1400,17 @@ function TeamMembersCard() {
       setEmailError("Please enter a valid email address.");
       return false;
     }
-    if (members.some((m) => m.status === 'active' && (m.email || "").toLowerCase() === emailVal.toLowerCase())) {
+    if (
+      members.some(
+        (m) => m.status === "active" && (m.email || "").toLowerCase() === emailVal.toLowerCase(),
+      )
+    ) {
       setEmailError("This email is already an active member of the workspace.");
       return false;
     }
-    if (pendingInvites.some((inv: any) => (inv.email || "").toLowerCase() === emailVal.toLowerCase())) {
+    if (
+      pendingInvites.some((inv: any) => (inv.email || "").toLowerCase() === emailVal.toLowerCase())
+    ) {
       setEmailError("This email already has a pending invitation.");
       return false;
     }
@@ -1366,17 +1426,15 @@ function TeamMembersCard() {
 
     try {
       // Call Supabase to insert a pending workspace member
-      const { error: inviteErr } = await supabase
-        .from('workspace_members')
-        .insert({
-          workspace_id: workspaceMeta.workspaceId,
-          email: emailLower,
-          role: role,
-          job_title: jobTitle.trim(),
-          status: "pending",
-          added_by: auth.user?.id || null,
-          avatar_color: getAvatarColor(displayName.trim() || emailLower.split("@")[0])
-        });
+      const { error: inviteErr } = await supabase.from("workspace_members").insert({
+        workspace_id: workspaceMeta.workspaceId,
+        email: emailLower,
+        role: role,
+        job_title: jobTitle.trim(),
+        status: "pending",
+        added_by: auth.user?.id || null,
+        avatar_color: getAvatarColor(displayName.trim() || emailLower.split("@")[0]),
+      });
 
       if (inviteErr) throw inviteErr;
 
@@ -1386,22 +1444,24 @@ function TeamMembersCard() {
 
       // Refresh members list
       const { data: membersData } = await supabase
-        .from('workspace_members')
-        .select('*')
-        .eq('workspace_id', workspaceMeta.workspaceId);
-      
+        .from("workspace_members")
+        .select("*")
+        .eq("workspace_id", workspaceMeta.workspaceId);
+
       if (membersData) {
-        updateMembers(membersData.map((m: any) => ({
-          userId: m.user_id || m.id,
-          email: m.email,
-          displayName: m.display_name || m.email.split('@')[0],
-          role: m.role,
-          jobTitle: m.job_title || 'QA Engineer',
-          joinedAt: m.joined_at,
-          addedBy: m.added_by,
-          avatarColor: m.avatar_color || getAvatarColor(m.display_name || m.email),
-          status: m.status || 'active'
-        })));
+        updateMembers(
+          membersData.map((m: any) => ({
+            userId: m.user_id || m.id,
+            email: m.email,
+            displayName: m.display_name || m.email.split("@")[0],
+            role: m.role,
+            jobTitle: m.job_title || "QA Engineer",
+            joinedAt: m.joined_at,
+            addedBy: m.added_by,
+            avatarColor: m.avatar_color || getAvatarColor(m.display_name || m.email),
+            status: m.status || "active",
+          })),
+        );
       }
     } catch (err: any) {
       console.error(err);
@@ -1413,7 +1473,7 @@ function TeamMembersCard() {
     setModalMode("edit_self");
     setEditingUserId(member.userId);
     setDisplayName(member.displayName || member.email.split("@")[0]);
-    setRole(((member.role || "viewer").toLowerCase() as any));
+    setRole((member.role || "viewer").toLowerCase() as any);
     setJobTitle(member.jobTitle);
     setIsModalOpen(true);
   };
@@ -1425,19 +1485,19 @@ function TeamMembersCard() {
 
     try {
       const { error: dbErr } = await supabase
-        .from('workspace_members')
+        .from("workspace_members")
         .update({
           display_name: displayName.trim(),
           job_title: jobTitle.trim(),
         })
-        .eq('workspace_id', workspaceMeta.workspaceId)
-        .eq('user_id', userId);
+        .eq("workspace_id", workspaceMeta.workspaceId)
+        .eq("user_id", userId);
 
       if (dbErr) throw dbErr;
 
       // Update auth user metadata
       await supabase.auth.updateUser({
-        data: { ...auth.user?.user_metadata, name: displayName.trim(), role: jobTitle.trim() }
+        data: { ...auth.user?.user_metadata, name: displayName.trim(), role: jobTitle.trim() },
       });
 
       const updated = members.map((m) => {
@@ -1472,7 +1532,7 @@ function TeamMembersCard() {
     setEditingUserId(member.userId);
     setEmail(member.email);
     setDisplayName(member.displayName);
-    setRole(((member.role || "viewer").toLowerCase() as any));
+    setRole((member.role || "viewer").toLowerCase() as any);
     setJobTitle(member.jobTitle);
     setIsModalOpen(true);
   };
@@ -1483,13 +1543,13 @@ function TeamMembersCard() {
 
     try {
       const { error: dbErr } = await supabase
-        .from('workspace_members')
+        .from("workspace_members")
         .update({
           role: role,
           job_title: jobTitle.trim(),
         })
-        .eq('workspace_id', workspaceMeta.workspaceId)
-        .eq('user_id', editingUserId);
+        .eq("workspace_id", workspaceMeta.workspaceId)
+        .eq("user_id", editingUserId);
 
       if (dbErr) throw dbErr;
 
@@ -1536,10 +1596,10 @@ function TeamMembersCard() {
     ) {
       try {
         const { error: dbErr } = await supabase
-          .from('workspace_members')
+          .from("workspace_members")
           .delete()
-          .eq('workspace_id', workspaceMeta.workspaceId)
-          .eq('user_id', userId);
+          .eq("workspace_id", workspaceMeta.workspaceId)
+          .eq("user_id", userId);
 
         if (dbErr) throw dbErr;
 
@@ -1557,9 +1617,9 @@ function TeamMembersCard() {
   const handleResendInvite = async (inviteId: string, emailVal: string) => {
     try {
       const { error: dbErr } = await supabase
-        .from('workspace_members')
+        .from("workspace_members")
         .update({ joined_at: new Date().toISOString() })
-        .eq('id', inviteId);
+        .eq("id", inviteId);
 
       if (dbErr) throw dbErr;
 
@@ -1574,13 +1634,13 @@ function TeamMembersCard() {
     if (confirm(`Are you sure you want to cancel the invitation for ${emailVal}?`)) {
       try {
         const { error: dbErr } = await supabase
-          .from('workspace_members')
+          .from("workspace_members")
           .delete()
-          .eq('id', inviteId);
+          .eq("id", inviteId);
 
         if (dbErr) throw dbErr;
 
-        const updated = members.filter(m => m.userId !== inviteId);
+        const updated = members.filter((m) => m.userId !== inviteId);
         updateMembers(updated);
         toast.success("Invite cancelled");
       } catch (err: any) {
@@ -1899,9 +1959,11 @@ function TeamMembersCard() {
                         <option value="viewer">Viewer (Read-only)</option>
                       </select>
                       <p className="text-[11px] text-[var(--c-text-muted)]">
-                        {(can(role as any, "project:create") && !can(role as any, "workspace:viewKey")) &&
+                        {can(role as any, "project:create") &&
+                          !can(role as any, "workspace:viewKey") &&
                           "Admins can invite/remove members and configure most settings."}
-                        {(can(role as any, "suite:create") && !can(role as any, "project:create")) &&
+                        {can(role as any, "suite:create") &&
+                          !can(role as any, "project:create") &&
                           "Editors can fully write, execute, and manage tests/bugs."}
                         {!can(role as any, "suite:create") &&
                           "Viewers have read-only access to dashboards and reports."}
@@ -2014,7 +2076,8 @@ function TeamMembersCard() {
                         type="button"
                         onClick={() => setRole("admin")}
                         className={`rounded-[8px] border p-3 text-left transition-all flex flex-col justify-between h-[80px] outline-none ${
-                          (can(role as any, "project:create") && !can(role as any, "workspace:viewKey"))
+                          can(role as any, "project:create") &&
+                          !can(role as any, "workspace:viewKey")
                             ? "border-[var(--c-accent)] bg-[var(--c-accent-soft)]"
                             : "border-[var(--c-border)] bg-[var(--c-bg-input)] hover:bg-[var(--c-bg-hover)]"
                         }`}
@@ -2031,7 +2094,7 @@ function TeamMembersCard() {
                       type="button"
                       onClick={() => setRole("editor")}
                       className={`rounded-[8px] border p-3 text-left transition-all flex flex-col justify-between h-[80px] outline-none ${
-                        (can(role as any, "suite:create") && !can(role as any, "project:create"))
+                        can(role as any, "suite:create") && !can(role as any, "project:create")
                           ? "border-[var(--c-accent)] bg-[var(--c-accent-soft)]"
                           : "border-[var(--c-border)] bg-[var(--c-bg-input)] hover:bg-[var(--c-bg-hover)]"
                       }`}

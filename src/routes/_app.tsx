@@ -52,6 +52,7 @@ import {
   setPlan,
   useBugs,
   useUserStore,
+  currentUserProfileRoleStore,
 } from "@/frontend/store/store";
 import { can } from "@/lib/permissions";
 import { DetailedNewProjectModal } from "./_app.projects";
@@ -188,9 +189,7 @@ function AppLayout() {
 
         // BUG 3 PART B: Detect pending invite
         const uEmailLower = uEmail.toLowerCase();
-        const sharedInvites = JSON.parse(
-          qamindStorage.get(qamindStorage.pendingInvites()) || "{}"
-        );
+        const sharedInvites = JSON.parse(qamindStorage.get(qamindStorage.pendingInvites()) || "{}");
         const pendingInvite = sharedInvites[uEmailLower];
         if (
           pendingInvite &&
@@ -199,7 +198,7 @@ function AppLayout() {
         ) {
           qamindStorage.set(
             qamindStorage.invitePending(auth.user.id),
-            JSON.stringify(pendingInvite)
+            JSON.stringify(pendingInvite),
           );
         }
       }
@@ -208,16 +207,13 @@ function AppLayout() {
       const checkOnboarding = async () => {
         if (!auth.user?.id) return;
 
-        if (isOnboardingCompleteLocally(auth.user.id)) {
-          setOnboardingComplete(true);
-          return;
-        }
-
         const { data, error } = await supabase
           .from("profiles")
-          .select("onboarding_complete")
+          .select("onboarding_complete, role")
           .eq("id", auth.user.id)
           .single();
+
+        console.log("Supabase Fetch Result:", data, error);
 
         let completed = false;
         if (error && error.code === "PGRST116") {
@@ -227,9 +223,14 @@ function AppLayout() {
             email: auth.user.email,
             full_name: auth.user.user_metadata?.name || "",
             onboarding_complete: false,
+            role: "viewer",
           });
+          currentUserProfileRoleStore.set("viewer");
         } else if (data) {
           completed = !!data.onboarding_complete;
+          if (data.role) {
+            currentUserProfileRoleStore.set(data.role as "admin" | "editor" | "viewer");
+          }
         }
 
         setOnboardingComplete(completed);
@@ -237,13 +238,18 @@ function AppLayout() {
           navigate({ to: "/onboarding" });
         }
       };
-      
+
       checkOnboarding();
     }
   }, [auth.session, auth.user, auth.loading, navigate]);
 
   // Show generic loading spinner until auth state resolves, email is verified, and onboarding is completed.
-  if (auth.loading || !auth.session || !auth.user?.email_confirmed_at || onboardingComplete === null) {
+  if (
+    auth.loading ||
+    !auth.session ||
+    !auth.user?.email_confirmed_at ||
+    onboardingComplete === null
+  ) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
@@ -530,10 +536,7 @@ function AppShell() {
     <div className="flex h-screen flex-col bg-[var(--c-bg)] text-[var(--c-text)]">
       {/* Mobile top bar (optional, keeping minimal for mobile) */}
       <div className="flex items-center justify-between border-b border-[var(--c-border)] px-4 py-3 md:hidden">
-        <Link
-          to="/dashboard"
-          className="transition-transform duration-300 hover:scale-[1.02]"
-        >
+        <Link to="/dashboard" className="transition-transform duration-300 hover:scale-[1.02]">
           <QAMindLogo size="lg" />
         </Link>
         <button
@@ -547,7 +550,10 @@ function AppShell() {
       {/* Topbar */}
       <header className="sticky top-0 z-20 hidden h-[52px] shrink-0 items-center gap-4 bg-[var(--c-topbar)] px-4 md:flex md:px-6">
         <Link to="/dashboard" className="mr-4 flex w-[186px] shrink-0 items-center">
-          <QAMindLogo variant="onDark" className="transition-transform duration-300 hover:scale-[1.02]" />
+          <QAMindLogo
+            variant="onDark"
+            className="transition-transform duration-300 hover:scale-[1.02]"
+          />
         </Link>
         <button
           onClick={() => setPageSearchOpen(true)}
@@ -608,13 +614,11 @@ function AppShell() {
                 </button>
               </div>
             )}
-             <nav className="flex-1 overflow-y-auto px-3 py-2">
+            <nav className="flex-1 overflow-y-auto px-3 py-2">
               {filteredNav.map((g) => (
                 <div key={g.group} className="mb-2">
                   <p className="mb-[4px] mt-[20px] px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--c-text-dim)] flex items-center justify-between">
-                    <span>
-                      {g.group}
-                    </span>
+                    <span>{g.group}</span>
                     {g.group === "Workspace" && can(role, "workspace:viewKey") && (
                       <span className="rounded-full bg-amber-500/15 text-[8.5px] text-amber-600 dark:text-amber-400 px-1.5 py-0.2 font-mono font-medium uppercase tracking-wider scale-90">
                         Owner Control
@@ -759,8 +763,6 @@ function AppShell() {
                   {(() => {
                     const rBadge = (() => {
                       switch (role) {
-                        case "owner":
-                          return { bg: "#F59E0B", text: "#FFFFFF", label: "Owner" };
                         case "admin":
                           return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" };
                         case "editor":
@@ -775,7 +777,9 @@ function AppShell() {
                         style={{ backgroundColor: rBadge.bg, color: rBadge.text }}
                         className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-sans text-[8px] font-bold uppercase tracking-wider"
                       >
-                        {can(role, "workspace:viewKey") && <Star className="h-[8px] w-[8px] fill-current" />}
+                        {can(role, "workspace:viewKey") && (
+                          <Star className="h-[8px] w-[8px] fill-current" />
+                        )}
                         {rBadge.label}
                       </span>
                     );
@@ -1291,7 +1295,10 @@ function InviteAcceptModal({ userId }: { userId: string }) {
         </h2>
 
         <p className="mb-6 text-center text-sm text-[var(--c-text-muted)]">
-          <strong className="text-[var(--c-text)] font-semibold">{invite.inviterName}</strong> invited you to join <strong className="text-[var(--c-text)] font-semibold">{invite.workspaceName}</strong> as <strong className="text-[var(--c-text)] font-semibold">{invite.assignedRole}</strong>.
+          <strong className="text-[var(--c-text)] font-semibold">{invite.inviterName}</strong>{" "}
+          invited you to join{" "}
+          <strong className="text-[var(--c-text)] font-semibold">{invite.workspaceName}</strong> as{" "}
+          <strong className="text-[var(--c-text)] font-semibold">{invite.assignedRole}</strong>.
         </p>
 
         <div className="mb-8 rounded-lg border border-[var(--c-border)] bg-[var(--c-bg)] p-4 shadow-inner">
@@ -1300,18 +1307,26 @@ function InviteAcceptModal({ userId }: { userId: string }) {
               {invite.workspaceName.substring(0, 2).toUpperCase()}
             </div>
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--c-text-dim)] mb-0.5">Workspace</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--c-text-dim)] mb-0.5">
+                Workspace
+              </p>
               <p className="text-sm font-medium text-[var(--c-text)]">{invite.workspaceName}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--c-text-dim)] mb-0.5">Role</p>
-              <p className="text-sm font-medium text-[var(--c-text)] capitalize">{invite.assignedRole}</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--c-text-dim)] mb-0.5">
+                Role
+              </p>
+              <p className="text-sm font-medium text-[var(--c-text)] capitalize">
+                {invite.assignedRole}
+              </p>
             </div>
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--c-text-dim)] mb-0.5">Job Title</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--c-text-dim)] mb-0.5">
+                Job Title
+              </p>
               <p className="text-sm font-medium text-[var(--c-text)]">{invite.jobTitle}</p>
             </div>
           </div>

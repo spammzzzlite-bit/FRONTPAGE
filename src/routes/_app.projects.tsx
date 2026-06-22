@@ -58,7 +58,13 @@ import {
 } from "@/frontend/store/store";
 import { usePanel } from "@/frontend/components/PanelContext";
 import { EmptyState } from "@/frontend/components/EmptyState";
-import { PermissionGate, can, useAssertPermission, TokenCostLabel, getStoredRole } from "@/lib/permissions";
+import {
+  PermissionGate,
+  can,
+  useAssertPermission,
+  TokenCostLabel,
+  getStoredRole,
+} from "@/lib/permissions";
 import { supabase } from "@/backend/supabase";
 import { toast } from "./_app";
 
@@ -68,10 +74,7 @@ const projectsSearchSchema = z.object({
 
 export const Route = createFileRoute("/_app/projects")({
   beforeLoad: () => {
-    const role = getStoredRole();
-    if (!can(role, "suite:create")) {
-      throw redirect({ to: "/dashboard" });
-    }
+    // Viewers are allowed to view projects, so no restriction here.
   },
   head: () => ({ meta: [{ title: "My Projects — QAMind AI" }] }),
   validateSearch: (search) => projectsSearchSchema.parse(search),
@@ -301,8 +304,6 @@ export function ProjectDetail({ project }: { project: Project }) {
     );
   }
 
-
-
   const [storeSprints] = useSprints();
 
   useEffect(() => {
@@ -477,12 +478,14 @@ export function ProjectDetail({ project }: { project: Project }) {
           <Upload className="h-3 w-3" /> Add Files
         </button>
         {projectSuites.length > 0 && (
-          <button
-            onClick={handleRunAll}
-            className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--c-accent)] px-[14px] py-[6px] text-[13px] font-medium text-white transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[var(--shadow-md)]"
-          >
-            <Play className="h-3 w-3" /> Run All
-          </button>
+          <PermissionGate action="tests:run" disabledTooltip="Viewers cannot run tests">
+            <button
+              onClick={handleRunAll}
+              className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--c-accent)] px-[14px] py-[6px] text-[13px] font-medium text-white transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[var(--shadow-md)]"
+            >
+              <Play className="h-3 w-3" /> Run All
+            </button>
+          </PermissionGate>
         )}
       </div>
       <input ref={fileInput} type="file" multiple hidden onChange={onPick} />
@@ -492,63 +495,63 @@ export function ProjectDetail({ project }: { project: Project }) {
         <div className="flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--c-text-muted)]">
             Sprints Tracker
-            </p>
-            <button
-              onClick={() => setShowNewSprint(true)}
-              className="inline-flex items-center gap-1 rounded bg-[var(--c-accent-soft)] px-2.5 py-1 text-[11px] font-mono text-[var(--c-accent)] hover:opacity-90 transition-all"
-            >
-              + Add Sprint
-            </button>
-          </div>
-          <div className="space-y-2 mt-2">
-            {dbSprints.map((s) => {
-              const isActive = s.status === "Active";
-              const isCompleted = s.status === "Completed";
-              const lead = profiles.find((p) => p.id === s.sprintLeadId);
+          </p>
+          <button
+            onClick={() => setShowNewSprint(true)}
+            className="inline-flex items-center gap-1 rounded bg-[var(--c-accent-soft)] px-2.5 py-1 text-[11px] font-mono text-[var(--c-accent)] hover:opacity-90 transition-all"
+          >
+            + Add Sprint
+          </button>
+        </div>
+        <div className="space-y-2 mt-2">
+          {dbSprints.map((s) => {
+            const isActive = s.status === "Active";
+            const isCompleted = s.status === "Completed";
+            const lead = profiles.find((p) => p.id === s.sprintLeadId);
 
-              const startD = s.startDate ? new Date(s.startDate) : null;
-              const endD = s.endDate ? new Date(s.endDate) : null;
+            const startD = s.startDate ? new Date(s.startDate) : null;
+            const endD = s.endDate ? new Date(s.endDate) : null;
 
-              const isValidStart = startD && !isNaN(startD.getTime());
-              const isValidEnd = endD && !isNaN(endD.getTime());
+            const isValidStart = startD && !isNaN(startD.getTime());
+            const isValidEnd = endD && !isNaN(endD.getTime());
 
-              const durationDays =
-                isValidStart && isValidEnd
-                  ? Math.max(
-                      1,
-                      Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-                    )
-                  : 0;
+            const durationDays =
+              isValidStart && isValidEnd
+                ? Math.max(
+                    1,
+                    Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+                  )
+                : 0;
 
-              const formattedStart = isValidStart
-                ? startD.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                : "N/A";
-              const formattedEnd = isValidEnd
-                ? endD.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                : "N/A";
+            const formattedStart = isValidStart
+              ? startD.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+              : "N/A";
+            const formattedEnd = isValidEnd
+              ? endD.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+              : "N/A";
 
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => setSelectedSprint(s)}
-                  className={`group relative flex flex-col gap-2 rounded-[8px] border bg-[var(--c-bg-card)] px-3 py-2.5 text-[13px] cursor-pointer transition-all hover:bg-[var(--c-bg-hover)]
+            return (
+              <div
+                key={s.id}
+                onClick={() => setSelectedSprint(s)}
+                className={`group relative flex flex-col gap-2 rounded-[8px] border bg-[var(--c-bg-card)] px-3 py-2.5 text-[13px] cursor-pointer transition-all hover:bg-[var(--c-bg-hover)]
                     ${
                       isActive
                         ? "border-[var(--c-accent)] shadow-[0_0_10px_var(--c-accent-soft)]"
                         : "border-[var(--c-border)]"
                     }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-block h-2 w-2 rounded-full ${isCompleted ? "bg-[var(--c-pass)]" : isActive ? "bg-[var(--c-accent)]" : "bg-[var(--c-text-dim)]"}`}
-                      />
-                      <span className="font-semibold text-[14px]">{s.name}</span>
-                    </div>
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${isCompleted ? "bg-[var(--c-pass)]" : isActive ? "bg-[var(--c-accent)]" : "bg-[var(--c-text-dim)]"}`}
+                    />
+                    <span className="font-semibold text-[14px]">{s.name}</span>
+                  </div>
 
-                    <div className="flex items-center gap-2 font-mono text-[10.5px]">
-                      <span
-                        className={`rounded-sm px-1.5 py-0.2 uppercase text-[9px] font-semibold
+                  <div className="flex items-center gap-2 font-mono text-[10.5px]">
+                    <span
+                      className={`rounded-sm px-1.5 py-0.2 uppercase text-[9px] font-semibold
                         ${
                           isCompleted
                             ? "bg-[var(--c-pass-soft)] text-[var(--c-pass)]"
@@ -556,52 +559,52 @@ export function ProjectDetail({ project }: { project: Project }) {
                               ? "bg-[var(--c-accent-soft)] text-[var(--c-accent)]"
                               : "bg-[var(--c-bg-hover)] text-[var(--c-text-muted)]"
                         }`}
-                      >
-                        {s.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-[var(--c-text-muted)] font-mono border-t border-[var(--c-border)]/50 pt-2 mt-1">
-                    <span>
-                      📅 {formattedStart} – {formattedEnd} ({durationDays}d)
+                    >
+                      {s.status}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      {lead ? (
-                        <span className="truncate max-w-[80px]" title={`Lead: ${lead.fullName}`}>
-                          👤 {lead.fullName.split(" ")[0]}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--c-text-dim)]">No Lead</span>
-                      )}
-                      <span>·</span>
-                      <span
-                        title={`${s.sprintMembers?.length || 0} Members, ${s.sprintDevelopers?.length || 0} Developers, ${s.sprintTesters?.length || 0} Testers`}
-                      >
-                        👥{" "}
-                        {(s.sprintMembers?.length || 0) +
-                          (s.sprintDevelopers?.length || 0) +
-                          (s.sprintTesters?.length || 0)}
-                      </span>
-                    </div>
                   </div>
-
-                  {/* Delete Sprint Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSprint(s.id, s.name);
-                    }}
-                    className="absolute right-2 top-2 z-10 p-1 text-[var(--c-text-muted)] opacity-0 hover:text-[var(--c-fail)] group-hover:opacity-100 transition-opacity"
-                    title="Delete Sprint"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
                 </div>
-              );
-            })}
-          </div>
+
+                <div className="flex items-center justify-between text-[11px] text-[var(--c-text-muted)] font-mono border-t border-[var(--c-border)]/50 pt-2 mt-1">
+                  <span>
+                    📅 {formattedStart} – {formattedEnd} ({durationDays}d)
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {lead ? (
+                      <span className="truncate max-w-[80px]" title={`Lead: ${lead.fullName}`}>
+                        👤 {lead.fullName.split(" ")[0]}
+                      </span>
+                    ) : (
+                      <span className="text-[var(--c-text-dim)]">No Lead</span>
+                    )}
+                    <span>·</span>
+                    <span
+                      title={`${s.sprintMembers?.length || 0} Members, ${s.sprintDevelopers?.length || 0} Developers, ${s.sprintTesters?.length || 0} Testers`}
+                    >
+                      👥{" "}
+                      {(s.sprintMembers?.length || 0) +
+                        (s.sprintDevelopers?.length || 0) +
+                        (s.sprintTesters?.length || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Delete Sprint Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSprint(s.id, s.name);
+                  }}
+                  className="absolute right-2 top-2 z-10 p-1 text-[var(--c-text-muted)] opacity-0 hover:text-[var(--c-fail)] group-hover:opacity-100 transition-opacity"
+                  title="Delete Sprint"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          })}
         </div>
+      </div>
 
       {/* Files */}
       {p.files.length > 0 && (

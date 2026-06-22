@@ -49,7 +49,10 @@ export function getActiveUserRole(): "owner" | "admin" | "editor" | "viewer" {
   return activeUserRole;
 }
 
-export function setActiveWorkspaceContext(meta: WorkspaceMeta | null, role: "owner" | "admin" | "editor" | "viewer") {
+export function setActiveWorkspaceContext(
+  meta: WorkspaceMeta | null,
+  role: "owner" | "admin" | "editor" | "viewer",
+) {
   activeWorkspaceMeta = meta;
   activeUserRole = role;
   workspaceMetaListeners.forEach((l) => l());
@@ -62,7 +65,7 @@ function getCurrentWorkspaceId(): string | null {
 export function createStore<T>(
   baseKey: string,
   initial: T,
-  scope: "workspace" | "user" = "workspace"
+  scope: "workspace" | "user" = "workspace",
 ): Store<T> {
   let state: T = initial;
   const listeners = new Set<Listener>();
@@ -174,7 +177,7 @@ export async function signOut() {
   // Clear memory context
   setActiveWorkspaceContext(null, "viewer");
   updateActiveWorkspaceMembers([]);
-  
+
   await supabase.auth.signOut();
   clearStores();
 }
@@ -183,11 +186,11 @@ export async function deleteUserAccount() {
   const userId = currentUserId;
   if (userId) {
     try {
-      await supabase.from('workspace_members').delete().eq('user_id', userId);
+      await supabase.from("workspace_members").delete().eq("user_id", userId);
     } catch (e) {
       console.error(e);
     }
-    
+
     if (typeof window !== "undefined") {
       clearUserSessionData(userId);
     }
@@ -235,28 +238,33 @@ export function createProject(name: string, data?: Partial<Project>): Project {
   projectsStore.set((prev) => [p, ...prev]);
   addActivity("project_created", `Project "${name}" created`);
   scaffoldSprintsForProject(p);
-  
+
   // Sync to Supabase
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("projects").insert({
-      id: p.id,
-      workspace_id: wsId,
-      name: p.name,
-      description: p.description,
-      status: p.status,
-      priority: p.priority,
-      start_date: p.startDate,
-      target_date: p.targetDate,
-      tags: p.tags
-    }).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("projects")
+      .insert({
+        id: p.id,
+        workspace_id: wsId,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        priority: p.priority,
+        start_date: p.startDate,
+        target_date: p.targetDate,
+        tags: p.tags,
+      })
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
-  
+
   return p;
 }
 export function updateProject(id: string, data: Partial<Project>) {
   projectsStore.set((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p)));
-  
+
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
     const updateData: any = {};
@@ -268,7 +276,14 @@ export function updateProject(id: string, data: Partial<Project>) {
     if (data.targetDate !== undefined) updateData.target_date = data.targetDate;
     if (data.tags !== undefined) updateData.tags = data.tags;
 
-    supabase.from("projects").update(updateData).eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("projects")
+      .update(updateData)
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 export function deleteProject(id: string) {
@@ -307,7 +322,14 @@ export function deleteProject(id: string) {
 
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("projects").delete().eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("projects")
+      .delete()
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 export function addFiles(projectId: string, files: File[]) {
@@ -407,7 +429,7 @@ export function useWorkspaces() {
         name: meta.workspaceName,
         createdAt: new Date(meta.createdAt).getTime(),
         billingStatus: "active" as const,
-      }
+      },
     ];
   }, [meta]);
   return [workspaces] as const;
@@ -446,7 +468,11 @@ export function useCurrentRole(): WorkspaceRole {
   return capRole;
 }
 
-export const currentUserProfileRoleStore = createStore<"admin" | "editor" | "viewer">("ai-test-gen.currentUserProfileRole", "viewer", "user");
+export const currentUserProfileRoleStore = createStore<"owner" | "admin" | "editor" | "viewer">(
+  "ai-test-gen.currentUserProfileRole",
+  "viewer",
+  "user",
+);
 
 export function useUserStore() {
   const { user } = useAuth();
@@ -470,7 +496,8 @@ export function getAvatarColor(name: string): string {
 export async function resolveActiveWorkspace(userId: string) {
   const { data: memberships, error } = await supabase
     .from("workspace_members")
-    .select(`
+    .select(
+      `
       workspace_id,
       role,
       status,
@@ -484,7 +511,8 @@ export async function resolveActiveWorkspace(userId: string) {
         owner_email,
         created_at
       )
-    `)
+    `,
+    )
     .eq("user_id", userId)
     .eq("status", "active");
 
@@ -502,15 +530,21 @@ export async function resolveActiveWorkspace(userId: string) {
     const rankB = roleRank[b.role?.toLowerCase() ?? ""] ?? 99;
     if (rankA !== rankB) return rankA - rankB;
 
-    const wsA = (Array.isArray(a.workspaces) ? a.workspaces[0] : a.workspaces) as { owner_id?: string } | null;
-    const wsB = (Array.isArray(b.workspaces) ? b.workspaces[0] : b.workspaces) as { owner_id?: string } | null;
+    const wsA = (Array.isArray(a.workspaces) ? a.workspaces[0] : a.workspaces) as {
+      owner_id?: string;
+    } | null;
+    const wsB = (Array.isArray(b.workspaces) ? b.workspaces[0] : b.workspaces) as {
+      owner_id?: string;
+    } | null;
     if (wsA?.owner_id === userId) return -1;
     if (wsB?.owner_id === userId) return 1;
     return 0;
   });
 
   const membership = sorted[0];
-  const ws = (Array.isArray(membership.workspaces) ? membership.workspaces[0] : membership.workspaces) as any;
+  const ws = (
+    Array.isArray(membership.workspaces) ? membership.workspaces[0] : membership.workspaces
+  ) as any;
 
   return {
     workspaceId: membership.workspace_id,
@@ -524,7 +558,7 @@ export type Profile = {
   id: string;
   fullName: string;
   email: string;
-  role: 'admin' | 'editor' | 'viewer';
+  role: "owner" | "admin" | "editor" | "viewer";
   avatarUrl?: string;
 };
 
@@ -542,7 +576,7 @@ export const useProfiles = profilesStore.useStore;
 export function createProfile(
   fullName: string,
   email: string,
-  role: 'admin' | 'editor' | 'viewer',
+  role: "owner" | "admin" | "editor" | "viewer",
   avatarUrl?: string,
 ): Profile {
   const p: Profile = {
@@ -760,17 +794,22 @@ export function createSuite(projectId: string, name: string): TestSuite {
   };
   suitesStore.set((prev) => [s, ...prev]);
   addActivity("suite_created", `Suite "${name}" created`);
-  
+
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("test_suites").insert({
-      id: s.id,
-      project_id: s.projectId,
-      workspace_id: wsId,
-      name: s.name
-    }).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("test_suites")
+      .insert({
+        id: s.id,
+        project_id: s.projectId,
+        workspace_id: wsId,
+        name: s.name,
+      })
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
-  
+
   return s;
 }
 export function deleteSuite(id: string) {
@@ -782,15 +821,29 @@ export function deleteSuite(id: string) {
 
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("test_suites").delete().eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("test_suites")
+      .delete()
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 export function renameSuite(id: string, name: string) {
   suitesStore.set((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
-  
+
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("test_suites").update({ name }).eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("test_suites")
+      .update({ name })
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 
@@ -871,24 +924,29 @@ export function createTestCase(suiteId: string, data: Partial<TestCase>): TestCa
 
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("test_cases").insert({
-      id: tc.id,
-      suite_id: tc.suiteId,
-      workspace_id: wsId,
-      title: tc.title,
-      steps: tc.steps,
-      expected: tc.expected,
-      priority: tc.priority,
-      author_status: tc.authorStatus,
-      last_run_status: tc.lastRunStatus,
-      last_run_id: tc.lastRunId,
-      tags: tc.tags,
-      type: tc.type,
-      assigned_to: tc.assignedTo,
-      requirement_id: tc.requirementId,
-      source_recording_id: tc.sourceRecordingId,
-      module_name: tc.module_name
-    }).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("test_cases")
+      .insert({
+        id: tc.id,
+        suite_id: tc.suiteId,
+        workspace_id: wsId,
+        title: tc.title,
+        steps: tc.steps,
+        expected: tc.expected,
+        priority: tc.priority,
+        author_status: tc.authorStatus,
+        last_run_status: tc.lastRunStatus,
+        last_run_id: tc.lastRunId,
+        tags: tc.tags,
+        type: tc.type,
+        assigned_to: tc.assignedTo,
+        requirement_id: tc.requirementId,
+        source_recording_id: tc.sourceRecordingId,
+        module_name: tc.module_name,
+      })
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 
   return tc;
@@ -910,10 +968,18 @@ export function updateTestCase(id: string, data: Partial<TestCase>) {
     if (data.type !== undefined) updateData.type = data.type;
     if (data.assignedTo !== undefined) updateData.assigned_to = data.assignedTo;
     if (data.requirementId !== undefined) updateData.requirement_id = data.requirementId;
-    if (data.sourceRecordingId !== undefined) updateData.source_recording_id = data.sourceRecordingId;
+    if (data.sourceRecordingId !== undefined)
+      updateData.source_recording_id = data.sourceRecordingId;
     if (data.module_name !== undefined) updateData.module_name = data.module_name;
 
-    supabase.from("test_cases").update(updateData).eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("test_cases")
+      .update(updateData)
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 export function deleteTestCase(id: string) {
@@ -930,7 +996,14 @@ export function deleteTestCase(id: string) {
 
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("test_cases").delete().eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("test_cases")
+      .delete()
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 
@@ -1079,31 +1152,37 @@ export function createMockRun(
 
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("test_runs").insert({
-      id: run.id,
-      project_id: run.projectId,
-      workspace_id: wsId,
-      suite_id: run.suiteId,
-      suite_name: run.suiteName,
-      project_name: run.projectName,
-      duration: run.duration,
-      status: run.status,
-      coverage: run.coverage,
-      environment: run.environment
-    }).then(() => {
-      // Insert run results after run is created
-      if (run.results.length > 0) {
-        supabase.from("test_run_results").insert(
-          run.results.map(r => ({
-            run_id: run.id,
-            test_case_id: r.testCaseId,
-            status: r.status,
-            duration: r.duration,
-            error_message: r.error
-          }))
-        ).then();
-      }
-    });
+    supabase
+      .from("test_runs")
+      .insert({
+        id: run.id,
+        project_id: run.projectId,
+        workspace_id: wsId,
+        suite_id: run.suiteId,
+        suite_name: run.suiteName,
+        project_name: run.projectName,
+        duration: run.duration,
+        status: run.status,
+        coverage: run.coverage,
+        environment: run.environment,
+      })
+      .then(() => {
+        // Insert run results after run is created
+        if (run.results.length > 0) {
+          supabase
+            .from("test_run_results")
+            .insert(
+              run.results.map((r) => ({
+                run_id: run.id,
+                test_case_id: r.testCaseId,
+                status: r.status,
+                duration: r.duration,
+                error_message: r.error,
+              })),
+            )
+            .then();
+        }
+      });
   }
 
   return run;
@@ -1171,22 +1250,27 @@ export function createBug(data: {
 
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("bugs").insert({
-      id: bug.id,
-      project_id: bug.project_id,
-      workspace_id: wsId,
-      test_case_title: bug.test_case_title,
-      test_case_id: bug.testCaseId,
-      run_id: bug.runId,
-      recording_session_id: bug.recordingSessionId,
-      error_message: bug.error_message,
-      code_snippet: bug.code_snippet,
-      developer_notes: bug.developer_notes,
-      is_resolved: bug.is_resolved,
-      resolved_at: bug.resolved_at,
-      severity: bug.severity,
-      environment: bug.environment
-    }).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("bugs")
+      .insert({
+        id: bug.id,
+        project_id: bug.project_id,
+        workspace_id: wsId,
+        test_case_title: bug.test_case_title,
+        test_case_id: bug.testCaseId,
+        run_id: bug.runId,
+        recording_session_id: bug.recordingSessionId,
+        error_message: bug.error_message,
+        code_snippet: bug.code_snippet,
+        developer_notes: bug.developer_notes,
+        is_resolved: bug.is_resolved,
+        resolved_at: bug.resolved_at,
+        severity: bug.severity,
+        environment: bug.environment,
+      })
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 
   return bug;
@@ -1196,21 +1280,33 @@ export function updateBugNotes(id: string, notes: string | null) {
   bugsStore.set((prev) => prev.map((b) => (b.id === id ? { ...b, developer_notes: notes } : b)));
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("bugs").update({ developer_notes: notes }).eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("bugs")
+      .update({ developer_notes: notes })
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 
 export function resolveBug(id: string) {
   const now = new Date().toISOString();
   bugsStore.set((prev) =>
-    prev.map((b) =>
-      b.id === id ? { ...b, is_resolved: true, resolved_at: now } : b,
-    ),
+    prev.map((b) => (b.id === id ? { ...b, is_resolved: true, resolved_at: now } : b)),
   );
   addActivity("bug_updated", `Bug ${id} marked as resolved`);
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("bugs").update({ is_resolved: true, resolved_at: now }).eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("bugs")
+      .update({ is_resolved: true, resolved_at: now })
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 
@@ -1221,7 +1317,14 @@ export function restoreBug(id: string) {
   addActivity("bug_updated", `Bug ${id} restored to active list`);
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("bugs").update({ is_resolved: false, resolved_at: null }).eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("bugs")
+      .update({ is_resolved: false, resolved_at: null })
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 
@@ -1229,7 +1332,14 @@ export function deleteBug(id: string) {
   bugsStore.set((prev) => prev.filter((b) => b.id !== id));
   const wsId = getCurrentWorkspaceId();
   if (wsId) {
-    supabase.from("bugs").delete().eq("id", id).eq("workspace_id", wsId).then(r => { if(r.error) console.error(r.error) });
+    supabase
+      .from("bugs")
+      .delete()
+      .eq("id", id)
+      .eq("workspace_id", wsId)
+      .then((r) => {
+        if (r.error) console.error(r.error);
+      });
   }
 }
 
@@ -1329,7 +1439,10 @@ export type TokenDeduction = {
   amount: number;
   timestamp: number;
 };
-export const tokenDeductionsStore = createStore<TokenDeduction[]>("ai-test-gen.tokenDeductions", []);
+export const tokenDeductionsStore = createStore<TokenDeduction[]>(
+  "ai-test-gen.tokenDeductions",
+  [],
+);
 export const useTokenDeductions = tokenDeductionsStore.useStore;
 
 /**
@@ -1355,15 +1468,17 @@ export function deductTokenAction(actionLabel: string): boolean {
     `5 tokens were deducted for: ${actionLabel}. Check your token balance in the top bar.`,
     "info",
   );
-  tokenDeductionsStore.set((prev) => [
-    {
-      id: crypto.randomUUID(),
-      action: actionLabel,
-      amount: 5,
-      timestamp: Date.now(),
-    },
-    ...prev,
-  ].slice(0, 10));
+  tokenDeductionsStore.set((prev) =>
+    [
+      {
+        id: crypto.randomUUID(),
+        action: actionLabel,
+        amount: 5,
+        timestamp: Date.now(),
+      },
+      ...prev,
+    ].slice(0, 10),
+  );
   return true;
 }
 
@@ -1397,25 +1512,29 @@ export type SettingsInfo = {
   coverageEnabled: boolean;
   workspaceName: string;
 };
-export const settingsStore = createStore<SettingsInfo>("ai-test-gen.settings", {
-  aiModel: "gpt-4o",
-  notifications: {
-    runComplete: true,
-    bugFiled: true,
-    tokenLow: true,
-    weeklyDigest: false,
+export const settingsStore = createStore<SettingsInfo>(
+  "ai-test-gen.settings",
+  {
+    aiModel: "gpt-4o",
+    notifications: {
+      runComplete: true,
+      bugFiled: true,
+      tokenLow: true,
+      weeklyDigest: false,
+    },
+    userName: "",
+    userEmail: "",
+    username: "",
+    role: "QA Engineer",
+    defaultProjectView: "card",
+    timezone: "America/New_York",
+    dateFormat: "MM/DD/YYYY",
+    twoFactorEnabled: false,
+    coverageEnabled: false,
+    workspaceName: "",
   },
-  userName: "",
-  userEmail: "",
-  username: "",
-  role: "QA Engineer",
-  defaultProjectView: "card",
-  timezone: "America/New_York",
-  dateFormat: "MM/DD/YYYY",
-  twoFactorEnabled: false,
-  coverageEnabled: false,
-  workspaceName: "",
-}, "user");
+  "user",
+);
 export const useSettings = settingsStore.useStore;
 
 // ─── Notifications Store ──────────────────────────────────
@@ -1428,24 +1547,28 @@ export type AppNotification = {
   type: "info" | "warning" | "success" | "error";
 };
 
-export const notificationsStore = createStore<AppNotification[]>("ai-test-gen.notifications", [
-  {
-    id: "1",
-    title: "Welcome to QAMind AI!",
-    message: "Create your first project to get started with test case generation.",
-    read: false,
-    createdAt: Date.now() - 3600000 * 2,
-    type: "info",
-  },
-  {
-    id: "2",
-    title: "Initial Balance Credited",
-    message: "100 tokens have been added to your standard plan balance.",
-    read: false,
-    createdAt: Date.now() - 3600000,
-    type: "success",
-  },
-], "user");
+export const notificationsStore = createStore<AppNotification[]>(
+  "ai-test-gen.notifications",
+  [
+    {
+      id: "1",
+      title: "Welcome to QAMind AI!",
+      message: "Create your first project to get started with test case generation.",
+      read: false,
+      createdAt: Date.now() - 3600000 * 2,
+      type: "info",
+    },
+    {
+      id: "2",
+      title: "Initial Balance Credited",
+      message: "100 tokens have been added to your standard plan balance.",
+      read: false,
+      createdAt: Date.now() - 3600000,
+      type: "success",
+    },
+  ],
+  "user",
+);
 export const useNotifications = notificationsStore.useStore;
 
 export function addNotification(
@@ -1516,11 +1639,7 @@ export async function initializeStores(userId: string, userEmail?: string, userN
     let active = await resolveActiveWorkspace(userId);
 
     if (!active) {
-      await provisionWorkspaceForNewUser(
-        userId,
-        userEmail || "",
-        userName || "",
-      );
+      await provisionWorkspaceForNewUser(userId, userEmail || "", userName || "");
       active = await resolveActiveWorkspace(userId);
     }
 
@@ -1555,28 +1674,30 @@ export async function initializeStores(userId: string, userEmail?: string, userN
         copy[idx] = { ...copy[idx], ...next };
         return copy;
       });
-      
+
       // Fetch workspace data from Supabase directly
       await fetchWorkspaceData(meta.workspaceId);
-      
+
       // Also fetch workspace members from Supabase
       const { data: membersData } = await supabase
-        .from('workspace_members')
-        .select('*')
-        .eq('workspace_id', meta.workspaceId);
-        
+        .from("workspace_members")
+        .select("*")
+        .eq("workspace_id", meta.workspaceId);
+
       if (membersData) {
-        updateActiveWorkspaceMembers(membersData.map((m: any) => ({
-          userId: m.user_id || m.id,
-          email: m.email,
-          displayName: m.display_name || m.email.split('@')[0],
-          role: m.role,
-          jobTitle: m.job_title || 'QA Engineer',
-          joinedAt: m.joined_at,
-          addedBy: m.added_by,
-          avatarColor: m.avatar_color || getAvatarColor(m.display_name || m.email),
-          status: m.status || 'active'
-        })));
+        updateActiveWorkspaceMembers(
+          membersData.map((m: any) => ({
+            userId: m.user_id || m.id,
+            email: m.email,
+            displayName: m.display_name || m.email.split("@")[0],
+            role: m.role,
+            jobTitle: m.job_title || "QA Engineer",
+            joinedAt: m.joined_at,
+            addedBy: m.added_by,
+            avatarColor: m.avatar_color || getAvatarColor(m.display_name || m.email),
+            status: m.status || "active",
+          })),
+        );
       }
     } else {
       setActiveWorkspaceContext(null, "viewer");
@@ -1591,7 +1712,6 @@ export async function initializeStores(userId: string, userEmail?: string, userN
 
   checkAndRefillTokens();
 }
-
 
 /**
  * Call on sign-out to reset stores to empty state.
