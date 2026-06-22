@@ -7,6 +7,12 @@ import { isValidEmail, parseAuthError } from "@/frontend/store/auth";
 import { useAuth, getAvatarColor } from "@/frontend/store/store";
 import { toast } from "sonner";
 import { PendingInvitesModal, type PendingInvite } from "@/frontend/components/PendingInvitesModal";
+import {
+  getMyPendingInvites,
+  acceptInvite,
+  declineInvite,
+  verifyJoinInvite,
+} from "@/backend/api/invite.functions";
 import { QAMindLogo } from "@/frontend/components/brand";
 
 const search = z.object({
@@ -52,64 +58,85 @@ function AuthPage() {
 
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [showInvitesModal, setShowInvitesModal] = useState(false);
+  const [showWelcomeCard, setShowWelcomeCard] = useState(false);
+  const [welcomeCardData, setWelcomeCardData] = useState<{ workspaceName: string; role: string } | null>(null);
+
+  const getToken = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData.session?.access_token ?? "";
+  };
+
+  const checkOnboardingComplete = async (userId: string) => {
+    const { data } = await supabase.from("profiles").select("onboarding_complete").eq("id", userId).maybeSingle();
+    return !!data?.onboarding_complete;
+  };
 
   const handlePostAuth = async (user: any) => {
-    if (!user) return navigate({ to: "/dashboard" });
-    const { data: invites } = await supabase
-      .from("workspace_members")
-      .select("id, workspace_id, role, workspaces(name, workspace_key)")
-      .eq("email", user.email)
-      .eq("status", "pending");
-
-    if (invites && invites.length > 0) {
-      setPendingInvites(invites as any);
-      setShowInvitesModal(true);
-    } else {
-      navigate({ to: "/dashboard" });
+    if (!user) return navigate({ to: "/auth" });
+    try {
+      const accessToken = await getToken();
+      const invites = await getMyPendingInvites({ data: { accessToken } });
+      if (invites.length > 0) {
+        setPendingInvites(invites);
+        setShowInvitesModal(true);
+      } else {
+        const isOnboarded = await checkOnboardingComplete(user.id);
+        navigate({ to: isOnboarded ? "/dashboard" : "/onboarding", search: isOnboarded ? undefined : { flow: "owner" } });
+      }
+    } catch {
+      navigate({ to: "/onboarding", search: { flow: "owner" } });
     }
   };
 
   const handleJoinInvite = async (invite: PendingInvite) => {
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const user = sessionData.session?.user;
-      if (!user) throw new Error("No user session");
-
-      await supabase
-        .from("workspace_members")
-        .update({
-          user_id: user.id,
-          status: "active",
-          joined_at: new Date().toISOString(),
-        })
-        .eq("id", invite.id);
-
-      const { data: activeWorkspaces } = await supabase
-        .from("workspace_members")
-        .select("id")
-        .eq("email", user.email)
-        .eq("status", "active")
-        .neq("id", invite.id);
-
-      const isFirstTime = !activeWorkspaces || activeWorkspaces.length === 0;
-
+      const accessToken = await getToken();
+      await acceptInvite({ data: { accessToken, inviteId: invite.id } });
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const isOnboarded = currentUser ? await checkOnboardingComplete(currentUser.id) : false;
       setShowInvitesModal(false);
-      if (isFirstTime) {
-        navigate({ to: "/onboarding" });
+      if (isOnboarded) {
+        setWelcomeCardData({ workspaceName: invite.workspace_name, role: invite.role });
+        setShowWelcomeCard(true);
       } else {
-        navigate({ to: "/dashboard" });
+        navigate({ to: "/onboarding", search: { flow: "invited", workspaceName: invite.workspace_name } });
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to join workspace.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleDeclineInvite = async (invite: PendingInvite) => {
+    setLoading(true);
+    try {
+      const accessToken = await getToken();
+      await declineInvite({ data: { accessToken, inviteId: invite.id } });
+      const remaining = pendingInvites.filter((i) => i.id !== invite.id);
+      setPendingInvites(remaining);
+      if (!remaining.length) {
+        setShowInvitesModal(false);
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const isOnboarded = currentUser ? await checkOnboardingComplete(currentUser.id) : false;
+        navigate({ to: isOnboarded ? "/dashboard" : "/onboarding", search: isOnboarded ? undefined : { flow: "owner" } });
+      }
+    } catch {
+      toast.error("Failed to decline invite.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMaybeLater = () => {
+    setShowInvitesModal(false);
+    navigate({ to: "/auth/pending" });
+  };
+
   const handleCreateOwn = () => {
     setShowInvitesModal(false);
-    navigate({ to: "/onboarding" });
+    navigate({ to: "/onboarding", search: { flow: "owner" } });
   };
 
   useEffect(() => {
@@ -192,28 +219,18 @@ function AuthPage() {
 
       setLoading(true);
 
+      let matchedInviteId: string | null = null;
       let matchedWorkspaceId: string | null = null;
       let matchedRole: string | null = null;
+      let matchedWsName: string = "";
 
       try {
-        // Find matching pending invite in Supabase
-        const { data: pendingInvite, error: inviteError } = await supabase
-          .from("workspace_members")
-          .select(
-            `
-            workspace_id,
-            role,
-            workspaces!inner (
-              workspace_key
-            )
-          `,
-          )
-          .eq("email", email)
-          .eq("status", "pending")
-          .eq("workspaces.workspace_key", workspaceKey.trim().toUpperCase())
-          .maybeSingle();
+        // Use admin-client server fn — anon client is blocked by RLS before user is authenticated
+        const inviteData = await verifyJoinInvite({
+          data: { email, workspaceKey: workspaceKey.trim() },
+        });
 
-        if (inviteError || !pendingInvite) {
+        if (!inviteData) {
           setFormError(
             "No active invite found. Check your workspace key and email, or ask your team owner to resend the invite.",
           );
@@ -221,8 +238,10 @@ function AuthPage() {
           return;
         }
 
-        matchedWorkspaceId = pendingInvite.workspace_id;
-        matchedRole = pendingInvite.role;
+        matchedInviteId = inviteData.id;
+        matchedWorkspaceId = inviteData.workspaceId;
+        matchedRole = inviteData.role;
+        matchedWsName = inviteData.workspaceName;
       } catch (err) {
         setFormError("Failed to verify invite.");
         setLoading(false);
@@ -234,7 +253,7 @@ function AuthPage() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback" },
+          options: { emailRedirectTo: window.location.origin + "/auth/confirm" },
         });
 
         if (error) {
@@ -250,23 +269,23 @@ function AuthPage() {
         return;
       }
 
-      if (userId) {
-        // Activate their membership in Supabase
-        await supabase
-          .from("workspace_members")
-          .update({
-            user_id: userId,
-            status: "active",
-          })
-          .eq("email", email)
-          .eq("workspace_id", matchedWorkspaceId);
+      if (userId && matchedInviteId) {
+        const sessionData = await supabase.auth.getSession();
+        const accessToken = sessionData.data.session?.access_token;
 
-        toast.success("Successfully joined workspace!");
-
-        const hasSession = (await supabase.auth.getSession()).data.session;
-        if (hasSession) {
-          window.location.href = "/onboarding";
+        if (accessToken) {
+          // Immediate session — activate via RPC (SECURITY DEFINER, bypasses RLS, updates exactly 1 row by id)
+          try {
+            await acceptInvite({ data: { accessToken, inviteId: matchedInviteId } });
+            toast.success("Successfully joined workspace!");
+            navigate({ to: "/onboarding", search: { flow: "invited", workspaceName: matchedWsName } });
+          } catch {
+            toast.error("Failed to activate membership. Please check your email for a confirmation link.");
+            navigate({ to: "/auth/verify-pending", search: { email } });
+          }
         } else {
+          // Email confirmation required — pending invite stays pending until user confirms
+          // handlePostAuth will show the PendingInvitesModal after confirmation
           navigate({ to: "/auth/verify-pending", search: { email } });
         }
       }
@@ -289,7 +308,7 @@ function AuthPage() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback" },
+          options: { emailRedirectTo: window.location.origin + "/auth/confirm" },
         });
 
         if (error) {
@@ -302,7 +321,7 @@ function AuthPage() {
           const { error: resendError } = await supabase.auth.resend({
             type: "signup",
             email,
-            options: { emailRedirectTo: window.location.origin + "/auth/callback" },
+            options: { emailRedirectTo: window.location.origin + "/auth/confirm" },
           });
 
           if (!resendError) {
@@ -969,38 +988,30 @@ function AuthPage() {
             </button>
           </form>
 
-          <div className="my-8 flex items-center gap-3 text-xs text-[var(--c-text-muted)]">
-            <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent to-[var(--c-border)]" />
-            <span className="font-mono uppercase tracking-[0.12em]">or</span>
-            <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent to-[var(--c-border)]" />
-          </div>
+          {mode !== "join" && (
+            <>
+              <div className="my-8 flex items-center gap-3 text-xs text-[var(--c-text-muted)]">
+                <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent to-[var(--c-border)]" />
+                <span className="font-mono uppercase tracking-[0.12em]">or</span>
+                <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent to-[var(--c-border)]" />
+              </div>
 
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] border-[1.5px] border-[var(--c-border)] bg-[var(--c-bg-card)] py-[10px] text-[14px] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:border-[var(--c-border-strong)] hover:bg-[var(--c-bg-hover)] disabled:opacity-60 disabled:hover:-translate-y-0"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            Continue with Google
-          </button>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-[8px] border-[1.5px] border-[var(--c-border)] bg-[var(--c-bg-card)] py-[10px] text-[14px] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:border-[var(--c-border-strong)] hover:bg-[var(--c-bg-hover)] disabled:opacity-60 disabled:hover:-translate-y-0"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                </svg>
+                Continue with Google
+              </button>
+            </>
+          )}
 
           <p className="mt-8 text-center text-[14px] text-[var(--c-text-muted)]">
             {mode === "join" ? (
@@ -1045,9 +1056,41 @@ function AuthPage() {
         <PendingInvitesModal
           invites={pendingInvites}
           onJoin={handleJoinInvite}
+          onDecline={handleDeclineInvite}
           onCreateOwn={handleCreateOwn}
+          onMaybeLater={handleMaybeLater}
           isLoading={loading}
         />
+      )}
+
+      {showWelcomeCard && welcomeCardData && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(26,23,20,0.5)] p-4 backdrop-blur-[4px]">
+          <div className="w-full max-w-sm rounded-[16px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-[32px] shadow-[var(--shadow-lg)] text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-6 w-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="font-display text-[20px] text-[var(--c-text)] mb-1">
+              You're now a member of
+            </p>
+            <p className="font-display text-[20px] text-[var(--c-accent)] mb-3">
+              {welcomeCardData.workspaceName}
+            </p>
+            <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-[var(--c-bg-hover)] text-[var(--c-text-muted)] mb-4">
+              {welcomeCardData.role}
+            </span>
+            <p className="text-[13px] text-[var(--c-text-muted)] mb-6">
+              Head to your dashboard to get started.
+            </p>
+            <button
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="w-full rounded-[8px] bg-[var(--c-text)] px-6 py-[10px] text-[14px] font-medium text-[var(--c-bg)] hover:opacity-90 transition-all"
+            >
+              Go to Dashboard →
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

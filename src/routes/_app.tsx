@@ -30,7 +30,7 @@ import {
   Mail,
   CheckCircle,
 } from "lucide-react";
-import { useAuth, signOut, initializeStores } from "@/frontend/store/store";
+import { useAuth, signOut, initializeStores, useCurrentRole } from "@/frontend/store/store";
 import { supabase } from "@/backend/supabase";
 import { checkSuperAdminStatus } from "@/backend/api/super-admin.functions";
 import { PanelProvider, usePanel } from "@/frontend/components/PanelContext";
@@ -51,9 +51,7 @@ import {
   markNotificationAsRead,
   setPlan,
   useBugs,
-  useUserStore,
   useWorkspaceMeta,
-  currentUserProfileRoleStore,
 } from "@/frontend/store/store";
 import { can } from "@/lib/permissions";
 import { DetailedNewProjectModal } from "./_app.projects";
@@ -184,65 +182,44 @@ function AppLayout() {
       }
       navigate({ to: "/auth/verify-pending" });
     } else {
-      // 3. User is authenticated. Setup database-sync parameters.
-      if (auth.user?.id) {
-        const uEmail = auth.user.email || "";
-        const uName = auth.user.user_metadata?.name || uEmail.split("@")[0] || "Workspace Owner";
-        initializeStores(auth.user.id, uEmail, uName);
-
-        // BUG 3 PART B: Detect pending invite
-        const uEmailLower = uEmail.toLowerCase();
-        const sharedInvites = JSON.parse(qamindStorage.get(qamindStorage.pendingInvites()) || "{}");
-        const pendingInvite = sharedInvites[uEmailLower];
-        if (
-          pendingInvite &&
-          pendingInvite.status === "pending" &&
-          pendingInvite.expiresAt > Date.now()
-        ) {
-          qamindStorage.set(
-            qamindStorage.invitePending(auth.user.id),
-            JSON.stringify(pendingInvite),
-          );
+      (async () => {
+        // 3. User is authenticated. Setup database-sync parameters.
+        if (auth.user?.id) {
+          const uEmail = auth.user.email || "";
+          const uName = auth.user.user_metadata?.name || uEmail.split("@")[0] || "Workspace Owner";
+          const { hasPendingInvites } = await initializeStores(auth.user.id, uEmail, uName);
+          if (hasPendingInvites) {
+            navigate({ to: "/auth/pending" });
+            return;
+          }
         }
-      }
 
-      // 4. Force new users to complete onboarding sequence before dashboard access
-      const checkOnboarding = async () => {
+        // 4. Force new users to complete onboarding sequence before dashboard access
         if (!auth.user?.id) return;
 
         const { data, error } = await supabase
           .from("profiles")
-          .select("onboarding_complete, role")
+          .select("onboarding_complete")
           .eq("id", auth.user.id)
           .single();
 
-        console.log("Supabase Fetch Result:", data, error);
-
         let completed = false;
         if (error && error.code === "PGRST116") {
-          // Profile does not exist yet; upsert it
           await supabase.from("profiles").upsert({
             id: auth.user.id,
             email: auth.user.email,
             full_name: auth.user.user_metadata?.name || "",
             onboarding_complete: false,
-            role: "viewer",
           });
-          currentUserProfileRoleStore.set("viewer");
         } else if (data) {
           completed = !!data.onboarding_complete;
-          if (data.role) {
-            currentUserProfileRoleStore.set(data.role as "admin" | "editor" | "viewer");
-          }
         }
 
         setOnboardingComplete(completed);
         if (!completed) {
           navigate({ to: "/onboarding" });
         }
-      };
-
-      checkOnboarding();
+      })();
     }
   }, [auth.session, auth.user, auth.loading, navigate]);
 
@@ -472,8 +449,7 @@ function AppShell() {
     }
   }, [auth.session?.access_token]);
 
-  const { currentUser } = useUserStore();
-  const role = currentUser?.role ?? "viewer";
+  const role = useCurrentRole();
 
   const hasProjects = projects.length > 0;
   const GATED_LABELS = new Set(["Dashboard", "Settings", "Help & Docs", "SuperAdmin"]);
@@ -772,6 +748,8 @@ function AppShell() {
                   {(() => {
                     const rBadge = (() => {
                       switch (role) {
+                        case "owner":
+                          return { bg: "#F59E0B", text: "#FFFFFF", label: "Owner" };
                         case "admin":
                           return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" };
                         case "editor":
@@ -1440,7 +1418,7 @@ function InviteAcceptModal({ userId }: { userId: string }) {
     try {
       const { error: deleteErr } = await supabase
         .from("workspace_members")
-        .delete()
+        .update({ status: "declined" })
         .eq("id", invite.id);
 
       if (deleteErr) throw deleteErr;

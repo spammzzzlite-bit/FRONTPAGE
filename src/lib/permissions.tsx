@@ -103,7 +103,7 @@ export function TokenCostLabel({ baseText }: { baseText: string }) {
   const currentRole = useCurrentRole();
   const [tokens] = useTokens();
 
-  if (currentRole !== "Owner") {
+  if (currentRole !== "owner") {
     return <>{baseText}</>;
   }
 

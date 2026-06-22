@@ -17,6 +17,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthVerifyPendingRouteImport } from './routes/auth.verify-pending'
 import { Route as AuthResetConfirmRouteImport } from './routes/auth.reset-confirm'
 import { Route as AuthResetRouteImport } from './routes/auth.reset'
+import { Route as AuthPendingRouteImport } from './routes/auth.pending'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppTraceabilityRouteImport } from './routes/_app.traceability'
 import { Route as AppSuitesRouteImport } from './routes/_app.suites'
@@ -72,6 +74,16 @@ const AuthResetConfirmRoute = AuthResetConfirmRouteImport.update({
 const AuthResetRoute = AuthResetRouteImport.update({
   id: '/reset',
   path: '/reset',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthPendingRoute = AuthPendingRouteImport.update({
+  id: '/pending',
+  path: '/pending',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -181,6 +193,8 @@ export interface FileRoutesByFullPath {
   '/suites': typeof AppSuitesRoute
   '/traceability': typeof AppTraceabilityRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/pending': typeof AuthPendingRoute
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
@@ -207,6 +221,8 @@ export interface FileRoutesByTo {
   '/suites': typeof AppSuitesRoute
   '/traceability': typeof AppTraceabilityRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/pending': typeof AuthPendingRoute
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
@@ -235,6 +251,8 @@ export interface FileRoutesById {
   '/_app/suites': typeof AppSuitesRoute
   '/_app/traceability': typeof AppTraceabilityRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/pending': typeof AuthPendingRoute
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
@@ -263,6 +281,8 @@ export interface FileRouteTypes {
     | '/suites'
     | '/traceability'
     | '/auth/callback'
+    | '/auth/confirm'
+    | '/auth/pending'
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
@@ -289,6 +309,8 @@ export interface FileRouteTypes {
     | '/suites'
     | '/traceability'
     | '/auth/callback'
+    | '/auth/confirm'
+    | '/auth/pending'
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
@@ -316,6 +338,8 @@ export interface FileRouteTypes {
     | '/_app/suites'
     | '/_app/traceability'
     | '/auth/callback'
+    | '/auth/confirm'
+    | '/auth/pending'
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
@@ -386,6 +410,20 @@ declare module '@tanstack/react-router' {
       path: '/reset'
       fullPath: '/auth/reset'
       preLoaderRoute: typeof AuthResetRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/pending': {
+      id: '/auth/pending'
+      path: '/pending'
+      fullPath: '/auth/pending'
+      preLoaderRoute: typeof AuthPendingRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
       parentRoute: typeof AuthRoute
     }
     '/auth/callback': {
@@ -552,6 +590,8 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AuthRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
+  AuthPendingRoute: typeof AuthPendingRoute
   AuthResetRoute: typeof AuthResetRoute
   AuthResetConfirmRoute: typeof AuthResetConfirmRoute
   AuthVerifyPendingRoute: typeof AuthVerifyPendingRoute
@@ -559,6 +599,8 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
+  AuthPendingRoute: AuthPendingRoute,
   AuthResetRoute: AuthResetRoute,
   AuthResetConfirmRoute: AuthResetConfirmRoute,
   AuthVerifyPendingRoute: AuthVerifyPendingRoute,

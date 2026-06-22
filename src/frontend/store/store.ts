@@ -362,7 +362,7 @@ export function removeFile(projectId: string, fileId: string) {
 }
 
 // ─── RBAC & Workspace definitions ────────────────────────
-export type WorkspaceRole = "Owner" | "Admin" | "Editor" | "Viewer";
+export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
 
 export type Workspace = {
   id: string;
@@ -454,7 +454,7 @@ export function useWorkspaceMeta() {
 }
 
 export function useCurrentRole(): WorkspaceRole {
-  const [role, setRole] = useState<"owner" | "admin" | "editor" | "viewer">(activeUserRole);
+  const [role, setRole] = useState<WorkspaceRole>(activeUserRole);
 
   useEffect(() => {
     const listener = () => setRole(activeUserRole);
@@ -464,8 +464,7 @@ export function useCurrentRole(): WorkspaceRole {
     };
   }, []);
 
-  const capRole = (role.charAt(0).toUpperCase() + role.slice(1)) as WorkspaceRole;
-  return capRole;
+  return role;
 }
 
 export const currentUserProfileRoleStore = createStore<"owner" | "admin" | "editor" | "viewer">(
@@ -477,7 +476,7 @@ export const currentUserProfileRoleStore = createStore<"owner" | "admin" | "edit
 export function useUserStore() {
   const { user } = useAuth();
   const userId = user?.id;
-  const [role] = currentUserProfileRoleStore.useStore();
+  const role = useCurrentRole();
 
   return {
     currentUser: userId ? { id: userId, role } : null,
@@ -1630,7 +1629,11 @@ const ALL_STORES: Store<any>[] = [
  * Call this after authentication to scope all stores to the current user.
  * Re-reads data from localStorage using the user-scoped key.
  */
-export async function initializeStores(userId: string, userEmail?: string, userName?: string) {
+export async function initializeStores(
+  userId: string,
+  userEmail?: string,
+  userName?: string,
+): Promise<{ hasPendingInvites: boolean }> {
   currentUserId = userId;
 
   if (userId) {
@@ -1639,7 +1642,21 @@ export async function initializeStores(userId: string, userEmail?: string, userN
     let active = await resolveActiveWorkspace(userId);
 
     if (!active) {
-      await provisionWorkspaceForNewUser(userId, userEmail || "", userName || "");
+      // Check pending invites before auto-provisioning (RPC bypasses RLS for invitees)
+      const { data: pendingCheck } = await supabase.rpc("get_my_pending_invites");
+      if (pendingCheck?.length) {
+        setActiveWorkspaceContext(null, "viewer");
+        updateActiveWorkspaceMembers([]);
+        for (const store of ALL_STORES) { store._reinit(); }
+        checkAndRefillTokens();
+        return { hasPendingInvites: true };
+      }
+
+      await provisionWorkspaceForNewUser(
+        userId,
+        userEmail || "",
+        userName || "",
+      );
       active = await resolveActiveWorkspace(userId);
     }
 
@@ -1711,6 +1728,7 @@ export async function initializeStores(userId: string, userEmail?: string, userN
   }
 
   checkAndRefillTokens();
+  return { hasPendingInvites: false };
 }
 
 /**

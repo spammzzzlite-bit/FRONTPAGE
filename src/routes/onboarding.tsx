@@ -1,11 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import OnboardingFlow from "@/frontend/components/OnboardingFlow";
 import { supabase } from "@/backend/supabase";
 import { useAuth, useCurrentRole, initializeStores } from "@/frontend/store/store";
-import { isOnboardingCompleteLocally } from "@/lib/storage-keys";
+
+const search = z.object({
+  flow: z.enum(["owner", "invited"]).optional(),
+  workspaceName: z.string().optional(),
+});
 
 export const Route = createFileRoute("/onboarding")({
+  validateSearch: (s) => search.parse(s),
   head: () => ({
     meta: [
       { title: "Onboarding — QAMind AI" },
@@ -15,16 +21,13 @@ export const Route = createFileRoute("/onboarding")({
   component: OnboardingPage,
 });
 
-async function persistOnboardingComplete(user: {
-  id: string;
-  email?: string | null;
-  user_metadata?: { name?: string };
-}) {
+async function persistOnboardingComplete(userId: string, email?: string | null, fullName?: string | null) {
   await supabase.from("profiles").upsert({
-    id: user.id,
-    email: user.email ?? null,
-    full_name: user.user_metadata?.name ?? null,
+    id: userId,
+    email: email ?? null,
+    full_name: fullName ?? null,
     onboarding_complete: true,
+    onboarding_step: 0,
   });
 }
 
@@ -32,8 +35,10 @@ function OnboardingPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const currentRole = useCurrentRole();
+  const { flow, workspaceName } = Route.useSearch();
 
   const [isReady, setIsReady] = useState(false);
+  const [resumeStep, setResumeStep] = useState(0);
 
   useEffect(() => {
     if (!auth.user?.id || auth.loading) return;
@@ -47,52 +52,73 @@ function OnboardingPage() {
 
     if (!auth.session) {
       navigate({ to: "/auth" });
-    } else {
-      const checkOnboarding = async () => {
-        if (!auth.user?.id) return;
-
-        if (isOnboardingCompleteLocally(auth.user.id)) {
-          navigate({ to: "/dashboard" });
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("onboarding_complete")
-          .eq("id", auth.user.id)
-          .single();
-
-        if (error && error.code === "PGRST116") {
-          await supabase.from("profiles").upsert({
-            id: auth.user.id,
-            email: auth.user.email,
-            full_name: auth.user.user_metadata?.name || "",
-            onboarding_complete: false,
-          });
-          setIsReady(true);
-          return;
-        }
-
-        if (data?.onboarding_complete) {
-          navigate({ to: "/dashboard" });
-        } else {
-          setIsReady(true);
-        }
-      };
-      checkOnboarding();
+      return;
     }
-  }, [auth.session, auth.loading, auth.user?.id, navigate]);
+
+    const checkOnboarding = async () => {
+      if (!auth.user?.id) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("onboarding_complete, onboarding_step, onboarding_flow")
+        .eq("id", auth.user.id)
+        .single();
+
+      if (error && error.code === "PGRST116") {
+        await supabase.from("profiles").upsert({
+          id: auth.user.id,
+          email: auth.user.email,
+          full_name: auth.user.user_metadata?.name || "",
+          onboarding_complete: false,
+          onboarding_flow: flow ?? "owner",
+          onboarding_step: 0,
+        });
+        setIsReady(true);
+        return;
+      }
+
+      if (data?.onboarding_complete) {
+        navigate({ to: "/dashboard" });
+        return;
+      }
+
+      if (data?.onboarding_step) {
+        setResumeStep(data.onboarding_step);
+      }
+
+      setIsReady(true);
+    };
+
+    checkOnboarding();
+  }, [auth.session, auth.loading, auth.user?.id, navigate, flow]);
+
+  const handleStepChange = async (step: number) => {
+    if (!auth.user?.id) return;
+    await supabase.from("profiles").upsert({
+      id: auth.user.id,
+      onboarding_flow: flow ?? "owner",
+      onboarding_step: step,
+    });
+  };
 
   const handleComplete = async () => {
     if (auth.user?.id) {
-      await persistOnboardingComplete(auth.user);
+      await persistOnboardingComplete(
+        auth.user.id,
+        auth.user.email,
+        auth.user.user_metadata?.name,
+      );
     }
     navigate({ to: "/dashboard" });
   };
 
   const handleSkip = async () => {
     if (auth.user?.id) {
-      await persistOnboardingComplete(auth.user);
+      await persistOnboardingComplete(
+        auth.user.id,
+        auth.user.email,
+        auth.user.user_metadata?.name,
+      );
     }
     navigate({ to: "/dashboard" });
   };
@@ -112,8 +138,12 @@ function OnboardingPage() {
   return (
     <OnboardingFlow
       currentRole={currentRole}
+      flow={flow ?? "owner"}
+      joinedWorkspaceName={workspaceName}
+      initialStep={resumeStep}
       onComplete={handleComplete}
       onSkip={handleSkip}
+      onStepChange={handleStepChange}
       onNavigate={handleNavigate}
     />
   );

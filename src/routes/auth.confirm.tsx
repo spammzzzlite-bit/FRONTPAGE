@@ -1,8 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { z } from "zod";
 import { supabase } from "@/backend/supabase";
-import { useAuth } from "@/frontend/store/store";
 import { toast } from "sonner";
 import { PendingInvitesModal, type PendingInvite } from "@/frontend/components/PendingInvitesModal";
 import {
@@ -11,28 +10,30 @@ import {
   declineInvite,
 } from "@/backend/api/invite.functions";
 
-const search = z.object({ code: z.string().optional() });
-
-export const Route = createFileRoute("/auth/callback")({
-  validateSearch: (s) => search.parse(s),
-  component: AuthCallbackPage,
+const search = z.object({
+  token_hash: z.string().optional(),
+  type: z.string().optional(),
 });
 
-type Status = "exchanging" | "success" | "invalid_or_expired" | "idle";
+export const Route = createFileRoute("/auth/confirm")({
+  validateSearch: (s) => search.parse(s),
+  component: AuthConfirmPage,
+});
 
-function AuthCallbackPage() {
-  const { code } = Route.useSearch();
+type Status = "verifying" | "success" | "error" | "idle";
+
+function AuthConfirmPage() {
+  const { token_hash, type } = Route.useSearch();
   const navigate = useNavigate();
-  const auth = useAuth();
-  const [status, setStatus] = useState<Status>(code ? "exchanging" : "idle");
-  const [resendEmail, setResendEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const exchanged = useRef(false);
+  const [status, setStatus] = useState<Status>(token_hash ? "verifying" : "idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const verified = useRef(false);
 
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [showInvitesModal, setShowInvitesModal] = useState(false);
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
   const [welcomeCardData, setWelcomeCardData] = useState<{ workspaceName: string; role: string } | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const getToken = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -113,52 +114,23 @@ function AuthCallbackPage() {
   };
 
   useEffect(() => {
-    if (!code || exchanged.current) return;
-    exchanged.current = true;
+    if (!token_hash || !type || verified.current) return;
+    verified.current = true;
 
-    async function exchange() {
-      try {
-        const { error, data } = await supabase.auth.exchangeCodeForSession(code!);
-        if (error) throw error;
-        setStatus("success");
-        setTimeout(async () => {
-          await handlePostAuth(data.session?.user);
-        }, 1500);
-      } catch (err) {
-        console.error(err);
-        setStatus("invalid_or_expired");
-      }
-    }
-    exchange();
-  }, [code, navigate]);
-
-  useEffect(() => {
-    if (!code && auth.user?.email_confirmed_at) {
-      handlePostAuth(auth.user);
-    }
-  }, [code, auth.user, navigate]);
-
-  async function handleResend(e: React.FormEvent) {
-    e.preventDefault();
-    const targetEmail = auth.email || resendEmail;
-    if (!targetEmail) return;
-
-    setLoading(true);
-    try {
-      await supabase.auth.resend({
-        type: "signup",
-        email: targetEmail,
-        options: {
-          emailRedirectTo: window.location.origin + "/auth/confirm",
-        },
+    supabase.auth
+      .verifyOtp({ token_hash, type: type as any })
+      .then(({ data, error }) => {
+        if (error) {
+          setErrorMsg(error.message);
+          setStatus("error");
+        } else {
+          setStatus("success");
+          setTimeout(() => handlePostAuth(data.user), 1500);
+        }
       });
-      navigate({ to: "/auth/verify-pending", search: { email: targetEmail } });
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [token_hash, type]);
 
-  if (status === "idle" && !code) {
+  if (status === "idle") {
     navigate({ to: "/auth" });
     return null;
   }
@@ -166,7 +138,7 @@ function AuthCallbackPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md space-y-6 text-center">
-        {status === "exchanging" && (
+        {status === "verifying" && (
           <div className="space-y-4">
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
             <p className="font-medium text-foreground">Verifying your email...</p>
@@ -190,37 +162,19 @@ function AuthCallbackPage() {
           </div>
         )}
 
-        {status === "invalid_or_expired" && (
+        {status === "error" && (
           <div className="space-y-6">
             <h2 className="font-display text-3xl">Link expired or invalid</h2>
             <p className="text-sm text-muted-foreground">
-              This verification link has expired or is no longer valid. It may have already been
-              used.
+              {errorMsg || "This confirmation link has expired or is no longer valid."}
             </p>
-
-            <form onSubmit={handleResend} className="space-y-4 text-left">
-              {!auth.email && (
-                <label className="block">
-                  <span className="mb-1 block text-sm font-medium">Enter your email to resend</span>
-                  <input
-                    type="email"
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    className="w-full rounded-sm border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
-                  />
-                </label>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading || (!auth.email && !resendEmail)}
-                className="w-full rounded-sm bg-foreground py-2.5 text-sm text-background hover:bg-accent disabled:opacity-60"
-              >
-                {loading ? "Sending..." : "Request a new link"}
-              </button>
-            </form>
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="inline-block w-full rounded-sm bg-foreground py-2.5 text-sm text-background hover:bg-accent"
+            >
+              Back to sign in
+            </Link>
           </div>
         )}
       </div>

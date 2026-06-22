@@ -377,3 +377,152 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.ensure_user_workspace_access() TO authenticated;
+
+-- ==========================================
+-- MIGRATION: Invite handling + onboarding resumability
+-- ==========================================
+-- Run these in the Supabase SQL editor on any existing database.
+-- The CREATE TABLE statements above are idempotent (IF NOT EXISTS) so a fresh
+-- setup will also pick these up automatically.
+
+-- Allow 'declined' as a valid invite status (for audit trail — do not delete rows)
+ALTER TABLE public.workspace_members
+  DROP CONSTRAINT IF EXISTS workspace_members_status_check;
+ALTER TABLE public.workspace_members
+  ADD CONSTRAINT workspace_members_status_check
+  CHECK (status IN ('active', 'pending', 'declined'));
+
+-- Track onboarding flow and step for cross-device resumability
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS onboarding_flow VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS onboarding_step INTEGER DEFAULT 0;
+
+-- ==========================================
+-- RPC: get_my_pending_invites()
+-- SECURITY DEFINER bypasses workspace_members RLS so an invitee
+-- (whose user_id is NULL in the pending row) can see their own invites.
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.get_my_pending_invites()
+RETURNS TABLE (
+  id            uuid,
+  workspace_id  uuid,
+  workspace_name text,
+  workspace_key  text,
+  role           text,
+  inviter_name   text,
+  inviter_email  text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  caller_email text;
+BEGIN
+  SELECT email INTO caller_email FROM auth.users WHERE id = auth.uid();
+  IF caller_email IS NULL THEN RETURN; END IF;
+
+  RETURN QUERY
+  SELECT
+    wm.id,
+    wm.workspace_id,
+    w.name   AS workspace_name,
+    w.workspace_key,
+    wm.role,
+    COALESCE(p.full_name, p.email, w.owner_email, 'Workspace Owner') AS inviter_name,
+    COALESCE(p.email, '')  AS inviter_email
+  FROM   workspace_members wm
+  JOIN   workspaces w ON w.id = wm.workspace_id
+  LEFT   JOIN profiles p ON p.id = wm.added_by::uuid
+  WHERE  lower(wm.email) = lower(caller_email)
+    AND  wm.status = 'pending';
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_my_pending_invites() TO authenticated;
+
+-- ==========================================
+-- RPC: accept_invite(p_invite_id uuid)
+-- Atomically activates the invite for auth.uid() only.
+-- Guards: invite must match auth.uid()'s email AND be 'pending'.
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.accept_invite(p_invite_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  caller_uid   uuid := auth.uid();
+  caller_email text;
+  caller_name  text;
+  inv          workspace_members%ROWTYPE;
+BEGIN
+  SELECT
+    email,
+    COALESCE(raw_user_meta_data->>'name', split_part(email, '@', 1))
+  INTO caller_email, caller_name
+  FROM auth.users WHERE id = caller_uid;
+
+  IF caller_email IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  END IF;
+
+  SELECT * INTO inv
+  FROM workspace_members
+  WHERE id = p_invite_id
+    AND lower(email) = lower(caller_email)
+    AND status = 'pending';
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'invite_not_found');
+  END IF;
+
+  UPDATE workspace_members
+  SET    status       = 'active',
+         user_id      = caller_uid,
+         display_name = caller_name,
+         joined_at    = now()
+  WHERE  id = p_invite_id;
+
+  RETURN jsonb_build_object(
+    'ok',           true,
+    'workspace_id', inv.workspace_id,
+    'role',         inv.role
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.accept_invite(uuid) TO authenticated;
+
+-- ==========================================
+-- RPC: decline_invite(p_invite_id uuid)
+-- Marks invite 'declined' for audit trail — does NOT delete the row.
+-- Guard: must match auth.uid()'s email.
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.decline_invite(p_invite_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  caller_email text;
+BEGIN
+  SELECT email INTO caller_email FROM auth.users WHERE id = auth.uid();
+
+  UPDATE workspace_members
+  SET    status = 'declined'
+  WHERE  id = p_invite_id
+    AND  lower(email) = lower(caller_email)
+    AND  status = 'pending';
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'invite_not_found');
+  END IF;
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.decline_invite(uuid) TO authenticated;

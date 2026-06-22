@@ -15,6 +15,7 @@ import {
   Edit2,
   Mail,
   Pencil,
+  Crown,
 } from "lucide-react";
 import { PageHeader } from "./_app.projects";
 import {
@@ -42,6 +43,8 @@ import {
 } from "@/frontend/components/ui/tooltip";
 import { clearWorkspaceLocalData, qamindStorage } from "@/lib/storage-keys";
 import { generateWorkspaceKey } from "@/lib/workspace-key";
+import { deleteOwnAccount, leaveWorkspace, transferOwnership } from "@/backend/api/account.functions";
+import { sendInviteEmail } from "@/backend/api/invite.functions";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — QAMind AI" }] }),
@@ -174,6 +177,7 @@ function SettingsPage() {
   // Modal state - Danger Zone Delete Account
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [confirmUsername, setConfirmUsername] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const expectedUsername = settings.username || settings.userName || "delete";
 
   async function saveProfile(e: React.FormEvent) {
@@ -1197,43 +1201,37 @@ function SettingsPage() {
                   </button>
                   <button
                     onClick={async () => {
-                      if (confirmUsername === expectedUsername) {
-                        setShowDeleteModal(false);
-                        try {
-                          const { data: sessionData } = await supabase.auth.getSession();
-                          const accessToken = sessionData.session?.access_token;
+                      if (confirmUsername !== expectedUsername) return;
+                      setDeleting(true);
+                      try {
+                        const { data: sessionData } = await supabase.auth.getSession();
+                        const accessToken = sessionData.session?.access_token;
+                        if (!accessToken) throw new Error("No session");
 
-                          const { error } = await supabase.functions.invoke("delete-user", {
-                            headers: {
-                              Authorization: `Bearer ${accessToken}`,
-                            },
-                          });
+                        await deleteOwnAccount({ data: { accessToken } });
 
-                          if (error) {
-                            const errMsg = (error as any).message || String(error);
-                            if (errMsg.includes("transfer_ownership_required")) {
-                              toast.error(
-                                "You must transfer workspace ownership before deleting your account.",
-                              );
-                            } else {
-                              toast.error("An error occurred while deleting your account.");
-                            }
-                            return;
-                          }
-
-                          await supabase.auth.signOut();
-                          localStorage.clear();
-                          toast.success("Account deleted successfully.");
-                          navigate({ to: "/" });
-                        } catch (err) {
-                          toast.error("An error occurred while deleting your account.");
+                        await supabase.auth.signOut();
+                        localStorage.clear();
+                        toast.success("Account deleted successfully.");
+                        navigate({ to: "/" });
+                      } catch (err: any) {
+                        const msg: string = err?.message ?? "";
+                        if (msg.includes("transfer_ownership_required")) {
+                          const wsName = msg.split(":")[1] ?? "your workspace";
+                          toast.error(`Transfer ownership of "${wsName}" before deleting your account.`);
+                        } else {
+                          toast.error("Failed to delete account. Please try again.");
                         }
+                        setShowDeleteModal(false);
+                      } finally {
+                        setDeleting(false);
+                        setConfirmUsername("");
                       }
                     }}
-                    disabled={confirmUsername !== expectedUsername}
+                    disabled={confirmUsername !== expectedUsername || deleting}
                     className="rounded-[8px] bg-[var(--c-fail)] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[#8A3232] disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Delete permanently
+                    {deleting ? "Deleting..." : "Delete permanently"}
                   </button>
                 </div>
               </div>
@@ -1277,16 +1275,27 @@ function SettingsPage() {
               </button>
               <button
                 onClick={async () => {
-                  setShowLeaveModal(false);
-                  const userId = auth.user?.id;
-                  if (userId) {
-                    const updated = members.filter((m) => m.userId !== userId);
-                    updateMembers(updated);
-                    clearWorkspaceLocalData(userId);
+                  try {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const accessToken = sessionData.session?.access_token;
+                    if (!accessToken || !workspaceMeta?.workspaceId) throw new Error("No session");
+
+                    await leaveWorkspace({ data: { accessToken, workspaceId: workspaceMeta.workspaceId } });
+
+                    const userId = auth.user?.id;
+                    if (userId) {
+                      const updated = members.filter((m) => m.userId !== userId);
+                      updateMembers(updated);
+                      clearWorkspaceLocalData(userId);
+                    }
+                    setShowLeaveModal(false);
+                    await signOut();
+                    toast.success("You have successfully left the workspace.");
+                    navigate({ to: "/" });
+                  } catch (err: any) {
+                    setShowLeaveModal(false);
+                    toast.error(err?.message ?? "Failed to leave workspace. Please try again.");
                   }
-                  await signOut();
-                  toast.success("You have successfully left the workspace.");
-                  navigate({ to: "/" });
                 }}
                 className="rounded-[8px] bg-[var(--c-fail)] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[#8A3232]"
               >
@@ -1367,6 +1376,11 @@ function TeamMembersCard() {
     return members.filter((m) => m.status === "pending");
   }, [members]);
 
+  // Transfer ownership state
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<{ userId: string; displayName: string } | null>(null);
+  const [transferring, setTransferring] = useState(false);
+
   // State for Invite / Edit Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"add" | "edit" | "edit_self">("add");
@@ -1425,6 +1439,21 @@ function TeamMembersCard() {
     const emailLower = email.toLowerCase().trim();
 
     try {
+      // DB-level duplicate check (guards against stale local state)
+      const { data: existing } = await supabase
+        .from('workspace_members')
+        .select('id, status')
+        .eq('workspace_id', workspaceMeta.workspaceId)
+        .eq('email', emailLower)
+        .in('status', ['pending', 'active'])
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        const s = existing[0].status;
+        setEmailError(s === 'active' ? "This email is already an active member." : "This email already has a pending invitation.");
+        return;
+      }
+
       // Call Supabase to insert a pending workspace member
       const { error: inviteErr } = await supabase.from("workspace_members").insert({
         workspace_id: workspaceMeta.workspaceId,
@@ -1438,7 +1467,29 @@ function TeamMembersCard() {
 
       if (inviteErr) throw inviteErr;
 
-      toast.success(`Invite sent to ${emailLower}. They will be prompted to accept on next login.`);
+      // Send invite email via Resend
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (accessToken) {
+          const inviterName = auth.user?.user_metadata?.full_name || auth.user?.email?.split("@")[0] || "Someone";
+          await sendInviteEmail({
+            data: {
+              accessToken,
+              inviteeEmail: emailLower,
+              inviterName,
+              workspaceName: workspaceMeta.workspaceName,
+              workspaceKey: workspaceMeta.workspaceKey,
+              role,
+              appUrl: window.location.origin,
+            },
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send invite email:", emailErr);
+      }
+
+      toast.success(`Invite sent to ${emailLower}.`);
       setIsModalOpen(false);
       resetFormState();
 
@@ -1614,7 +1665,7 @@ function TeamMembersCard() {
     }
   };
 
-  const handleResendInvite = async (inviteId: string, emailVal: string) => {
+  const handleResendInvite = async (inviteId: string, emailVal: string, inviteRole: string) => {
     try {
       const { error: dbErr } = await supabase
         .from("workspace_members")
@@ -1622,6 +1673,25 @@ function TeamMembersCard() {
         .eq("id", inviteId);
 
       if (dbErr) throw dbErr;
+
+      if (workspaceMeta) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (accessToken) {
+          const inviterName = auth.user?.user_metadata?.full_name || auth.user?.email?.split("@")[0] || "Someone";
+          await sendInviteEmail({
+            data: {
+              accessToken,
+              inviteeEmail: emailVal,
+              inviterName,
+              workspaceName: workspaceMeta.workspaceName,
+              workspaceKey: workspaceMeta.workspaceKey,
+              role: inviteRole,
+              appUrl: window.location.origin,
+            },
+          });
+        }
+      }
 
       toast.success(`Invite resent to ${emailVal}`);
     } catch (err: any) {
@@ -1659,7 +1729,7 @@ function TeamMembersCard() {
             <h3 className="font-display text-[20px] text-[var(--c-text)]">Workspace & Members</h3>
           </div>
           <p className="text-[12px] text-[var(--c-text-muted)]">
-            {members.length} member{members.length === 1 ? "" : "s"} ·{" "}
+            {members.filter(m => m.status === "active").length} member{members.filter(m => m.status === "active").length === 1 ? "" : "s"} ·{" "}
             {workspaceMeta?.workspaceName || "My Workspace"}
           </p>
         </div>
@@ -1677,7 +1747,7 @@ function TeamMembersCard() {
       </div>
 
       <div className="divide-y divide-[var(--c-border)]/50">
-        {members.map((p) => {
+        {members.filter((m) => m.status === "active").map((p) => {
           const isSelf = p.userId === auth.user?.id;
           const wRole = p.role;
           const initials = getInitials(p.displayName || p.email);
@@ -1736,6 +1806,20 @@ function TeamMembersCard() {
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
+                )}
+                {!isSelf && currentRole === "owner" && p.role !== "owner" && p.status === "active" && (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                      onClick={() => {
+                        setTransferTarget({ userId: p.userId, displayName: p.displayName || p.email.split("@")[0] });
+                        setShowTransferModal(true);
+                      }}
+                      className="p-1 text-[var(--c-text-muted)] hover:text-[#F59E0B] transition-colors"
+                      title="Make Owner"
+                    >
+                      <Crown className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
                 {showEditOther && (
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1.5">
@@ -1827,7 +1911,7 @@ function TeamMembersCard() {
                     {isExpired ? (
                       <PermissionGate action="members:add">
                         <button
-                          onClick={() => handleResendInvite(inv.userId, inv.email)}
+                          onClick={() => handleResendInvite(inv.userId, inv.email, inv.role)}
                           className="rounded border border-[var(--c-border)] bg-[var(--c-bg-input)] px-2.5 py-1 text-[11px] font-medium text-[var(--c-accent)] hover:bg-[var(--c-bg-hover)] transition-colors"
                         >
                           Resend
@@ -2218,6 +2302,74 @@ function TeamMembersCard() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Ownership Confirmation Modal */}
+      {showTransferModal && transferTarget && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(26,23,20,0.4)] p-4 backdrop-blur-[4px] animate-[fade-in-up_var(--t-normal)_var(--ease-out)_both]"
+          onClick={() => { setShowTransferModal(false); setTransferTarget(null); }}
+        >
+          <div
+            className="w-full max-w-md rounded-[16px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-[28px] shadow-[var(--shadow-lg)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-[20px] flex items-center justify-between">
+              <p className="font-display text-[22px] text-[var(--c-text)]">Transfer Ownership</p>
+              <button
+                onClick={() => { setShowTransferModal(false); setTransferTarget(null); }}
+                className="rounded-full p-2 text-[var(--c-text-muted)] transition-colors hover:bg-[var(--c-bg-hover)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mb-6 text-[13px] text-[var(--c-text-muted)] leading-relaxed">
+              You are about to transfer ownership of{" "}
+              <strong className="text-[var(--c-text)]">{workspaceMeta?.workspaceName || "this workspace"}</strong> to{" "}
+              <strong className="text-[var(--c-text)]">{transferTarget.displayName}</strong>.
+              You will become an Admin. This cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowTransferModal(false); setTransferTarget(null); }}
+                className="rounded-[8px] border-[1.5px] border-[var(--c-border)] bg-transparent px-[16px] py-[8px] text-[13px] font-medium transition-all hover:bg-[var(--c-bg-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={transferring}
+                onClick={async () => {
+                  if (!transferTarget || !workspaceMeta?.workspaceId) return;
+                  setTransferring(true);
+                  try {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const accessToken = sessionData.session?.access_token;
+                    if (!accessToken) throw new Error("No session");
+                    await transferOwnership({
+                      data: { accessToken, workspaceId: workspaceMeta.workspaceId, newOwnerId: transferTarget.userId },
+                    });
+                    updateMembers(members.map((m) => {
+                      if (m.userId === transferTarget.userId) return { ...m, role: "owner" as any };
+                      if (m.userId === auth.user?.id) return { ...m, role: "admin" as any };
+                      return m;
+                    }));
+                    toast.success(`Ownership transferred to ${transferTarget.displayName}. You are now an Admin.`);
+                    setShowTransferModal(false);
+                    setTransferTarget(null);
+                  } catch (err: any) {
+                    toast.error(err?.message ?? "Failed to transfer ownership. Please try again.");
+                  } finally {
+                    setTransferring(false);
+                  }
+                }}
+                className="rounded-[8px] bg-[#F59E0B] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[#D97706] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {transferring ? "Transferring..." : "Confirm Transfer"}
+              </button>
+            </div>
           </div>
         </div>
       )}

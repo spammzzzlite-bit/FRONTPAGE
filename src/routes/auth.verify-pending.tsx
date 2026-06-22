@@ -41,7 +41,7 @@ function VerifyPendingPage() {
         type: "signup",
         email: displayEmail,
         options: {
-          emailRedirectTo: window.location.origin + "/auth/callback",
+          emailRedirectTo: window.location.origin + "/auth/confirm",
         },
       });
       if (error) throw error;

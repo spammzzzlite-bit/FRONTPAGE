@@ -65,7 +65,7 @@ export type Database = {
           joined_at: string;
           added_by: string | null;
           avatar_color: string | null;
-          status: "active" | "pending";
+          status: "active" | "pending" | "declined";
         };
         Insert: {
           id?: string;
@@ -426,30 +426,9 @@ export type Database = {
         };
       };
       profiles: {
-        Row: {
-          id: string;
-          full_name: string | null;
-          email: string | null;
-          avatar_url: string | null;
-          onboarding_complete: boolean | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          full_name?: string | null;
-          email?: string | null;
-          avatar_url?: string | null;
-          onboarding_complete?: boolean | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          full_name?: string | null;
-          email?: string | null;
-          avatar_url?: string | null;
-          onboarding_complete?: boolean | null;
-          created_at?: string;
-        };
+        Row: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; onboarding_complete: boolean | null; onboarding_flow: string | null; onboarding_step: number | null; created_at: string; };
+        Insert: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; onboarding_complete?: boolean | null; onboarding_flow?: string | null; onboarding_step?: number | null; created_at?: string; };
+        Update: { id?: string; full_name?: string | null; email?: string | null; avatar_url?: string | null; onboarding_complete?: boolean | null; onboarding_flow?: string | null; onboarding_step?: number | null; created_at?: string; };
       };
     };
   };

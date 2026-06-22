@@ -51,6 +51,11 @@ export async function provisionWorkspaceForNewUser(
 
   if (existingActiveByEmail?.length) return null;
 
+  // Block auto-provisioning if user has a pending invite — direct .from() would be
+  // blocked by RLS since invitees aren't workspace members yet, so use the SECURITY DEFINER RPC.
+  const { data: pendingInvites } = await supabase.rpc("get_my_pending_invites");
+  if (pendingInvites?.length) return null;
+
   const workspaceId =
     preferredWorkspaceId && isValidUuid(preferredWorkspaceId)
       ? preferredWorkspaceId

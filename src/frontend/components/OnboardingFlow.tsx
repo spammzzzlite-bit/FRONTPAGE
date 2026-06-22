@@ -53,8 +53,12 @@ interface UserData {
 
 interface Props {
   currentRole?: string;
+  flow?: "owner" | "invited";
+  joinedWorkspaceName?: string;
+  initialStep?: number;
   onComplete: (userData: UserData) => void;
   onSkip: () => void;
+  onStepChange?: (step: number) => void;
   onNavigate?: (route: string) => void;
 }
 
@@ -1877,7 +1881,11 @@ export default function OnboardingFlow({
   onComplete,
   onSkip,
   onNavigate,
+  onStepChange,
   currentRole: propRole,
+  flow,
+  joinedWorkspaceName,
+  initialStep,
 }: Props) {
   const auth = useAuth();
   const [, setSettings] = useSettings();
@@ -1887,7 +1895,11 @@ export default function OnboardingFlow({
   const [workspaceMeta, updateWorkspaceMeta] = useWorkspaceMeta();
   const [members, updateActiveWorkspaceMembers] = useWorkspaceMembersList();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<number>(() => {
+    if (initialStep && initialStep > 0) return initialStep;
+    if (flow === "invited") return 0;
+    return 1;
+  });
   const [direction, setDirection] = useState<Direction>("next");
   const [workspaceName, setWorkspaceName] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -1903,7 +1915,7 @@ export default function OnboardingFlow({
     if (!workspaceMeta) return "command";
 
     const storeRole = currentRole.toLowerCase() as any;
-    if (can(storeRole, "workspace:viewKey")) return "command";
+    if (storeRole === "owner") return "command";
     if (can(storeRole, "project:create")) return "ops";
     if (can(storeRole, "suite:create")) return "field";
     return "intel";
@@ -1957,16 +1969,20 @@ export default function OnboardingFlow({
   }, [auth.user?.id, workspaceMeta, currentUserMember]);
 
   const goNext = useCallback(() => {
+    const next = step + 1;
     setDirection("next");
-    setStep((s) => s + 1);
+    setStep(next);
     setStepKey((k) => k + 1);
-  }, []);
+    onStepChange?.(next);
+  }, [step, onStepChange]);
 
   const goBack = useCallback(() => {
+    const prev = step - 1;
     setDirection("back");
-    setStep((s) => s - 1);
+    setStep(prev);
     setStepKey((k) => k + 1);
-  }, []);
+    onStepChange?.(prev);
+  }, [step, onStepChange]);
 
   const completeWorkspaceSetup = useCallback(async () => {
     const userId = auth.user?.id;
@@ -2119,6 +2135,96 @@ export default function OnboardingFlow({
   }, [briefingTrack]);
 
   const renderStep = () => {
+    if (step === 0 && flow === "invited") {
+      const displayName = joinedWorkspaceName || workspaceMeta?.workspaceName || "your new workspace";
+      const roleLabel =
+        currentRole === "admin" ? "Admin" :
+        currentRole === "editor" ? "Editor" :
+        currentRole === "owner" ? "Owner" : "Viewer";
+      return (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+            gap: 24,
+            maxWidth: 480,
+            margin: "0 auto",
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: `${trackConfig.accentColor}18`,
+              border: `1px solid ${trackConfig.accentColor}40`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+            }}
+          >
+            🎉
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <p
+              style={{
+                fontFamily: "var(--font-display, serif)",
+                fontSize: 28,
+                fontWeight: 600,
+                color: "var(--ink)",
+                lineHeight: 1.2,
+              }}
+            >
+              You're joining
+            </p>
+            <p
+              style={{
+                fontFamily: "var(--font-display, serif)",
+                fontSize: 32,
+                fontWeight: 700,
+                color: trackConfig.accentColor,
+                lineHeight: 1.1,
+              }}
+            >
+              {displayName}
+            </p>
+            <span
+              style={{
+                display: "inline-block",
+                marginTop: 4,
+                padding: "4px 12px",
+                borderRadius: 20,
+                background: `${trackConfig.accentColor}18`,
+                border: `1px solid ${trackConfig.accentColor}40`,
+                fontFamily: "Inter, sans-serif",
+                fontSize: 12,
+                fontWeight: 600,
+                color: trackConfig.accentColor,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              {roleLabel}
+            </span>
+          </div>
+          <p
+            style={{
+              fontFamily: "Inter, sans-serif",
+              fontSize: 14,
+              color: "var(--ink-muted)",
+              maxWidth: 340,
+            }}
+          >
+            Let's get you set up with a quick briefing before you dive in.
+          </p>
+          <ContinueButton onClick={goNext} accentColor={trackConfig.accentColor} />
+        </div>
+      );
+    }
+
     if (!currentStepConfig) return null;
 
     switch (currentStepConfig.type) {
