@@ -4,16 +4,6 @@ import process from "node:process";
 
 import { getSupabaseAdmin } from "../supabase-admin.server";
 
-const workerCaseSchema = z.object({
-  title: z.string().optional(),
-  priority: z.string().optional(),
-  sourceType: z.string().optional(),
-  steps: z.any().optional(),
-  expectedResult: z.string().optional(),
-  expected: z.string().optional(),
-  automationCandidate: z.boolean().optional(),
-});
-
 const generateInputSchema = z.object({
   accessToken: z.string().min(1),
   projectId: z.string().min(1),
@@ -84,22 +74,101 @@ function normalizeSteps(steps: unknown): string {
   return "";
 }
 
-function normalizeWorkerCases(rawCases: unknown, projectId: string, moduleName: string) {
-  const parsed = z.array(workerCaseSchema).safeParse(rawCases);
-  const cases = parsed.success ? parsed.data : [];
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
 
-  return cases.map((testCase, index) => ({
-    id: index,
-    title: testCase.title || `Generated test case ${index + 1}`,
-    steps: normalizeSteps(testCase.steps),
-    expected: testCase.expectedResult || testCase.expected || "",
-    priority: normalizePriority(testCase.priority),
-    status: "passed" as const,
-    module_name: moduleName,
-    project_id: projectId,
-    sourceType: testCase.sourceType || "recording_observed",
-    automationCandidate: Boolean(testCase.automationCandidate),
-  }));
+function extractRawCases(payload: Record<string, unknown>): unknown[] {
+  const result = asRecord(payload.result);
+  const candidates: unknown[] = [
+    result?.testCases,
+    result?.test_cases,
+    result?.cases,
+    result?.manual_test_cases,
+    result?.manualTestCases,
+    payload.testCases,
+    payload.test_cases,
+    payload.cases,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length > 0) {
+      return candidate;
+    }
+  }
+
+  const scenarios = result?.scenarios ?? payload.scenarios;
+  if (Array.isArray(scenarios)) {
+    const nested = scenarios.flatMap((scenario) => {
+      const item = asRecord(scenario);
+      if (!item) return [];
+      const cases = item.testCases ?? item.test_cases ?? item.cases;
+      return Array.isArray(cases) ? cases : [scenario];
+    });
+    if (nested.length > 0) return nested;
+  }
+
+  if (typeof payload.raw_output === "string" && payload.raw_output.trim()) {
+    try {
+      const parsed = JSON.parse(payload.raw_output);
+      if (Array.isArray(parsed)) return parsed;
+      const parsedRecord = asRecord(parsed);
+      if (parsedRecord) return extractRawCases(parsedRecord);
+    } catch {
+      // raw_output may be plain text from the model
+    }
+  }
+
+  return [];
+}
+
+function normalizeWorkerCases(rawCases: unknown[], projectId: string, moduleName: string) {
+  return rawCases
+    .map((rawCase, index) => {
+      const item = asRecord(rawCase);
+      if (!item) return null;
+
+      const title = String(
+        item.title ||
+          item.testCaseTitle ||
+          item.test_case_title ||
+          item.name ||
+          item.summary ||
+          `Generated test case ${index + 1}`,
+      );
+      const steps = item.steps ?? item.test_steps ?? item.testSteps ?? item.actions ?? item.procedure;
+      const expected = String(
+        item.expectedResult ??
+          item.expected_result ??
+          item.expected ??
+          item.expectedOutcome ??
+          item.expected_outcome ??
+          "",
+      );
+
+      return {
+        id: index,
+        title,
+        steps: normalizeSteps(steps),
+        expected,
+        priority: normalizePriority(item.priority ?? item.severity),
+        status: "passed" as const,
+        module_name: moduleName,
+        project_id: projectId,
+        sourceType: String(item.sourceType || item.source_type || "recording_observed"),
+        automationCandidate: Boolean(item.automationCandidate ?? item.automation_candidate),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+}
+
+function workerSucceeded(payload: Record<string, unknown>): boolean {
+  const status = String(payload.status || "").toLowerCase();
+  if (status === "success" || status === "ok" || status === "completed") return true;
+  if (payload.success === true) return true;
+  return extractRawCases(payload).length > 0;
 }
 
 export const generateTestCasesWithAi = createServerFn({ method: "POST" })
@@ -137,25 +206,43 @@ export const generateTestCasesWithAi = createServerFn({ method: "POST" })
       throw new Error(`AI worker failed (${response.status}): ${body || response.statusText}`);
     }
 
-    const payload = await response.json();
+    const payload = (await response.json()) as Record<string, unknown>;
 
-    if (payload.status !== "success") {
+    if (!workerSucceeded(payload)) {
+      const hint =
+        typeof payload.raw_output === "string"
+          ? payload.raw_output.slice(0, 280)
+          : JSON.stringify(payload).slice(0, 280);
       return {
         success: false,
-        status: payload.status || "error",
-        error: payload.raw_output || payload.detail || "AI worker did not return valid test cases.",
+        status: String(payload.status || "error"),
+        error:
+          String(payload.detail || payload.error || "") ||
+          "AI worker returned no test cases. Check Qwen output format.",
         cases: [],
+        debug: hint,
       };
     }
 
-    const rawCases = payload.result?.testCases || payload.result?.test_cases || [];
+    const rawCases = extractRawCases(payload);
     const cases = normalizeWorkerCases(rawCases, data.projectId, moduleName);
+
+    if (cases.length === 0) {
+      return {
+        success: false,
+        status: "empty",
+        error:
+          "AI worker responded OK but returned 0 parseable test cases. The response format may not match the app parser.",
+        cases: [],
+        debug: JSON.stringify(payload).slice(0, 500),
+      };
+    }
 
     return {
       success: true,
       status: "success",
       cases,
-      raw: payload.result,
+      raw: payload.result ?? payload,
       sourceRecordingId: data.sourceRecordingId || "",
     };
   });

@@ -1,7 +1,8 @@
 import { createStore } from "./store";
 import type { RecordingSession } from "./types/recording";
+import { persistRecordingSession, syncRecordingSession, deleteRecordingFromSupabase } from "./recordings-sync";
 
-// Store for incoming recording sessions from the Chrome extension
+// Workspace-scoped cache; source of truth is Supabase recording_sessions
 export const recordingsStore = createStore<RecordingSession[]>("ai-test-gen.recordings", []);
 export const useRecordings = recordingsStore.useStore;
 
@@ -19,6 +20,7 @@ export function addRecording(
     tags: [],
   };
   recordingsStore.set((prev) => [newSession, ...prev]);
+  void persistRecordingSession(newSession);
   return newSession;
 }
 
@@ -26,7 +28,14 @@ export function addRecording(
  * Update the status of a recording session
  */
 export function updateRecordingStatus(id: string, status: RecordingSession["status"]) {
-  recordingsStore.set((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  recordingsStore.set((prev) =>
+    prev.map((r) => {
+      if (r.id !== id) return r;
+      const updated = { ...r, status };
+      void syncRecordingSession(updated);
+      return updated;
+    }),
+  );
 }
 
 /**
@@ -34,15 +43,16 @@ export function updateRecordingStatus(id: string, status: RecordingSession["stat
  */
 export function linkTestCasesToRecording(recordingId: string, testCaseIds: string[]) {
   recordingsStore.set((prev) =>
-    prev.map((r) =>
-      r.id === recordingId
-        ? {
-            ...r,
-            generatedTestCaseIds: [...new Set([...r.generatedTestCaseIds, ...testCaseIds])],
-            status: "converted",
-          }
-        : r,
-    ),
+    prev.map((r) => {
+      if (r.id !== recordingId) return r;
+      const updated = {
+        ...r,
+        generatedTestCaseIds: [...new Set([...r.generatedTestCaseIds, ...testCaseIds])],
+        status: "converted" as const,
+      };
+      void syncRecordingSession(updated);
+      return updated;
+    }),
   );
 }
 
@@ -51,4 +61,5 @@ export function linkTestCasesToRecording(recordingId: string, testCaseIds: strin
  */
 export function deleteRecording(id: string) {
   recordingsStore.set((prev) => prev.filter((r) => r.id !== id));
+  void deleteRecordingFromSupabase(id);
 }

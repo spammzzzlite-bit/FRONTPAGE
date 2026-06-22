@@ -7,6 +7,7 @@ import { supabase } from "@/backend/supabase";
 import { clearUserSessionData, qamindStorage } from "@/lib/storage-keys";
 import type { Session, User } from "@supabase/supabase-js";
 import { syncWorkspaceFromSupabase, fetchWorkspaceData } from "./supabase-sync";
+import { loadRecordingsFromSupabase } from "./recordings-sync";
 import { provisionWorkspaceForNewUser, ensureUserWorkspaceAccess } from "./workspace-provision";
 
 // ─── User-scoped localStorage stores ──────────────────────
@@ -43,6 +44,10 @@ const workspaceMetaListeners = new Set<() => void>();
 
 export function getActiveWorkspaceMeta(): WorkspaceMeta | null {
   return activeWorkspaceMeta;
+}
+
+export function getCurrentUserId(): string | null {
+  return currentUserId;
 }
 
 export function getActiveUserRole(): "owner" | "admin" | "editor" | "viewer" {
@@ -1725,6 +1730,12 @@ export async function initializeStores(
   // Re-init stores
   for (const store of ALL_STORES) {
     store._reinit();
+  }
+
+  if (activeWorkspaceMeta?.workspaceId) {
+    const { recordingsStore } = await import("./recordingsStore");
+    recordingsStore._reinit();
+    await loadRecordingsFromSupabase(activeWorkspaceMeta.workspaceId);
   }
 
   checkAndRefillTokens();

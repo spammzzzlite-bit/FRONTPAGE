@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { can, getStoredRole } from "@/lib/permissions";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Video,
   Clock,
@@ -29,6 +29,7 @@ import { usePanel } from "@/frontend/components/PanelContext";
 import { toast } from "./_app";
 import type { RecordingSession, RecordingEvent } from "@/frontend/store/types/recording";
 import { generateTestCasesWithAi } from "@/backend/api/generate-testcases.functions";
+import { loadRecordingsFromSupabase } from "@/frontend/store/recordings-sync";
 
 export const Route = createFileRoute("/_app/recordings")({
   beforeLoad: () => {
@@ -48,6 +49,10 @@ function RecordingsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [generatingRecordingId, setGeneratingRecordingId] = useState("");
   const { openPanel } = usePanel();
+
+  useEffect(() => {
+    void loadRecordingsFromSupabase();
+  }, []);
 
   const filteredRecordings = recordings.filter((r) =>
     r.sessionName.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -69,10 +74,11 @@ function RecordingsPage() {
     updateRecordingStatus(recording.id, "processing");
 
     try {
-      const journeyPayload =
-        (recording.aiReadyRecording as any)?.qwenPayload ||
-        recording.rawRecording ||
-        recording;
+      const aiReady = recording.aiReadyRecording as
+        | { qwenPayload?: { productContext?: { prd?: string; testPlan?: string; userGoal?: string } } }
+        | undefined;
+      const qwen = aiReady?.qwenPayload;
+      const journeyJson = aiReady || recording.rawRecording || recording;
 
       const result = await generateTestCasesWithAi({
         data: {
@@ -80,15 +86,19 @@ function RecordingsPage() {
           projectId: recording.projectId,
           moduleName: recording.module || "Recorded Journey",
           featureDescription: recording.sessionName,
-          prd: (recording.aiReadyRecording as any)?.qwenPayload?.productContext?.userGoal || "",
-          testPlan: (recording.aiReadyRecording as any)?.qwenPayload?.productContext?.testPlan || "",
-          journeyJson: journeyPayload,
+          prd: qwen?.productContext?.prd || qwen?.productContext?.userGoal || "",
+          testPlan: qwen?.productContext?.testPlan || "",
+          journeyJson,
           sourceRecordingId: recording.id,
         },
       });
 
       if (!result.success) {
         throw new Error(result.error || "AI worker failed to generate test cases.");
+      }
+
+      if (!result.cases.length) {
+        throw new Error("AI worker returned 0 test cases.");
       }
 
       let targetSuite = suites.find(
@@ -113,7 +123,9 @@ function RecordingsPage() {
       });
 
       linkTestCasesToRecording(recording.id, savedIds);
-      toast.success(`Generated ${savedIds.length} test cases from recording.`);
+      toast.success(
+        `Generated ${savedIds.length} test cases. Open Test Suites → "AI Generated Recordings".`,
+      );
     } catch (error) {
       updateRecordingStatus(recording.id, "failed");
       toast.error(error instanceof Error ? error.message : "Recording generation failed.");

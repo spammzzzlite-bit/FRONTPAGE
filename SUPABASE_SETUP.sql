@@ -166,6 +166,39 @@ CREATE TABLE IF NOT EXISTS public.sprints (
 );
 
 -- ==========================================
+-- 6b. RECORDING SESSIONS (Chrome extension inbox)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.recording_sessions (
+  id text PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  project_id text,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  session_name text NOT NULL,
+  url text,
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'processing', 'converted', 'failed')),
+  duration_ms bigint DEFAULT 0,
+  started_at timestamptz,
+  ended_at timestamptz,
+  events jsonb NOT NULL DEFAULT '[]'::jsonb,
+  viewport jsonb,
+  browser_info jsonb,
+  recorded_by text,
+  module text,
+  project_name text,
+  tags text[] DEFAULT '{}',
+  generated_test_case_ids text[] DEFAULT '{}',
+  generated_scenario_id text,
+  ai_ready_recording jsonb,
+  raw_recording jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS recording_sessions_workspace_idx
+  ON public.recording_sessions (workspace_id, created_at DESC);
+
+-- ==========================================
 -- 7. PROFILES, SETTINGS, NOTIFICATIONS
 -- ==========================================
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -194,6 +227,7 @@ ALTER TABLE public.test_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.test_run_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bugs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sprints ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.recording_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Helper Function to check if user is in a workspace
@@ -269,6 +303,12 @@ CREATE POLICY "Members can view sprints" ON public.sprints FOR SELECT USING (is_
 CREATE POLICY "Members can insert sprints" ON public.sprints FOR INSERT WITH CHECK (is_workspace_member(workspace_id));
 CREATE POLICY "Members can update sprints" ON public.sprints FOR UPDATE USING (is_workspace_member(workspace_id));
 CREATE POLICY "Members can delete sprints" ON public.sprints FOR DELETE USING (is_workspace_member(workspace_id));
+
+-- Recording Sessions Policies
+CREATE POLICY "Members can view workspace recordings" ON public.recording_sessions FOR SELECT USING (is_workspace_member(workspace_id));
+CREATE POLICY "Members can insert workspace recordings" ON public.recording_sessions FOR INSERT WITH CHECK (is_workspace_member(workspace_id));
+CREATE POLICY "Members can update workspace recordings" ON public.recording_sessions FOR UPDATE USING (is_workspace_member(workspace_id));
+CREATE POLICY "Members can delete workspace recordings" ON public.recording_sessions FOR DELETE USING (is_workspace_member(workspace_id));
 
 -- Profiles Policies
 CREATE POLICY "Users can view all profiles" ON public.profiles FOR SELECT USING (true);
