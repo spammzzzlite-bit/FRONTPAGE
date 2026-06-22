@@ -1,10 +1,21 @@
 import { createStore } from "./store";
 import type { RecordingSession } from "./types/recording";
-import { persistRecordingSession, syncRecordingSession, deleteRecordingFromSupabase } from "./recordings-sync";
 
 // Workspace-scoped cache; source of truth is Supabase recording_sessions
 export const recordingsStore = createStore<RecordingSession[]>("ai-test-gen.recordings", []);
 export const useRecordings = recordingsStore.useStore;
+
+function schedulePersist(session: RecordingSession) {
+  void import("./recordings-sync").then((m) => m.persistRecordingSession(session));
+}
+
+function scheduleSync(session: RecordingSession) {
+  void import("./recordings-sync").then((m) => m.syncRecordingSession(session));
+}
+
+function scheduleDelete(id: string) {
+  void import("./recordings-sync").then((m) => m.deleteRecordingFromSupabase(id));
+}
 
 /**
  * Add a new recording session to the inbox
@@ -20,7 +31,7 @@ export function addRecording(
     tags: [],
   };
   recordingsStore.set((prev) => [newSession, ...prev]);
-  void persistRecordingSession(newSession);
+  schedulePersist(newSession);
   return newSession;
 }
 
@@ -32,7 +43,7 @@ export function updateRecordingStatus(id: string, status: RecordingSession["stat
     prev.map((r) => {
       if (r.id !== id) return r;
       const updated = { ...r, status };
-      void syncRecordingSession(updated);
+      scheduleSync(updated);
       return updated;
     }),
   );
@@ -50,7 +61,7 @@ export function linkTestCasesToRecording(recordingId: string, testCaseIds: strin
         generatedTestCaseIds: [...new Set([...r.generatedTestCaseIds, ...testCaseIds])],
         status: "converted" as const,
       };
-      void syncRecordingSession(updated);
+      scheduleSync(updated);
       return updated;
     }),
   );
@@ -61,5 +72,5 @@ export function linkTestCasesToRecording(recordingId: string, testCaseIds: strin
  */
 export function deleteRecording(id: string) {
   recordingsStore.set((prev) => prev.filter((r) => r.id !== id));
-  void deleteRecordingFromSupabase(id);
+  scheduleDelete(id);
 }

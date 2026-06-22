@@ -7,7 +7,6 @@ import { supabase } from "@/backend/supabase";
 import { clearUserSessionData, qamindStorage } from "@/lib/storage-keys";
 import type { Session, User } from "@supabase/supabase-js";
 import { syncWorkspaceFromSupabase, fetchWorkspaceData } from "./supabase-sync";
-import { loadRecordingsFromSupabase } from "./recordings-sync";
 import { provisionWorkspaceForNewUser, ensureUserWorkspaceAccess } from "./workspace-provision";
 
 // ─── User-scoped localStorage stores ──────────────────────
@@ -1734,6 +1733,7 @@ export async function initializeStores(
 
   if (activeWorkspaceMeta?.workspaceId) {
     const { recordingsStore } = await import("./recordingsStore");
+    const { loadRecordingsFromSupabase } = await import("./recordings-sync");
     recordingsStore._reinit();
     await loadRecordingsFromSupabase(activeWorkspaceMeta.workspaceId);
   }
