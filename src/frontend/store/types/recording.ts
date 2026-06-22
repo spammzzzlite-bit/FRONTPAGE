@@ -47,4 +47,8 @@ export type RecordingSession = {
   };
   recordedBy?: string; // User/profile who recorded
   tags: string[];
+  module?: string;
+  projectName?: string;
+  aiReadyRecording?: unknown;
+  rawRecording?: unknown;
 };

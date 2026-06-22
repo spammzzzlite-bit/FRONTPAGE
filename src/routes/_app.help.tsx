@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Download, Puzzle } from "lucide-react";
 import { PageHeader } from "./_app.projects";
 import { CONTACT_EMAIL } from "@/lib/brand";
 
@@ -37,6 +37,31 @@ function HelpPage() {
         title="Help & docs"
         subtitle={`Questions about setup, runs, or exports? Email ${CONTACT_EMAIL}.`}
       />
+      <div className="mb-6 rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] bg-[var(--c-accent-soft)] text-[var(--c-accent)]">
+              <Puzzle className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-[24px] text-[var(--c-text)]">QA Mind Recorder</h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-[var(--c-text-muted)]">
+                Download the Chrome extension, then open QAMind while signed in so your account's
+                projects sync into the extension popup.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/extension/qa-mind-recorder-extension-v2.1.3.zip"
+            download
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[var(--c-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-all hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)]"
+          >
+            <Download className="h-4 w-4" />
+            Download Extension
+          </a>
+        </div>
+      </div>
+
       <div className="space-y-4">
         {FAQ.map((item, i) => (
           <div

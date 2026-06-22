@@ -20,14 +20,15 @@ import {
   useRecordings,
   deleteRecording,
   updateRecordingStatus,
+  linkTestCasesToRecording,
 } from "@/frontend/store/recordingsStore";
-import { useProjects } from "@/frontend/store/store";
+import { createSuite, createTestCase, useAuth, useProjects, useSuites } from "@/frontend/store/store";
 import { PageHeader } from "./_app.projects";
 import { EmptyState } from "@/frontend/components/EmptyState";
 import { usePanel } from "@/frontend/components/PanelContext";
 import { toast } from "./_app";
 import type { RecordingSession, RecordingEvent } from "@/frontend/store/types/recording";
-import { useNavigate } from "@tanstack/react-router";
+import { generateTestCasesWithAi } from "@/backend/api/generate-testcases.functions";
 
 export const Route = createFileRoute("/_app/recordings")({
   beforeLoad: () => {
@@ -42,13 +43,84 @@ export const Route = createFileRoute("/_app/recordings")({
 function RecordingsPage() {
   const [recordings] = useRecordings();
   const [projects] = useProjects();
+  const [suites] = useSuites();
+  const auth = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [generatingRecordingId, setGeneratingRecordingId] = useState("");
   const { openPanel } = usePanel();
-  const navigate = useNavigate();
 
   const filteredRecordings = recordings.filter((r) =>
     r.sessionName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+
+  async function generateFromRecording(recording: RecordingSession) {
+    if (!recording.projectId) {
+      toast.error("This recording is missing a project. Record again after selecting a project.");
+      return;
+    }
+
+    const accessToken = auth.session?.access_token;
+    if (!accessToken) {
+      toast.error("Please sign in again before generating test cases.");
+      return;
+    }
+
+    setGeneratingRecordingId(recording.id);
+    updateRecordingStatus(recording.id, "processing");
+
+    try {
+      const journeyPayload =
+        (recording.aiReadyRecording as any)?.qwenPayload ||
+        recording.rawRecording ||
+        recording;
+
+      const result = await generateTestCasesWithAi({
+        data: {
+          accessToken,
+          projectId: recording.projectId,
+          moduleName: recording.module || "Recorded Journey",
+          featureDescription: recording.sessionName,
+          prd: (recording.aiReadyRecording as any)?.qwenPayload?.productContext?.userGoal || "",
+          testPlan: (recording.aiReadyRecording as any)?.qwenPayload?.productContext?.testPlan || "",
+          journeyJson: journeyPayload,
+          sourceRecordingId: recording.id,
+        },
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "AI worker failed to generate test cases.");
+      }
+
+      let targetSuite = suites.find(
+        (suite) => suite.projectId === recording.projectId && suite.name === "AI Generated Recordings",
+      );
+
+      if (!targetSuite) {
+        targetSuite = createSuite(recording.projectId, "AI Generated Recordings");
+      }
+
+      const savedIds = result.cases.map((testCase) => {
+        const saved = createTestCase(targetSuite!.id, {
+          title: testCase.title,
+          steps: testCase.steps,
+          expected: testCase.expected,
+          priority: testCase.priority,
+          module_name: testCase.module_name || recording.module,
+          project_id: recording.projectId,
+          sourceRecordingId: recording.id,
+        });
+        return saved.id;
+      });
+
+      linkTestCasesToRecording(recording.id, savedIds);
+      toast.success(`Generated ${savedIds.length} test cases from recording.`);
+    } catch (error) {
+      updateRecordingStatus(recording.id, "failed");
+      toast.error(error instanceof Error ? error.message : "Recording generation failed.");
+    } finally {
+      setGeneratingRecordingId("");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -85,10 +157,14 @@ function RecordingsPage() {
               <div
                 key={recording.id}
                 onClick={() =>
-                  openPanel(<RecordingPanel recording={recording} />, [
-                    { label: "Recordings" },
-                    { label: recording.sessionName },
-                  ])
+                  openPanel(
+                    <RecordingPanel
+                      recording={recording}
+                      isGenerating={generatingRecordingId === recording.id}
+                      onGenerate={() => generateFromRecording(recording)}
+                    />,
+                    [{ label: "Recordings" }, { label: recording.sessionName }],
+                  )
                 }
                 className="group flex cursor-pointer items-center justify-between rounded-xl border border-[var(--c-border)] bg-[var(--c-bg-card)] p-4 transition-all hover:-translate-y-[2px] hover:border-[var(--c-border-strong)] hover:shadow-sm"
               >
@@ -119,12 +195,12 @@ function RecordingsPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate({ to: "/generate" });
-                      toast("Pass the recording ID to the generator (coming soon)");
+                      generateFromRecording(recording);
                     }}
-                    className="opacity-0 group-hover:opacity-100 rounded-md bg-[var(--c-accent)] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[var(--c-accent-dark)]"
+                    disabled={generatingRecordingId === recording.id}
+                    className="opacity-0 group-hover:opacity-100 rounded-md bg-[var(--c-accent)] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[var(--c-accent-dark)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Generate Tests
+                    {generatingRecordingId === recording.id ? "Generating..." : "Generate Tests"}
                   </button>
                 </div>
               </div>
@@ -152,10 +228,15 @@ function StatusBadge({ status }: { status: RecordingSession["status"] }) {
   );
 }
 
-function RecordingPanel({ recording }: { recording: RecordingSession }) {
-  const { closePanel } = usePanel();
-  const navigate = useNavigate();
-
+function RecordingPanel({
+  recording,
+  isGenerating,
+  onGenerate,
+}: {
+  recording: RecordingSession;
+  isGenerating: boolean;
+  onGenerate: () => void;
+}) {
   return (
     <div className="space-y-8">
       <div>
@@ -210,12 +291,13 @@ function RecordingPanel({ recording }: { recording: RecordingSession }) {
           <h3 className="font-medium text-[var(--c-text)]">Event Timeline</h3>
           <button
             onClick={() => {
-              navigate({ to: "/generate" });
-              closePanel();
+              onGenerate();
             }}
-            className="flex items-center gap-2 rounded-md bg-[var(--c-accent)] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[var(--c-accent-dark)]"
+            disabled={isGenerating}
+            className="flex items-center gap-2 rounded-md bg-[var(--c-accent)] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[var(--c-accent-dark)] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Sparkles className="h-3.5 w-3.5" /> Convert to Test Cases
+            <Sparkles className="h-3.5 w-3.5" />{" "}
+            {isGenerating ? "Generating..." : "Convert to Test Cases"}
           </button>
         </div>
 

@@ -52,10 +52,13 @@ import {
   setPlan,
   useBugs,
   useUserStore,
+  useWorkspaceMeta,
   currentUserProfileRoleStore,
 } from "@/frontend/store/store";
 import { can } from "@/lib/permissions";
 import { DetailedNewProjectModal } from "./_app.projects";
+import { addRecording } from "@/frontend/store/recordingsStore";
+import type { RecordingEvent } from "@/frontend/store/types/recording";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -534,6 +537,12 @@ function AppShell() {
 
   return (
     <div className="flex h-screen flex-col bg-[var(--c-bg)] text-[var(--c-text)]">
+      <RecorderExtensionBridge
+        userId={auth.user?.id || ""}
+        userEmail={userEmail}
+        userName={userName}
+      />
+
       {/* Mobile top bar (optional, keeping minimal for mobile) */}
       <div className="flex items-center justify-between border-b border-[var(--c-border)] px-4 py-3 md:hidden">
         <Link to="/dashboard" className="transition-transform duration-300 hover:scale-[1.02]">
@@ -1145,6 +1154,180 @@ function ProjectSelectionModal({
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function RecorderExtensionBridge({
+  userId,
+  userEmail,
+  userName,
+}: {
+  userId: string;
+  userEmail: string;
+  userName: string;
+}) {
+  const [projects] = useProjects();
+  const [workspaceMeta] = useWorkspaceMeta();
+
+  const publishAppContext = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (!userId) return;
+
+    window.postMessage(
+      {
+        type: "QA_MIND_APP_CONTEXT",
+        payload: {
+          userId,
+          userEmail,
+          userName,
+          workspaceId: workspaceMeta?.workspaceId || "",
+          workspaceName: workspaceMeta?.workspaceName || "",
+          projects: projects.map((project) => ({
+            id: project.id,
+            name: project.name,
+            status: project.status,
+            priority: project.priority,
+          })),
+        },
+      },
+      window.location.origin,
+    );
+  }, [projects, userEmail, userId, userName, workspaceMeta]);
+
+  useEffect(() => {
+    publishAppContext();
+  }, [publishAppContext]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!userId) return;
+
+    const handleContextRequest = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "QA_MIND_EXTENSION_REQUEST_CONTEXT") return;
+
+      publishAppContext();
+    };
+
+    window.addEventListener("message", handleContextRequest);
+    return () => window.removeEventListener("message", handleContextRequest);
+  }, [publishAppContext, userId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!userId) return;
+
+    const handleExtensionRecording = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      if (event.origin !== window.location.origin) return;
+
+      const message = event.data || {};
+      if (message.type !== "QA_MIND_EXTENSION_RECORDING_READY") return;
+
+      const recording = buildRecordingSessionFromExtensionPayload(
+        message.payload || {},
+        userName || userEmail,
+      );
+
+      addRecording(recording);
+      toast.success("Recording received from the Chrome extension.");
+    };
+
+    window.addEventListener("message", handleExtensionRecording);
+    return () => window.removeEventListener("message", handleExtensionRecording);
+  }, [userEmail, userId, userName]);
+
+  return null;
+}
+
+function parseTimestamp(value: unknown, fallback: number) {
+  const parsed = Date.parse(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function mapExtensionEventType(type: string): RecordingEvent["type"] {
+  if (type === "click") return "click";
+  if (type === "input" || type === "keyboard") return "input";
+  if (type === "navigation" || type === "page_context" || type === "recording_state") {
+    return "navigate";
+  }
+  if (type === "network" || type === "network_failure") return "network";
+  if (type === "validation" || type === "console_error") return "assert";
+  return "wait";
+}
+
+function buildRecordingSessionFromExtensionPayload(payload: any, recordedBy: string) {
+  const rawRecording = payload.rawRecording || {};
+  const aiReadyRecording = payload.aiReadyRecording || null;
+  const session = rawRecording.session || {};
+  const events = Array.isArray(rawRecording.events) ? rawRecording.events : [];
+  const startedAt = parseTimestamp(session.startedAt, Date.now());
+  const endedAt = parseTimestamp(session.endedAt, startedAt);
+  const startUrl = session.startPage?.url || events[0]?.page?.url || "about:blank";
+
+  return {
+    projectId: String(session.projectId || ""),
+    projectName: String(session.project || ""),
+    module: String(session.module || ""),
+    sessionName: [
+      session.project || "Recording",
+      session.module || session.userGoal || "Journey",
+    ].filter(Boolean).join(" - "),
+    url: startUrl,
+    viewport: { width: window.innerWidth || 0, height: window.innerHeight || 0 },
+    events: events.map((event: any): RecordingEvent => {
+      const eventTime = parseTimestamp(event.timestamp, startedAt);
+      const target = event.target || {};
+      const page = event.page || {};
+      const data = event.data || {};
+
+      return {
+        type: mapExtensionEventType(String(event.eventType || "")),
+        timestamp: Math.max(0, eventTime - startedAt),
+        target: target
+          ? {
+              tagName: String(target.tag || ""),
+              id: String(target.selector || "").startsWith("#")
+                ? String(target.selector || "").slice(1)
+                : undefined,
+              cssSelector: String(target.selector || ""),
+              xpath: "",
+              innerText: String(target.text || target.label || target.placeholder || ""),
+              ariaLabel: String(target.ariaLabel || target.label || ""),
+              dataTestId: "",
+            }
+          : undefined,
+        value: data.value ? String(data.value) : undefined,
+        url: String(data.url || data.toUrl || page.url || ""),
+        networkInfo:
+          event.eventType === "network" || event.eventType === "network_failure"
+            ? {
+                method: String(data.method || "GET"),
+                url: String(data.url || page.url || ""),
+                status: Number(data.statusCode || 0),
+                duration: 0,
+              }
+            : undefined,
+        metadata: {
+          source: "qa-mind-recorder-extension",
+          sourceEventType: event.eventType,
+          action: data.action,
+          pageTitle: page.title,
+        },
+      };
+    }),
+    startedAt,
+    endedAt,
+    duration: Math.max(0, endedAt - startedAt),
+    browserInfo: payload.browserInfo || {
+      name: "Chrome",
+      version: "",
+      os: "",
+    },
+    recordedBy,
+    aiReadyRecording,
+    rawRecording,
+  };
 }
 
 function InviteAcceptModal({ userId }: { userId: string }) {
