@@ -7,6 +7,7 @@ import { supabase } from "@/backend/supabase";
 import { clearUserSessionData, qamindStorage } from "@/lib/storage-keys";
 import type { Session, User } from "@supabase/supabase-js";
 import { syncWorkspaceFromSupabase, fetchWorkspaceData } from "./supabase-sync";
+import { provisionWorkspaceForNewUser, ensureUserWorkspaceAccess } from "./workspace-provision";
 
 // ─── User-scoped localStorage stores ──────────────────────
 // Every store key is namespaced by the authenticated user's ID
@@ -445,21 +446,12 @@ export function useCurrentRole(): WorkspaceRole {
   return capRole;
 }
 
+export const currentUserProfileRoleStore = createStore<"admin" | "editor" | "viewer">("ai-test-gen.currentUserProfileRole", "viewer", "user");
+
 export function useUserStore() {
   const { user } = useAuth();
   const userId = user?.id;
-  const [role, setRole] = useState<"owner" | "admin" | "editor" | "viewer">("viewer");
-
-  useEffect(() => {
-    const listener = () => {
-      setRole(activeUserRole);
-    };
-    workspaceMetaListeners.add(listener);
-    listener();
-    return () => {
-      workspaceMetaListeners.delete(listener);
-    };
-  }, []);
+  const [role] = currentUserProfileRoleStore.useStore();
 
   return {
     currentUser: userId ? { id: userId, role } : null,
@@ -532,16 +524,16 @@ export type Profile = {
   id: string;
   fullName: string;
   email: string;
-  role: string;
+  role: 'admin' | 'editor' | 'viewer';
   avatarUrl?: string;
 };
 
 export const MOCK_PROFILES: Profile[] = [
-  { id: "p1", fullName: "Vihan Malhotra", email: "vihan@qanexus.ai", role: "Product Manager" },
-  { id: "p2", fullName: "Sarah Chen", email: "sarah.c@qanexus.ai", role: "Lead QA Engineer" },
-  { id: "p3", fullName: "Alex Rivera", email: "alex.r@qanexus.ai", role: "Senior Developer" },
-  { id: "p4", fullName: "Jessica Taylor", email: "jessica.t@qanexus.ai", role: "Automation QA" },
-  { id: "p5", fullName: "Michael K.", email: "michael.k@qanexus.ai", role: "DevOps Engineer" },
+  { id: "p1", fullName: "Vihan Malhotra", email: "vihan@qanexus.ai", role: "admin" },
+  { id: "p2", fullName: "Sarah Chen", email: "sarah.c@qanexus.ai", role: "editor" },
+  { id: "p3", fullName: "Alex Rivera", email: "alex.r@qanexus.ai", role: "editor" },
+  { id: "p4", fullName: "Jessica Taylor", email: "jessica.t@qanexus.ai", role: "editor" },
+  { id: "p5", fullName: "Michael K.", email: "michael.k@qanexus.ai", role: "viewer" },
 ];
 
 export const profilesStore = createStore<Profile[]>("ai-test-gen.profiles", [], "user");
@@ -550,7 +542,7 @@ export const useProfiles = profilesStore.useStore;
 export function createProfile(
   fullName: string,
   email: string,
-  role: string,
+  role: 'admin' | 'editor' | 'viewer',
   avatarUrl?: string,
 ): Profile {
   const p: Profile = {
