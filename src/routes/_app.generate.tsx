@@ -47,7 +47,6 @@ import {
 } from "@/frontend/components/ui/dropdown-menu";
 import { exportToExcel } from "@/frontend/store/export";
 import { supabase } from "@/backend/supabase";
-<<<<<<< HEAD
 import {
   PermissionGate,
   useAssertPermission,
@@ -55,10 +54,7 @@ import {
   can,
   getStoredRole,
 } from "@/lib/permissions";
-=======
-import { PermissionGate, useAssertPermission, TokenCostLabel, can, getStoredRole } from "@/lib/permissions";
 import { generateTestCasesWithAi } from "@/backend/api/generate-testcases.functions";
->>>>>>> ai-worker-extension-integration
 
 export const Route = createFileRoute("/_app/generate")({
   beforeLoad: () => {
