@@ -5,7 +5,13 @@ import { PageHeader } from "./_app.projects";
 import { usePanel } from "@/frontend/components/PanelContext";
 import { toast } from "./_app";
 import { deductTokenAction } from "@/frontend/store/store";
-import { Settings as SettingsIcon, ExternalLink, ShieldCheck, HelpCircle } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  ExternalLink,
+  ShieldCheck,
+  Download,
+  Puzzle,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/integrations")({
   beforeLoad: () => {
@@ -291,6 +297,32 @@ function IntegrationsPage() {
         title="Integrations Hub"
         subtitle={`Connected to ${connectedCount} out of ${INTEGRATIONS.length} platforms.`}
       />
+
+      <div className="mb-8 rounded-2xl border border-[var(--c-border)] bg-[var(--c-bg-card)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--c-accent-soft)] text-[var(--c-accent)]">
+              <Puzzle className="h-6 w-6" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl text-[var(--c-text)]">QA Mind Recorder</h2>
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-[var(--c-text-muted)]">
+                Download the Chrome extension for browser journey recording. When QAMind is open
+                and signed in, the extension syncs the projects from that account into its Project
+                dropdown.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/extension/qa-mind-recorder-extension-v2.1.3.zip"
+            download
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[var(--c-accent)] px-4 py-2 text-[13px] font-semibold text-white transition-all hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[var(--shadow-md)]"
+          >
+            <Download className="h-4 w-4" />
+            Download Extension
+          </a>
+        </div>
+      </div>
 
       {/* Category filter tabs */}
       <div className="mb-8 flex flex-wrap items-center gap-2 border-b border-[var(--c-border)]/40 pb-4">

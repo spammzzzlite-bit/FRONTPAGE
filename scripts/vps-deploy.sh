@@ -43,6 +43,9 @@ cat > "$APP_DIR/.env" << 'ENVEOF'
 VITE_SUPABASE_URL=https://xlrgteezusfeinbnhzhq.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_n8e7Ey4A1gNa7fW3uTgQHA_zmAOeuEE
 VITE_GOOGLE_CLIENT_ID=283486130787-jvvmh5aokrpjvo38ff3fdbgqaa4kp3ac.apps.googleusercontent.com
+QAMIND_AI_WORKER_URL=http://100.118.124.47:8000
+QAMIND_AI_WORKER_KEY=qamind-secret-123
+SUPABASE_SERVICE_ROLE_KEY=
 ENVEOF
 
 echo "==> Installing dependencies..."

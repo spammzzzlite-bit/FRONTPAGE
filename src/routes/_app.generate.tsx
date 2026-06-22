@@ -33,6 +33,7 @@ import {
   createProject,
   addNotification,
   useTokens,
+  useAuth,
   deductTokenAction,
   type TestCase,
 } from "@/frontend/store/store";
@@ -47,6 +48,7 @@ import {
 import { exportToExcel } from "@/frontend/store/export";
 import { supabase } from "@/backend/supabase";
 import { PermissionGate, useAssertPermission, TokenCostLabel, can, getStoredRole } from "@/lib/permissions";
+import { generateTestCasesWithAi } from "@/backend/api/generate-testcases.functions";
 
 export const Route = createFileRoute("/_app/generate")({
   beforeLoad: () => {
@@ -173,6 +175,8 @@ type GeneratedCase = {
   status: "passed" | "failed";
   module_name?: string;
   project_id?: string;
+  sourceType?: string;
+  automationCandidate?: boolean;
 };
 
 /* ─── Helpers ──────────────────────────────────────────────── */
@@ -394,6 +398,7 @@ function getTestCasesForModule(moduleName: string): Partial<TestCase>[] {
 
 function GeneratePage() {
   const assertPerm = useAssertPermission();
+  const auth = useAuth();
   const [featureDescription, setFeatureDescription] = useState("");
   const [showFeatureDescriptionError, setShowFeatureDescriptionError] = useState(false);
   const [inputTab, setInputTab] = useState<string>("file");
@@ -440,6 +445,32 @@ function GeneratePage() {
       setSaveProjectId(selectedProjectId);
     }
   }, [selectedProjectId]);
+
+  async function readGenerationInput() {
+    if (inputTab === "file" && file) {
+      const text = await file.text().catch(() => "");
+      return {
+        source: "file",
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        text: text.slice(0, 20_000),
+      };
+    }
+
+    if (inputTab === "url") {
+      return {
+        source: "url",
+        url: url.trim(),
+        text: url.trim(),
+      };
+    }
+
+    return {
+      source: "manual",
+      text: featureDescription,
+    };
+  }
 
   useEffect(() => {
     if (saveProjectId && saveProjectId !== selectedProjectId) {
@@ -554,12 +585,18 @@ function GeneratePage() {
           : ["Login Module", "UI/UX Module", "Backend API"]
         : [selectedModuleName];
 
-    // Tokens were pre-deducted
     let overallId = 0;
     isGeneratingRef.current = true;
     let stoppedEarly = false;
 
     try {
+      const accessToken = auth.session?.access_token;
+      if (!accessToken) {
+        throw new Error("Your login session is missing. Please sign in again.");
+      }
+
+      const inputPayload = await readGenerationInput();
+
       for (let mIdx = 0; mIdx < targetModules.length; mIdx++) {
         if (!isGeneratingRef.current) {
           stoppedEarly = true;
@@ -574,41 +611,41 @@ function GeneratePage() {
 
         toast.info(`Generating test cases for [${mod}] module...`, { duration: 1500 });
 
-        const moduleCases = getTestCasesForModule(mod);
+        const aiResult = await generateTestCasesWithAi({
+          data: {
+            accessToken,
+            projectId: selectedProjectId,
+            moduleName: mod,
+            featureDescription,
+            prd: `${featureDescription}\n\n${inputPayload.text || ""}`.trim(),
+            testPlan: testPlans.map((plan) => plan.title || plan.name || "").filter(Boolean).join("\n"),
+            journeyJson: {
+              source: inputPayload.source,
+              projectId: selectedProjectId,
+              moduleName: mod,
+              featureDescription,
+              input: inputPayload,
+              testPlans,
+            },
+          },
+        });
 
-        for (let cIdx = 0; cIdx < moduleCases.length; cIdx++) {
-          if (!isGeneratingRef.current) {
-            stoppedEarly = true;
-            break;
-          }
-
-          // Simulate streaming delay
-          await new Promise((resolve) => setTimeout(resolve, 400));
-
-          if (!isGeneratingRef.current) {
-            stoppedEarly = true;
-            break;
-          }
-
-          const rawCase = moduleCases[cIdx];
-          const status = Math.random() > 0.2 ? ("passed" as const) : ("failed" as const);
-
-          const newCase: GeneratedCase = {
-            id: overallId++,
-            title: rawCase.title || "Untitled Test Case",
-            steps: rawCase.steps || "",
-            expected: rawCase.expected || "",
-            priority: rawCase.priority || "medium",
-            status,
-            module_name: mod,
-            project_id: selectedProjectId,
-          };
-
-          setGenerated((prev) => [...prev, newCase]);
+        if (!aiResult.success) {
+          throw new Error(aiResult.error || "AI worker failed to generate test cases.");
         }
+
+        const moduleCases = aiResult.cases.map((testCase) => ({
+          ...testCase,
+          id: overallId++,
+          module_name: testCase.module_name || mod,
+          project_id: testCase.project_id || selectedProjectId,
+        }));
+
+        setGenerated((prev) => [...prev, ...moduleCases]);
       }
     } catch (err) {
       console.error("Error during generation loop:", err);
+      toast.error(err instanceof Error ? err.message : "AI generation failed.");
     } finally {
       setState("done");
       setCurrentGeneratingModule("");
