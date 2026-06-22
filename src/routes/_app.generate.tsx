@@ -50,10 +50,7 @@ import { PermissionGate, useAssertPermission, TokenCostLabel, can, getStoredRole
 
 export const Route = createFileRoute("/_app/generate")({
   beforeLoad: () => {
-    const role = getStoredRole();
-    if (!can(role, "suite:create")) {
-      throw redirect({ to: "/dashboard" });
-    }
+    // Viewers are allowed to view the page, actions are restricted inline
   },
   head: () => ({ meta: [{ title: "Generate Tests — QAMind AI" }] }),
   component: GeneratePage,
@@ -1000,13 +997,15 @@ ${systemLogs}`;
               Stop generating
             </button>
           ) : (
-            <button
-              onClick={generate}
-              disabled={!hasInput()}
-              className="inline-flex items-center gap-2 rounded-[8px] bg-[var(--c-text)] px-[24px] py-[12px] text-[14px] font-medium text-[var(--c-bg)] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:opacity-90 hover:shadow-[var(--shadow-md)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-            >
-              <TokenCostLabel baseText="Generate test cases" />
-            </button>
+            <PermissionGate action="tests:generate" disabledTooltip="Viewers cannot generate test cases">
+              <button
+                onClick={generate}
+                disabled={!hasInput()}
+                className="inline-flex items-center gap-2 rounded-[8px] bg-[var(--c-text)] px-[24px] py-[12px] text-[14px] font-medium text-[var(--c-bg)] transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:opacity-90 hover:shadow-[var(--shadow-md)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+              >
+                <TokenCostLabel baseText="Generate test cases" />
+              </button>
+            </PermissionGate>
           )}
         </div>
 

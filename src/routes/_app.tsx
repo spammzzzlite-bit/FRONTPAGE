@@ -52,6 +52,7 @@ import {
   setPlan,
   useBugs,
   useUserStore,
+  currentUserProfileRoleStore,
 } from "@/frontend/store/store";
 import { can } from "@/lib/permissions";
 import { DetailedNewProjectModal } from "./_app.projects";
@@ -208,16 +209,13 @@ function AppLayout() {
       const checkOnboarding = async () => {
         if (!auth.user?.id) return;
 
-        if (isOnboardingCompleteLocally(auth.user.id)) {
-          setOnboardingComplete(true);
-          return;
-        }
-
         const { data, error } = await supabase
           .from("profiles")
-          .select("onboarding_complete")
+          .select("onboarding_complete, role")
           .eq("id", auth.user.id)
           .single();
+          
+        console.log("Supabase Fetch Result:", data, error);
 
         let completed = false;
         if (error && error.code === "PGRST116") {
@@ -227,9 +225,14 @@ function AppLayout() {
             email: auth.user.email,
             full_name: auth.user.user_metadata?.name || "",
             onboarding_complete: false,
+            role: "viewer"
           });
+          currentUserProfileRoleStore.set("viewer");
         } else if (data) {
           completed = !!data.onboarding_complete;
+          if (data.role) {
+            currentUserProfileRoleStore.set(data.role as "admin" | "editor" | "viewer");
+          }
         }
 
         setOnboardingComplete(completed);
@@ -759,8 +762,6 @@ function AppShell() {
                   {(() => {
                     const rBadge = (() => {
                       switch (role) {
-                        case "owner":
-                          return { bg: "#F59E0B", text: "#FFFFFF", label: "Owner" };
                         case "admin":
                           return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" };
                         case "editor":

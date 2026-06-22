@@ -68,10 +68,7 @@ const projectsSearchSchema = z.object({
 
 export const Route = createFileRoute("/_app/projects")({
   beforeLoad: () => {
-    const role = getStoredRole();
-    if (!can(role, "suite:create")) {
-      throw redirect({ to: "/dashboard" });
-    }
+    // Viewers are allowed to view projects, so no restriction here.
   },
   head: () => ({ meta: [{ title: "My Projects — QAMind AI" }] }),
   validateSearch: (search) => projectsSearchSchema.parse(search),
@@ -477,12 +474,14 @@ export function ProjectDetail({ project }: { project: Project }) {
           <Upload className="h-3 w-3" /> Add Files
         </button>
         {projectSuites.length > 0 && (
-          <button
-            onClick={handleRunAll}
-            className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--c-accent)] px-[14px] py-[6px] text-[13px] font-medium text-white transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[var(--shadow-md)]"
-          >
-            <Play className="h-3 w-3" /> Run All
-          </button>
+          <PermissionGate action="tests:run" disabledTooltip="Viewers cannot run tests">
+            <button
+              onClick={handleRunAll}
+              className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--c-accent)] px-[14px] py-[6px] text-[13px] font-medium text-white transition-all duration-[var(--t-normal)] hover:-translate-y-[1px] hover:bg-[var(--c-accent-dark)] hover:shadow-[var(--shadow-md)]"
+            >
+              <Play className="h-3 w-3" /> Run All
+            </button>
+          </PermissionGate>
         )}
       </div>
       <input ref={fileInput} type="file" multiple hidden onChange={onPick} />

@@ -32,7 +32,7 @@ import { usePanel } from "@/frontend/components/PanelContext";
 import { EmptyState } from "@/frontend/components/EmptyState";
 import { PageHeader, Modal } from "./_app.projects";
 import { toast } from "./_app";
-import { useAssertPermission, TokenCostLabel, can, getStoredRole } from "@/lib/permissions";
+import { PermissionGate, useAssertPermission, TokenCostLabel, can, getStoredRole } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_app/suites")({
   beforeLoad: () => {
@@ -259,22 +259,24 @@ function SuiteRow({
           >
             <Plus className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => {
-              if (!assertPerm("tests:run")) return;
-              if (testCases.length === 0) {
-                toast.error("Add at least one test case to this suite first");
-                return;
-              }
-              if (!deductTokenAction(`Run suite "${suite.name}"`)) return;
-              const run = createMockRun(suite.projectId, suite.id);
-              toast.success(`Run ${run.id} completed`);
-            }}
-            className="p-2 text-[var(--c-text-muted)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-soft)] rounded-[6px] transition-colors"
-            title="Run suite"
-          >
-            <Play className="h-4 w-4" />
-          </button>
+          <PermissionGate action="tests:run" disabledTooltip="Viewers cannot run suites">
+            <button
+              onClick={() => {
+                if (!assertPerm("tests:run")) return;
+                if (testCases.length === 0) {
+                  toast.error("Add at least one test case to this suite first");
+                  return;
+                }
+                if (!deductTokenAction(`Run suite "${suite.name}"`)) return;
+                const run = createMockRun(suite.projectId, suite.id);
+                toast.success(`Run ${run.id} completed`);
+              }}
+              className="p-2 text-[var(--c-text-muted)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-soft)] rounded-[6px] transition-colors"
+              title="Run suite"
+            >
+              <Play className="h-4 w-4" />
+            </button>
+          </PermissionGate>
           <button
             onClick={() => {
               if (confirm(`Delete "${suite.name}"?`)) {

@@ -13,7 +13,7 @@ import { qamindStorage } from "@/lib/storage-keys";
 export type UserRole = "owner" | "admin" | "editor" | "viewer";
 
 export const PERMISSIONS: Record<string, UserRole[]> = {
-  "project:create": ["owner", "admin"],
+  "project:create": ["owner", "admin", "editor"],
   "project:edit": ["owner", "admin"],
   "project:delete": ["owner"],
   "suite:create": ["owner", "admin", "editor"],
