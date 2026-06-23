@@ -422,8 +422,10 @@ function AppShell() {
     const root = window.document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
+      root.setAttribute("data-theme", "dark");
     } else {
       root.classList.remove("dark");
+      root.setAttribute("data-theme", "light");
     }
     localStorage.setItem("theme", theme);
   }, [theme]);
@@ -567,7 +569,7 @@ function AppShell() {
           >
             <Bell className="h-[15px] w-[15px]" />
             {unreadNotifCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--c-accent)] text-[9px] font-bold text-white animate-pulse">
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--c-accent)] text-[9px] font-bold text-white">
                 {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
               </span>
             )}
