@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { PAGE_TEXT } from "../content";
@@ -6,8 +6,14 @@ import { useAuth, signOut } from "@/frontend/store/store";
 import { QAMindLogo } from "@/frontend/components/brand";
 import { CONTACT_EMAIL, TAGLINE } from "@/lib/brand";
 import { isOnboardingCompleteLocally, qamindStorage } from "@/lib/storage-keys";
+import { isGptSite } from "@/lib/gpt-site";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    if (typeof window !== "undefined" && isGptSite()) {
+      throw redirect({ to: "/gpt" });
+    }
+  },
   head: () => ({
     meta: [
       { title: "QAMind AI — Quality assurance, with a mind of its own." },

@@ -89,7 +89,7 @@ function buildProcessedJourney(events) {
     "recording_state", "navigation", "page_context", "click", "input", "keyboard", "validation"
   ].includes(event.eventType));
 
-  return journeyEvents.slice(0, 220).map((event, index) => {
+  return journeyEvents.slice(0, 120).map((event, index) => {
     const target = compactTarget(event.target);
     const page = normalizePage(event.page || {});
     const base = {
@@ -193,7 +193,7 @@ function buildObservedUiElements(events) {
   return dedupeByKey(
     items,
     (item) => `${item.page.path}|${JSON.stringify(item.element)}`,
-    120
+    60
   );
 }
 
@@ -221,7 +221,7 @@ function buildNavigationFlow(events) {
       return item;
     }),
     (item) => `${item.type}|${item.action}|${item.method || ""}|${item.statusCode || ""}|${item.page.url}|${item.fromUrl || ""}|${item.toUrl || ""}`,
-    80
+    40
   );
 }
 
@@ -247,7 +247,7 @@ function buildNetworkObservations(events) {
       return item;
     }),
     (item) => `${item.eventType}|${item.method}|${item.statusCode || ""}|${item.url}|${item.error || ""}`,
-    80
+    30
   );
 }
 

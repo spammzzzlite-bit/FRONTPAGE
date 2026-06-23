@@ -94,6 +94,7 @@ function isNoisyResource(details) {
   const noisyPatterns = [
     "favicon", "doubleclick", "google-analytics", "googletagmanager",
     "facebook", "hotjar", "newrelic", "datadog", "clarity.ms",
+    "creativecdn", "snapads", "adservice", "adsystem",
     "sentry", "segment", ".woff", ".woff2", ".ttf", ".png", ".jpg",
     ".jpeg", ".gif", ".webp", ".svg", ".mp4", ".css"
   ];

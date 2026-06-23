@@ -94,7 +94,8 @@ function RecordingsPage() {
       });
 
       if (!result.success) {
-        throw new Error(result.error || "AI worker failed to generate test cases.");
+        const detail = result.debug ? ` ${result.debug}` : "";
+        throw new Error((result.error || "AI worker failed to generate test cases.") + detail);
       }
 
       if (!result.cases.length) {

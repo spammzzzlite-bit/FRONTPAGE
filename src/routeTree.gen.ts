@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as GptRouteImport } from './routes/gpt'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GptIndexRouteImport } from './routes/gpt.index'
 import { Route as AuthVerifyPendingRouteImport } from './routes/auth.verify-pending'
 import { Route as AuthResetConfirmRouteImport } from './routes/auth.reset-confirm'
 import { Route as AuthResetRouteImport } from './routes/auth.reset'
@@ -47,6 +49,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GptRoute = GptRouteImport.update({
+  id: '/gpt',
+  path: '/gpt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -60,6 +67,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const GptIndexRoute = GptIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GptRoute,
 } as any)
 const AuthVerifyPendingRoute = AuthVerifyPendingRouteImport.update({
   id: '/verify-pending',
@@ -175,6 +187,7 @@ const AppAccountSuperAdminRoute = AppAccountSuperAdminRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/gpt': typeof GptRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/welcome': typeof WelcomeRoute
   '/analytics': typeof AppAnalyticsRoute
@@ -198,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
+  '/gpt/': typeof GptIndexRoute
   '/account/super-admin': typeof AppAccountSuperAdminRoute
 }
 export interface FileRoutesByTo {
@@ -226,6 +240,7 @@ export interface FileRoutesByTo {
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
+  '/gpt': typeof GptIndexRoute
   '/account/super-admin': typeof AppAccountSuperAdminRoute
 }
 export interface FileRoutesById {
@@ -233,6 +248,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/gpt': typeof GptRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/welcome': typeof WelcomeRoute
   '/_app/analytics': typeof AppAnalyticsRoute
@@ -256,6 +272,7 @@ export interface FileRoutesById {
   '/auth/reset': typeof AuthResetRoute
   '/auth/reset-confirm': typeof AuthResetConfirmRoute
   '/auth/verify-pending': typeof AuthVerifyPendingRoute
+  '/gpt/': typeof GptIndexRoute
   '/_app/account/super-admin': typeof AppAccountSuperAdminRoute
 }
 export interface FileRouteTypes {
@@ -263,6 +280,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/gpt'
     | '/onboarding'
     | '/welcome'
     | '/analytics'
@@ -286,6 +304,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
+    | '/gpt/'
     | '/account/super-admin'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -314,12 +333,14 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
+    | '/gpt'
     | '/account/super-admin'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/auth'
+    | '/gpt'
     | '/onboarding'
     | '/welcome'
     | '/_app/analytics'
@@ -343,6 +364,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/reset-confirm'
     | '/auth/verify-pending'
+    | '/gpt/'
     | '/_app/account/super-admin'
   fileRoutesById: FileRoutesById
 }
@@ -350,6 +372,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  GptRoute: typeof GptRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   WelcomeRoute: typeof WelcomeRoute
 }
@@ -368,6 +391,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gpt': {
+      id: '/gpt'
+      path: '/gpt'
+      fullPath: '/gpt'
+      preLoaderRoute: typeof GptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -390,6 +420,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/gpt/': {
+      id: '/gpt/'
+      path: '/'
+      fullPath: '/gpt/'
+      preLoaderRoute: typeof GptIndexRouteImport
+      parentRoute: typeof GptRoute
     }
     '/auth/verify-pending': {
       id: '/auth/verify-pending'
@@ -608,10 +645,21 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface GptRouteChildren {
+  GptIndexRoute: typeof GptIndexRoute
+}
+
+const GptRouteChildren: GptRouteChildren = {
+  GptIndexRoute: GptIndexRoute,
+}
+
+const GptRouteWithChildren = GptRoute._addFileChildren(GptRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  GptRoute: GptRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   WelcomeRoute: WelcomeRoute,
 }

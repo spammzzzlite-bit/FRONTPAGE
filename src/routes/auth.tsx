@@ -14,11 +14,13 @@ import {
   verifyJoinInvite,
 } from "@/backend/api/invite.functions";
 import { QAMindLogo } from "@/frontend/components/brand";
+import { isGptSite } from "@/lib/gpt-site";
 
 const search = z.object({
   mode: z.enum(["signin", "signup", "join"]).optional(),
   email: z.string().optional(),
   message: z.string().optional(),
+  next: z.string().optional(),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -33,7 +35,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { mode = "signin", email: initialEmail = "", message } = Route.useSearch();
+  const { mode = "signin", email: initialEmail = "", message, next } = Route.useSearch();
   const navigate = useNavigate();
   const routerState = useRouterState();
   const auth = useAuth();
@@ -71,8 +73,14 @@ function AuthPage() {
     return !!data?.onboarding_complete;
   };
 
+  const postAuthPath = next === "/gpt" || isGptSite() ? "/gpt" : null;
+
   const handlePostAuth = async (user: any) => {
     if (!user) return navigate({ to: "/auth" });
+    if (postAuthPath) {
+      navigate({ to: postAuthPath });
+      return;
+    }
     try {
       const accessToken = await getToken();
       const invites = await getMyPendingInvites({ data: { accessToken } });
@@ -155,13 +163,17 @@ function AuthPage() {
   useEffect(() => {
     if (auth.loading || !isExactAuth) return;
     if (auth.session) {
+      if (postAuthPath) {
+        navigate({ to: postAuthPath });
+        return;
+      }
       if (auth.user?.email_confirmed_at) {
         navigate({ to: "/dashboard" });
       } else {
         navigate({ to: "/auth/verify-pending", search: { email: auth.user?.email } });
       }
     }
-  }, [auth.session, auth.user, auth.loading, isExactAuth, navigate]);
+  }, [auth.session, auth.user, auth.loading, isExactAuth, navigate, postAuthPath]);
 
   if (!isExactAuth) {
     return <Outlet />;
