@@ -272,6 +272,10 @@ function AuthPage() {
           setFormError(parseAuthError(error));
           setLoading(false);
           return;
+        } else if (data.user?.identities?.length === 0) {
+          setFormMessage("This email is already registered. Sign in instead to join the workspace.");
+          setLoading(false);
+          return;
         } else {
           userId = data.user?.id || "";
         }
@@ -327,26 +331,7 @@ function AuthPage() {
           const parsed = parseAuthError(error);
           setFormError(parsed);
         } else if (data.user?.identities?.length === 0) {
-          // Supabase returns identities: [] if the user already exists.
-          // We trigger a verification email resend. If it succeeds, they were unverified and the email is sent.
-          // If it fails with already confirmed, we tell them the account exists.
-          const { error: resendError } = await supabase.auth.resend({
-            type: "signup",
-            email,
-            options: { emailRedirectTo: window.location.origin + "/auth/confirm" },
-          });
-
-          if (!resendError) {
-            navigate({ to: "/auth/verify-pending", search: { email } });
-          } else if (
-            resendError.message.toLowerCase().includes("confirmed") ||
-            resendError.message.toLowerCase().includes("verified") ||
-            resendError.message.toLowerCase().includes("already")
-          ) {
-            setFormMessage("An account with this email already exists.");
-          } else {
-            setFormError(parseAuthError(resendError));
-          }
+          setFormMessage("An account with this email already exists.");
         } else {
           // Case A: New user created
           if (data.session) {
