@@ -154,7 +154,10 @@ export const chatWithLocalLlm = createServerFn({ method: "POST" })
           ollamaError instanceof Error ? ollamaError.message : "Ollama unavailable";
         return {
           success: false,
-          error: `Could not reach your workstation LLM. Worker: ${workerMsg}. Ollama: ${ollamaMsg}`,
+          error:
+            `Could not reach your workstation LLM. Worker: ${workerMsg}. ` +
+            `Ollama direct: ${ollamaMsg}. ` +
+            `If you see 404 on /chat, copy scripts/windows/QAMindWorker-chat_endpoint.py to QAMindWorker and restart uvicorn.`,
         };
       }
     }

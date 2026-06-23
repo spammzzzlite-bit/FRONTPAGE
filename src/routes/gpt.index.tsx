@@ -28,6 +28,7 @@ function GptChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ function GptChatPage() {
     setMessages(nextMessages);
     setInput("");
     setSending(true);
+    setError(null);
 
     try {
       const history = nextMessages
@@ -71,11 +73,12 @@ function GptChatPage() {
       });
 
       if (!result.success || !("text" in result) || !result.text) {
-        throw new Error(
+        const message =
           "error" in result && result.error
             ? result.error
-            : "No response from your workstation model.",
-        );
+            : "No response from your workstation model.";
+        setError(message);
+        throw new Error(message);
       }
 
       setMessages((prev) => [
@@ -87,7 +90,9 @@ function GptChatPage() {
         },
       ]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Chat failed.");
+      const message = error instanceof Error ? error.message : "Chat failed.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSending(false);
     }
@@ -99,6 +104,12 @@ function GptChatPage() {
         Responses come from your local Ollama model on your workstation. Keep Tailscale and
         Ollama running on that machine.
       </div>
+
+      {error && (
+        <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       <div className="flex-1 space-y-4 overflow-y-auto pr-1">
         {messages.map((message) => (
