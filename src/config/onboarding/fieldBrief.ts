@@ -2,7 +2,7 @@ import type { BriefingTrackConfig } from "./types";
 
 export const fieldBrief: BriefingTrackConfig = {
   title: "Field Brief",
-  accentColor: "#3B82F6",
+  accentColor: "#C2552E",
   iconName: "Zap",
   steps: [
     {

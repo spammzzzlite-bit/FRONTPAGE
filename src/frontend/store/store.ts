@@ -488,7 +488,7 @@ export function useUserStore() {
 }
 
 export function getAvatarColor(name: string): string {
-  const brandColors = ["#C4531A", "#2E7D32", "#1565C0", "#C2185B", "#6A1B9A", "#EF6C00"];
+  const brandColors = ["#C2552E", "#9E4220", "#D9744A", "#5E7A4F", "#B04E3D", "#8E7E38"];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);

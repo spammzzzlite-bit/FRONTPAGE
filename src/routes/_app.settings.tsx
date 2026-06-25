@@ -1357,11 +1357,11 @@ const getRoleValue = (r: string) => {
 
 const getRoleBadgeStyle = (roleStr: string) => {
   const role = roleStr.toLowerCase() as any;
-  if (can(role, "workspace:viewKey")) return { bg: "#F59E0B", text: "#FFFFFF", label: "Owner" };
+  if (can(role, "workspace:viewKey")) return { bg: "var(--c-accent)", text: "#ffffff", label: "Owner" };
   if (can(role, "project:create"))
-    return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" }; // app's primary orange
-  if (can(role, "suite:create")) return { bg: "#3B82F6", text: "#FFFFFF", label: "Editor" };
-  return { bg: "#64748B", text: "#FFFFFF", label: "Viewer" }; // viewer / slate
+    return { bg: "var(--c-accent-pressed)", text: "#ffffff", label: "Admin" };
+  if (can(role, "suite:create")) return { bg: "var(--c-bg-hover)", text: "var(--c-text-muted)", label: "Editor" };
+  return { bg: "var(--c-bg-sidebar)", text: "var(--c-text-dim)", label: "Viewer" };
 };
 
 function TeamMembersCard() {
@@ -1814,7 +1814,7 @@ function TeamMembersCard() {
                         setTransferTarget({ userId: p.userId, displayName: p.displayName || p.email.split("@")[0] });
                         setShowTransferModal(true);
                       }}
-                      className="p-1 text-[var(--c-text-muted)] hover:text-[#F59E0B] transition-colors"
+                      className="p-1 text-[var(--c-text-muted)] hover:text-[var(--c-accent)] transition-colors"
                       title="Make Owner"
                     >
                       <Crown className="h-4 w-4" />
@@ -1899,7 +1899,7 @@ function TeamMembersCard() {
                         {isExpired ? (
                           <span className="text-[var(--c-fail)] font-semibold">Expired</span>
                         ) : (
-                          <span className={isUrgent ? "text-[#F59E0B] font-semibold" : ""}>
+                          <span className={isUrgent ? "text-[var(--c-warn)] font-semibold" : ""}>
                             Expires in {diffDays} day{diffDays === 1 ? "" : "s"}
                           </span>
                         )}
@@ -2365,7 +2365,7 @@ function TeamMembersCard() {
                     setTransferring(false);
                   }
                 }}
-                className="rounded-[8px] bg-[#F59E0B] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[#D97706] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-[8px] bg-[var(--c-accent)] px-[16px] py-[8px] text-[13px] font-medium text-white transition-all hover:bg-[var(--c-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {transferring ? "Transferring..." : "Confirm Transfer"}
               </button>

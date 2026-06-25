@@ -87,19 +87,19 @@ const ROLE_CARDS: { id: Role; label: string; sublabel: string; icon: React.React
     id: "qa_engineer",
     label: "QA Engineer",
     sublabel: "I write and run test cases",
-    icon: <Bug size={28} strokeWidth={1.5} />,
+    icon: <Bug size={28} strokeWidth={1.75} />,
   },
   {
     id: "developer",
     label: "Developer",
     sublabel: "I build features and fix bugs",
-    icon: <Code2 size={28} strokeWidth={1.5} />,
+    icon: <Code2 size={28} strokeWidth={1.75} />,
   },
   {
     id: "project_manager",
     label: "Project Manager",
     sublabel: "I track progress and reports",
-    icon: <ClipboardList size={28} strokeWidth={1.5} />,
+    icon: <ClipboardList size={28} strokeWidth={1.75} />,
   },
 ];
 
@@ -146,7 +146,7 @@ function StepLabel({ children, accentColor }: { children: React.ReactNode; accen
   return (
     <span
       style={{
-        fontFamily: "Inter, sans-serif",
+        fontFamily: "var(--font-body)",
         fontSize: "10px",
         letterSpacing: "0.15em",
         textTransform: "uppercase",
@@ -177,7 +177,7 @@ function ContinueButton({
       style={{
         background: disabled ? "var(--border)" : accentColor,
         color: disabled ? "var(--ink-faint)" : "#FFFFFF",
-        fontFamily: "Inter, sans-serif",
+        fontFamily: "var(--font-body)",
         fontSize: "14px",
         fontWeight: 600,
         padding: "12px 28px",
@@ -337,7 +337,7 @@ function Step1Welcome({ briefingTrack, config, onNext, accentColor, iconName }: 
 
       <p
         style={{
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "var(--font-body)",
           fontSize: "16px",
           color: "var(--ink-muted)",
           marginTop: 20,
@@ -437,9 +437,9 @@ function Step2Workspace({
             width: "100%",
             padding: "14px 18px",
             fontSize: "17px",
-            fontFamily: "Inter, sans-serif",
+            fontFamily: "var(--font-body)",
             background: "var(--cream-50)",
-            border: `1.5px solid ${isEmpty ? "#D94F35" : "var(--border)"}`,
+            border: `1.5px solid ${isEmpty ? "var(--c-fail)" : "var(--border)"}`,
             borderRadius: "8px",
             color: "var(--ink)",
             outline: "none",
@@ -454,7 +454,7 @@ function Step2Workspace({
           }}
         />
         {isEmpty && (
-          <p style={{ color: "#D94F35", fontSize: 12, marginTop: 6, textAlign: "left" }}>
+          <p style={{ color: "var(--c-fail)", fontSize: 12, marginTop: 6, textAlign: "left" }}>
             Please name your workspace to continue.
           </p>
         )}
@@ -548,7 +548,7 @@ function Step3Role({
                   <div>
                     <div
                       style={{
-                        fontFamily: "Inter, sans-serif",
+                        fontFamily: "var(--font-body)",
                         fontWeight: 600,
                         fontSize: 15,
                         color: "var(--ink)",
@@ -559,7 +559,7 @@ function Step3Role({
                     </div>
                     <div
                       style={{
-                        fontFamily: "Inter, sans-serif",
+                        fontFamily: "var(--font-body)",
                         fontSize: 12,
                         color: "var(--ink-muted)",
                       }}
@@ -596,10 +596,10 @@ function Step3Role({
                   </svg>
                   <div
                     style={{
-                      fontFamily: "Inter, sans-serif",
+                      fontFamily: "var(--font-body)",
                       fontWeight: 700,
                       fontSize: 14,
-                      color: "#F8F5F0",
+                      color: "var(--c-text)",
                       letterSpacing: "0.02em",
                     }}
                   >
@@ -607,7 +607,7 @@ function Step3Role({
                   </div>
                   <div
                     style={{
-                      fontFamily: "Inter, sans-serif",
+                      fontFamily: "var(--font-body)",
                       fontSize: 11,
                       color: "var(--ink-faint)",
                       letterSpacing: "0.08em",
@@ -634,22 +634,22 @@ function Step3Role({
 
 const FEATURE_CARDS_LEAD = [
   {
-    icon: <Zap size={22} strokeWidth={1.5} />,
+    icon: <Zap size={22} strokeWidth={1.75} />,
     title: "Generate Tests",
     description: "Describe a feature, AI writes the test cases.",
   },
   {
-    icon: <Bug size={22} strokeWidth={1.5} />,
+    icon: <Bug size={22} strokeWidth={1.75} />,
     title: "Bug Reporter",
     description: "Flag failures and auto-log bugs in one click.",
   },
   {
-    icon: <RefreshCw size={22} strokeWidth={1.5} />,
+    icon: <RefreshCw size={22} strokeWidth={1.75} />,
     title: "Regression",
     description: "Run full suite checks across your projects.",
   },
   {
-    icon: <BarChart2 size={22} strokeWidth={1.5} />,
+    icon: <BarChart2 size={22} strokeWidth={1.75} />,
     title: "Reports",
     description: "Export PDF and CSV reports for any project.",
   },
@@ -720,7 +720,7 @@ function Step4Features({
             </div>
             <div
               style={{
-                fontFamily: "Inter, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontWeight: 600,
                 fontSize: 14,
                 color: "var(--ink)",
@@ -731,7 +731,7 @@ function Step4Features({
             </div>
             <div
               style={{
-                fontFamily: "Inter, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontSize: 13,
                 color: "var(--ink-muted)",
                 lineHeight: 1.5,
@@ -962,7 +962,7 @@ function Step5DNA({
                 style={{
                   fontFamily: "monospace",
                   fontSize: 12,
-                  color: "#A8A29E",
+                  color: "var(--c-text-muted)",
                   marginBottom: 4,
                   minHeight: "1.4em",
                 }}
@@ -1059,7 +1059,7 @@ function Step5DNA({
 
               <div
                 style={{
-                  fontFamily: "Inter, sans-serif",
+                  fontFamily: "var(--font-body)",
                   fontSize: 10,
                   letterSpacing: "0.15em",
                   textTransform: "uppercase",
@@ -1084,7 +1084,7 @@ function Step5DNA({
 
               <div
                 style={{
-                  fontFamily: "Inter, sans-serif",
+                  fontFamily: "var(--font-body)",
                   fontSize: 14,
                   color: "var(--ink-muted)",
                   fontStyle: "italic",
@@ -1099,7 +1099,7 @@ function Step5DNA({
 
           <p
             style={{
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 14,
               color: "var(--ink-muted)",
               letterSpacing: "0.02em",
@@ -1291,7 +1291,7 @@ function StepChecklist({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontFamily: "Inter, sans-serif",
+                    fontFamily: "var(--font-body)",
                     fontSize: 14,
                     fontWeight: 500,
                     color: "var(--ink)",
@@ -1314,7 +1314,7 @@ function StepChecklist({
                   border: "1px solid var(--border)",
                   borderRadius: 5,
                   background: "transparent",
-                  fontFamily: "Inter, sans-serif",
+                  fontFamily: "var(--font-body)",
                   fontSize: 11,
                   fontWeight: 500,
                   color: "var(--ink-muted)",
@@ -1355,7 +1355,7 @@ function StepChecklist({
         >
           <div
             style={{
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 10,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
@@ -1386,7 +1386,7 @@ function StepChecklist({
           </div>
           <div
             style={{
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 12,
               fontWeight: 500,
               color: "var(--ink)",
@@ -1396,7 +1396,7 @@ function StepChecklist({
           </div>
           <div
             style={{
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 10,
               color: "var(--ink-faint)",
             }}
@@ -1408,7 +1408,7 @@ function StepChecklist({
               padding: "2px 8px",
               border: "1px solid var(--border)",
               borderRadius: 3,
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 9,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
@@ -1428,7 +1428,7 @@ function StepChecklist({
             padding: "15px 24px",
             background: accentColor,
             color: "#FFFFFF",
-            fontFamily: "Inter, sans-serif",
+            fontFamily: "var(--font-body)",
             fontSize: "15px",
             fontWeight: 600,
             borderRadius: 7,
@@ -1507,7 +1507,7 @@ function StepScope({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <span
               style={{
-                color: "#2E7D32",
+                color: "var(--c-pass)",
                 fontWeight: 700,
                 fontSize: 13,
                 textTransform: "uppercase",
@@ -1550,7 +1550,7 @@ function StepScope({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <span
               style={{
-                color: "#64748B",
+                color: "var(--c-text-dim)",
                 fontWeight: 700,
                 fontSize: 13,
                 textTransform: "uppercase",
@@ -1590,7 +1590,7 @@ function StepScope({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <span
               style={{
-                color: "#B8801a",
+                color: "var(--c-warn)",
                 fontWeight: 700,
                 fontSize: 13,
                 textTransform: "uppercase",
@@ -1701,7 +1701,7 @@ function StepLoadout({
                   justifyContent: "center",
                 }}
               >
-                <CheckCircle size={18} strokeWidth={2.5} />
+                <CheckCircle size={18} strokeWidth={1.75} />
               </div>
             ) : (
               <div
@@ -1806,7 +1806,7 @@ function StepIntelAccess({
                 justifyContent: "center",
               }}
             >
-              <Eye size={18} strokeWidth={2} />
+              <Eye size={18} strokeWidth={1.75} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{item}</span>
           </div>
@@ -1862,7 +1862,7 @@ function ProgressBar({
       ))}
       <span
         style={{
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "var(--font-body)",
           fontSize: 11,
           color: "var(--ink-faint)",
           letterSpacing: "0.05em",
@@ -2199,7 +2199,7 @@ export default function OnboardingFlow({
                 borderRadius: 20,
                 background: `${trackConfig.accentColor}18`,
                 border: `1px solid ${trackConfig.accentColor}40`,
-                fontFamily: "Inter, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontSize: 12,
                 fontWeight: 600,
                 color: trackConfig.accentColor,
@@ -2212,7 +2212,7 @@ export default function OnboardingFlow({
           </div>
           <p
             style={{
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 14,
               color: "var(--ink-muted)",
               maxWidth: 340,
@@ -2349,7 +2349,7 @@ export default function OnboardingFlow({
           <button
             onClick={handleSkip}
             style={{
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 12,
               color: "var(--ink-faint)",
               background: "transparent",
@@ -2407,7 +2407,7 @@ export default function OnboardingFlow({
               display: "flex",
               alignItems: "center",
               gap: 6,
-              fontFamily: "Inter, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 13,
               color: "var(--ink-faint)",
               background: "transparent",

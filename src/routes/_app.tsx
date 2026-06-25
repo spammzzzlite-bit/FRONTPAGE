@@ -751,14 +751,14 @@ function AppShell() {
                     const rBadge = (() => {
                       switch (role) {
                         case "owner":
-                          return { bg: "#F59E0B", text: "#FFFFFF", label: "Owner" };
+                          return { bg: "var(--c-accent)", text: "#ffffff", label: "Owner" };
                         case "admin":
-                          return { bg: "var(--c-accent)", text: "#FFFFFF", label: "Admin" };
+                          return { bg: "var(--c-accent-pressed)", text: "#ffffff", label: "Admin" };
                         case "editor":
-                          return { bg: "#3B82F6", text: "#FFFFFF", label: "Editor" };
+                          return { bg: "var(--c-bg-hover)", text: "var(--c-text-muted)", label: "Editor" };
                         case "viewer":
                         default:
-                          return { bg: "#64748B", text: "#FFFFFF", label: "Viewer" };
+                          return { bg: "var(--c-bg-sidebar)", text: "var(--c-text-dim)", label: "Viewer" };
                       }
                     })();
                     return (

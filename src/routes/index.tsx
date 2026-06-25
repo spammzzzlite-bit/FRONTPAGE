@@ -1,12 +1,23 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { ChevronDown, BookOpen, Zap, CreditCard, Clock, AlertTriangle, Boxes, Video, HelpCircle, Download, FileText, Play, History, Bug, BarChart3, GitBranch, ClipboardList, Layers, ArrowRight, Github, Youtube, Linkedin, Mail, Send } from "lucide-react";
 import { PAGE_TEXT } from "../content";
 import { useAuth, signOut } from "@/frontend/store/store";
 import { QAMindLogo } from "@/frontend/components/brand";
+import { HowItWorks, IntegrationsLoop, FAQSection, RecorderDownloadModal } from "@/components/landing";
 import { CONTACT_EMAIL, TAGLINE } from "@/lib/brand";
 import { isOnboardingCompleteLocally, qamindStorage } from "@/lib/storage-keys";
 import { isGptSite } from "@/lib/gpt-site";
+import { Particles } from "@/components/ui/particles";
+
+const PILL_NAV: Record<string, string> = {
+  "how-it-works": "Problems",
+  integrations: "Integrations",
+  practice: "Practice",
+  recorder: "Recorder",
+  faq: "FAQ",
+  colophon: "About",
+};
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
@@ -107,15 +118,18 @@ type SplitTextConstructor = new (
   vars: { type: string; charsClass?: string; wordsClass?: string },
 ) => SplitTextInstance;
 
+type LenisInstance = {
+  raf: (time: number) => void;
+  destroy: () => void;
+  scrollTo: (target: string | number | HTMLElement, options?: { offset?: number; duration?: number }) => void;
+};
+
 type LenisConstructor = new (vars: {
   duration: number;
   easing: (t: number) => number;
   smoothWheel: boolean;
   wheelMultiplier?: number;
-}) => {
-  raf: (time: number) => void;
-  destroy: () => void;
-};
+}) => LenisInstance;
 
 declare global {
   interface Window {
@@ -123,6 +137,7 @@ declare global {
     ScrollTrigger?: ScrollTriggerInstance;
     SplitText?: SplitTextConstructor;
     Lenis?: LenisConstructor;
+    __qlenis?: LenisInstance;
   }
 }
 
@@ -148,18 +163,6 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-function useScrolledNav() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const update = () => setScrolled(window.scrollY > 60);
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
-  }, []);
-
-  return scrolled;
-}
 
 function useCdnScripts() {
   const [loaded, setLoaded] = useState(false);
@@ -221,10 +224,12 @@ function useLenis(ready: boolean, reduced: boolean) {
     };
 
     frame = requestAnimationFrame(raf);
+    window.__qlenis = lenis;
 
     return () => {
       cancelAnimationFrame(frame);
       lenis.destroy();
+      window.__qlenis = undefined;
     };
   }, [ready, reduced]);
 }
@@ -268,7 +273,6 @@ function useMotionSystem(
     const nav = root.querySelector(".field-nav");
     const subtext = root.querySelector(".hero-subtext");
     const ctas = root.querySelectorAll(".hero-cta");
-    const quote = root.querySelector(".hero-quote-card");
     const chars = headline ? split(headline, "chars")?.chars : null;
 
     if (chars?.length) {
@@ -288,8 +292,7 @@ function useMotionSystem(
         0.14,
       )
       .from(subtext, { opacity: 0, y: 14, duration: 0.28 }, 0.42)
-      .from(ctas, { opacity: 0, y: 22, duration: 0.32, stagger: 0.05 }, 0.54)
-      .from(quote, { opacity: 0, x: 84, duration: 0.42 }, 0.48);
+      .from(ctas, { opacity: 0, y: 22, duration: 0.32, stagger: 0.05 }, 0.54);
 
     if (!chars?.length && headline) {
       gsap.from(headline, { opacity: 0, y: 26, duration: 0.52, ease: "power3.out" });
@@ -328,36 +331,6 @@ function useMotionSystem(
       scrollTrigger: { trigger: "#practice", start: "top 68%", once: true },
     });
 
-    gsap.from(root.querySelectorAll(".pricing-card"), {
-      opacity: 0,
-      scale: 0.96,
-      y: 20,
-      duration: 0.62,
-      stagger: 0.12,
-      ease: "power3.out",
-      scrollTrigger: { trigger: "#pricing", start: "top 70%", once: true },
-    });
-
-    const price = root.querySelector<HTMLElement>("[data-count-price='24']");
-    if (price) {
-      ScrollTrigger.create({
-        trigger: price,
-        start: "top 84%",
-        once: true,
-        onEnter: () => {
-          const value = { amount: 0 };
-          gsap.to(value, {
-            amount: 24,
-            duration: 0.85,
-            ease: "power2.out",
-            onUpdate: () => {
-              price.textContent = `$${Math.round(value.amount)}`;
-            },
-          });
-        },
-      });
-    }
-
     root.querySelectorAll<HTMLElement>(".editorial-note").forEach((note) => {
       gsap.fromTo(
         note,
@@ -373,16 +346,48 @@ function useMotionSystem(
       );
     });
 
-    if (quote) {
-      gsap.to(quote, {
-        yPercent: -28,
-        ease: "none",
-        scrollTrigger: {
-          trigger: ".field-hero",
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
+    // Pain rows reveal
+    const painRows = root.querySelectorAll(".how-pain-row");
+    if (painRows.length) {
+      gsap.from(painRows, {
+        opacity: 0,
+        y: 18,
+        duration: 0.45,
+        stagger: 0.1,
+        ease: "power2.out",
+        scrollTrigger: { trigger: ".how-pain-rows", start: "top 80%", once: true },
+      });
+    }
+
+    // Pipeline reveal: stagger cards then connectors
+    const pipelineSteps = root.querySelectorAll(".pipeline-step");
+    const pipelineConnectors = root.querySelectorAll(".pipeline-connector");
+    if (pipelineSteps.length) {
+      const pipeTl = gsap.timeline({
+        scrollTrigger: { trigger: ".how-pipeline-steps", start: "top 76%", once: true },
+      });
+      pipelineSteps.forEach((step, i) => {
+        pipeTl.from(step, { opacity: 0, y: 32, duration: 0.5, ease: "power3.out" }, i * 0.15);
+        if (pipelineConnectors[i]) {
+          pipeTl.from(
+            pipelineConnectors[i],
+            { opacity: 0, x: -10, duration: 0.3, ease: "power2.out" },
+            i * 0.15 + 0.38,
+          );
+        }
+      });
+    }
+
+    // FAQ rows stagger-reveal
+    const faqRows = root.querySelectorAll(".faq-row");
+    if (faqRows.length) {
+      gsap.from(faqRows, {
+        opacity: 0,
+        y: 18,
+        duration: 0.45,
+        stagger: 0.09,
+        ease: "power2.out",
+        scrollTrigger: { trigger: "#faq", start: "top 78%", once: true },
       });
     }
 
@@ -730,35 +735,6 @@ function useGlobalInteractions(reduced: boolean) {
   return activeNav;
 }
 
-function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light" || saved === "dark") return saved;
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
-    }
-    return "light";
-  });
-
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  return (
-    <button
-      onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-      title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-      className="p-2 text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition-colors rounded-full"
-    >
-      {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-    </button>
-  );
-}
 
 function SectionMarker({ label }: { label: string }) {
   return (
@@ -776,11 +752,21 @@ function SectionMarker({ label }: { label: string }) {
   );
 }
 
+function scrollToSection(e: React.MouseEvent<HTMLAnchorElement>, key: string) {
+  e.preventDefault();
+  const target = document.getElementById(key);
+  if (!target) return;
+  if (window.__qlenis) {
+    window.__qlenis.scrollTo(target, { offset: -80 });
+  } else {
+    target.scrollIntoView({ behavior: "smooth" });
+  }
+}
+
 function Welcome() {
   const rootRef = useRef<HTMLDivElement>(null);
   const scriptsReady = useCdnScripts();
   const reduced = usePrefersReducedMotion();
-  const scrolled = useScrolledNav();
   const auth = useAuth();
   const isAuthenticated = !!auth.session;
   const onboardingComplete =
@@ -794,16 +780,88 @@ function Welcome() {
 
   const activeNav = useGlobalInteractions(reduced);
   const [dotStyle, setDotStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const [pillVisible, setPillVisible] = useState(false);
+  const [pillIndicator, setPillIndicator] = useState({ left: 0, width: 0, opacity: 0 });
+  const [pillTheme, setPillTheme] = useState<"dark" | "light">("dark");
+  const [productOpen, setProductOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownLeaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [recorderOpen, setRecorderOpen] = useState(false);
+  const recorderDropdownRef = useRef<HTMLDivElement>(null);
+  const recorderLeaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("ann-banner-v1") === "1"
+  );
+
+  const dismissBanner = useCallback(() => {
+    setBannerDismissed(true);
+    localStorage.setItem("ann-banner-v1", "1");
+  }, []);
+
+  const openDropdown = useCallback(() => {
+    if (dropdownLeaveRef.current) clearTimeout(dropdownLeaveRef.current);
+    setProductOpen(true);
+  }, []);
+
+  const closeDropdown = useCallback(() => {
+    dropdownLeaveRef.current = setTimeout(() => setProductOpen(false), 150);
+  }, []);
+
+  const [solutionsOpen, setSolutionsOpen] = useState(false);
+  const solutionsDropdownRef = useRef<HTMLDivElement>(null);
+  const solutionsLeaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openSolutionsDropdown = useCallback(() => {
+    if (solutionsLeaveRef.current) clearTimeout(solutionsLeaveRef.current);
+    setSolutionsOpen(true);
+  }, []);
+
+  const closeSolutionsDropdown = useCallback(() => {
+    solutionsLeaveRef.current = setTimeout(() => setSolutionsOpen(false), 150);
+  }, []);
+
+  const openRecorderDropdown = useCallback(() => {
+    if (recorderLeaveRef.current) clearTimeout(recorderLeaveRef.current);
+    setRecorderOpen(true);
+  }, []);
+
+  const closeRecorderDropdown = useCallback(() => {
+    recorderLeaveRef.current = setTimeout(() => setRecorderOpen(false), 150);
+  }, []);
+
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const resourcesDropdownRef = useRef<HTMLDivElement>(null);
+  const resourcesLeaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openResourcesDropdown = useCallback(() => {
+    if (resourcesLeaveRef.current) clearTimeout(resourcesLeaveRef.current);
+    setResourcesOpen(true);
+  }, []);
+
+  const closeResourcesDropdown = useCallback(() => {
+    resourcesLeaveRef.current = setTimeout(() => setResourcesOpen(false), 150);
+  }, []);
 
   useEffect(() => {
+    // Sections that belong under Product dropdown in header
+    const PRODUCT_SECTIONS = new Set(["features", "dashboard"]);
     if (!activeNav) {
       setDotStyle((prev) => ({ ...prev, opacity: 0 }));
       return;
     }
     const nav = document.querySelector("nav.fn-nav") as HTMLElement;
-    const link = document.querySelector(`a.landing-nav-link[href="#${activeNav}"]`) as HTMLElement;
-    if (link && nav) {
-      const linkRect = link.getBoundingClientRect();
+    let target: HTMLElement | null = null;
+    if (PRODUCT_SECTIONS.has(activeNav)) {
+      target = document.querySelector("button.fn-nav-product-btn") as HTMLElement;
+    } else if (activeNav === "recorder") {
+      target = document.querySelector("button.fn-nav-recorder-btn") as HTMLElement;
+    } else if (activeNav === "colophon") {
+      target = document.querySelector("a.fn-nav-about-link") as HTMLElement;
+    }
+    // integrations / practice / faq have no header nav link → dot hides
+    if (target && nav) {
+      const linkRect = target.getBoundingClientRect();
       const navRect = nav.getBoundingClientRect();
       setDotStyle({
         left: linkRect.left - navRect.left + linkRect.width / 2 - 3,
@@ -816,19 +874,86 @@ function Welcome() {
   }, [activeNav]);
 
   useEffect(() => {
-    // 1. Quote Progress Ruler
-    const fill = document.querySelector(".quote-progress-fill") as HTMLElement;
-    const updateProgress = () => {
-      if (!fill) return;
-      const scrollTop = window.scrollY;
-      const docHeight = document.body.scrollHeight - window.innerHeight;
-      const progress = Math.min((scrollTop / docHeight) * 100, 100);
-      fill.style.height = progress + "%";
-    };
-    window.addEventListener("scroll", updateProgress, { passive: true });
-    updateProgress();
+    if (!activeNav) {
+      setPillIndicator((p) => ({ ...p, opacity: 0 }));
+      return;
+    }
+    const container = document.querySelector(".landing-pill-links") as HTMLElement;
+    const link = document.querySelector(
+      `.landing-pill-links a[href="#${activeNav}"]`,
+    ) as HTMLElement;
+    if (link && container) {
+      const lr = link.getBoundingClientRect();
+      const cr = container.getBoundingClientRect();
+      setPillIndicator({ left: lr.left - cr.left, width: lr.width, opacity: 1 });
+    } else {
+      setPillIndicator((p) => ({ ...p, opacity: 0 }));
+    }
+  }, [activeNav]);
 
-    // 2. Fall Words Logic
+  useEffect(() => {
+    const section = document.getElementById(activeNav) as HTMLElement | null;
+    const theme = section?.dataset.sectionTheme as "dark" | "light" | undefined;
+    setPillTheme(theme ?? "dark");
+  }, [activeNav]);
+
+  useEffect(() => {
+    if (!productOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setProductOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [productOpen]);
+
+  useEffect(() => {
+    if (!recorderOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (recorderDropdownRef.current && !recorderDropdownRef.current.contains(e.target as Node)) {
+        setRecorderOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [recorderOpen]);
+
+  useEffect(() => {
+    if (!solutionsOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (solutionsDropdownRef.current && !solutionsDropdownRef.current.contains(e.target as Node)) {
+        setSolutionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [solutionsOpen]);
+
+  useEffect(() => {
+    if (!resourcesOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (resourcesDropdownRef.current && !resourcesDropdownRef.current.contains(e.target as Node)) {
+        setResourcesOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [resourcesOpen]);
+
+  useEffect(() => {
+    const sentinel = document.getElementById("hero-sentinel");
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setPillVisible(!entry.isIntersecting),
+      { threshold: 0 },
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    // Fall Words Logic
     const pile = document.getElementById("fall-word-pile");
     const words = document.querySelectorAll<HTMLElement>("[data-fall-word]");
 
@@ -882,7 +1007,6 @@ function Welcome() {
     }
 
     return () => {
-      window.removeEventListener("scroll", updateProgress);
       if (pile && !reduced) {
         window.removeEventListener("scroll", fallScrollHandler);
       }
@@ -891,10 +1015,17 @@ function Welcome() {
 
   /* ─── Proximity parallax handler for hero headline chars ─── */
   const heroRafRef = useRef(0);
-  const handleHeroMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleHeroMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
     cancelAnimationFrame(heroRafRef.current);
     const cx = e.clientX;
     const cy = e.clientY;
+
+    // Update CSS variables for the interactive grid spotlight
+    const currentTarget = e.currentTarget;
+    const rect = currentTarget.getBoundingClientRect();
+    currentTarget.style.setProperty('--mouse-x', `${cx - rect.left}px`);
+    currentTarget.style.setProperty('--mouse-y', `${cy - rect.top}px`);
+
     heroRafRef.current = requestAnimationFrame(() => {
       const chars = rootRef.current?.querySelectorAll<HTMLElement>(".fn-hero-char");
       if (!chars) return;
@@ -917,8 +1048,14 @@ function Welcome() {
     });
   }, []);
 
-  const handleHeroMouseLeave = useCallback(() => {
+  const handleHeroMouseLeave = useCallback((e: React.MouseEvent<HTMLElement>) => {
     cancelAnimationFrame(heroRafRef.current);
+
+    // Reset spotlight to top center
+    const currentTarget = e.currentTarget;
+    currentTarget.style.setProperty('--mouse-x', '50%');
+    currentTarget.style.setProperty('--mouse-y', '0%');
+
     rootRef.current?.querySelectorAll<HTMLElement>(".fn-hero-char").forEach((ch) => {
       ch.style.transform = "translate3d(0,0,0)";
     });
@@ -927,35 +1064,307 @@ function Welcome() {
   return (
     <div
       ref={rootRef}
+      data-section-theme="dark"
       className="qamind-marketing-page min-h-screen bg-[var(--c-bg)] text-[var(--c-text)]"
     >
+      <RecorderDownloadModal open={downloadOpen} onClose={() => setDownloadOpen(false)} />
+
+
+
       {/* ENHANCED: Global Micro-Interactions | Edit text in content.ts */}
       <div className="stillness-overlay" aria-hidden="true" />
 
       <header
-        className={`field-nav fixed left-0 top-0 z-50 w-full ${scrolled ? "is-scrolled" : ""}`}
+        className="field-nav w-full"
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <Link to="/" className="flex items-baseline gap-2">
-            <QAMindLogo
-              size="lg"
-              className="transition-transform duration-300 hover:scale-[1.02]"
+          <Link to="/" className="flex items-center gap-3 transition-transform duration-300 hover:scale-[1.02] mt-1.5 -ml-6" aria-label="QAMind AI home">
+            <img
+              src="/brand/appicon-primary.png"
+              alt=""
+              aria-hidden="true"
+              className="h-[50px] w-[50px] flex-shrink-0 rounded-[11px]"
             />
+            <span className="font-display text-[28px] font-semibold leading-none tracking-[-0.025em] text-[var(--c-text)]">
+              QAMind <span className="text-[var(--c-accent)]">AI</span>
+            </span>
           </Link>
 
           <nav
-            className="hidden items-center gap-8 md:flex relative fn-nav"
+            className="hidden items-center gap-6 md:flex relative fn-nav"
             aria-label="Landing page"
           >
-            {Object.entries(PAGE_TEXT.nav).map(([key, label]) => (
-              <a
-                key={key}
-                href={`#${key}`}
-                className="landing-nav-link relative text-[14px] text-[var(--c-text-muted)] py-1"
+            {/* Features dropdown */}
+            <div className="relative" ref={dropdownRef} onMouseEnter={openDropdown} onMouseLeave={closeDropdown}>
+              <button
+                className="fn-nav-product-btn landing-nav-link flex items-center gap-1 text-[14px] font-semibold text-[var(--c-text)] transition-colors py-1"
+                onClick={() => setProductOpen((o) => !o)}
+                aria-expanded={productOpen}
+                aria-haspopup="true"
               >
-                {label}
-              </a>
-            ))}
+                Features
+                <ChevronDown
+                  className="w-3 h-3 transition-transform duration-200"
+                  style={{ transform: productOpen ? "rotate(180deg)" : undefined }}
+                />
+              </button>
+              <div
+                className={`fn-dropdown fn-feat-dropdown${productOpen ? " is-open" : ""}`}
+                role="menu"
+                onMouseEnter={openDropdown}
+                onMouseLeave={closeDropdown}
+              >
+                {/* Header */}
+                <div className="fn-feat-header">
+                  <span className="fn-dropdown-eyebrow">§ Everything in QAMind</span>
+                </div>
+                {/* 2-col grid */}
+                <div className="fn-feat-grid">
+                  {([
+                    { icon: <Zap size={15} strokeWidth={1.75} />, name: "Generate", desc: "AI writes Playwright tests from requirements", href: "/app/generate" },
+                    { icon: <Layers size={15} strokeWidth={1.75} />, name: "Test Suites", desc: "Organise and run cases by feature or release", href: "/app/suites" },
+                    { icon: <History size={15} strokeWidth={1.75} />, name: "Run History", desc: "Every run, full pass / fail / skip context", href: "/app/runs" },
+                    { icon: <Bug size={15} strokeWidth={1.75} />, name: "Bug Tracker", desc: "Failed tests file bugs automatically", href: "/app/bugs" },
+                    { icon: <BarChart3 size={15} strokeWidth={1.75} />, name: "Analytics", desc: "Pass rate, flaky %, coverage trends at a glance", href: "/app/analytics" },
+                    { icon: <GitBranch size={15} strokeWidth={1.75} />, name: "Traceability", desc: "Requirements ↔ tests ↔ runs in one matrix", href: "/app/traceability" },
+                    { icon: <ClipboardList size={15} strokeWidth={1.75} />, name: "Planner", desc: "Plan test suites from specs and requirements with AI", href: "/app/planner" },
+                    { icon: <Video size={15} strokeWidth={1.75} />, name: "Recorder", desc: "Record browser sessions → Playwright tests", href: "/recorder" },
+                  ] as const).map(({ icon, name, desc, href }, i) => (
+                    <Link
+                      key={name}
+                      to={href as any}
+                      className={`fn-feat-card fn-feat-card-${i}`}
+                      onClick={() => setProductOpen(false)}
+                      role="menuitem"
+                    >
+                      <div className="fn-feat-icon">{icon}</div>
+                      <div className="fn-feat-info">
+                        <span className="fn-feat-name">{name}</span>
+                        <span className="fn-feat-desc">{desc}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                {/* Footer strip */}
+                <div className="fn-feat-footer">
+                  <Link to="/how-it-works" className="fn-feat-footer-link" onClick={() => setProductOpen(false)}>
+                    Explore the full product <ArrowRight size={12} strokeWidth={2} className="inline ml-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Solutions dropdown */}
+            <div className="relative" ref={solutionsDropdownRef} onMouseEnter={openSolutionsDropdown} onMouseLeave={closeSolutionsDropdown}>
+              <button
+                className="fn-nav-solutions-btn landing-nav-link flex items-center gap-1 text-[14px] font-semibold text-[var(--c-text)] transition-colors py-1"
+                onClick={() => setSolutionsOpen((o) => !o)}
+                aria-expanded={solutionsOpen}
+                aria-haspopup="true"
+              >
+                Solutions
+                <ChevronDown className="w-3 h-3 transition-transform duration-200" style={{ transform: solutionsOpen ? "rotate(180deg)" : undefined }} />
+              </button>
+              <div
+                className={`fn-dropdown fn-sol-dropdown${solutionsOpen ? " is-open" : ""}`}
+                role="menu"
+                onMouseEnter={openSolutionsDropdown}
+                onMouseLeave={closeSolutionsDropdown}
+              >
+                <div className="fn-sol-header">
+                  <span className="fn-dropdown-eyebrow">§ Who it's for</span>
+                </div>
+                <div className="fn-sol-list">
+                  {([
+                    {
+                      role: "QA ENGINEER",
+                      title: "For QA Engineers",
+                      desc: "Write fewer cases by hand. Catch flaky tests before they waste your day.",
+                      href: "/for-qa",
+                    },
+                    {
+                      role: "DEVELOPER",
+                      title: "For Dev Teams",
+                      desc: "Merge with confidence. Know what's covered before the PR lands.",
+                      href: "/for-devs",
+                    },
+                    {
+                      role: "MANAGER",
+                      title: "For Engineering Managers",
+                      desc: "Pass rate, coverage, open bugs — one dashboard, no spreadsheet.",
+                      href: "/for-managers",
+                    },
+                  ] as const).map(({ role, title, desc, href }, i) => (
+                    <Link
+                      key={role}
+                      to={href as any}
+                      className={`fn-sol-card fn-sol-card-${i}`}
+                      onClick={() => setSolutionsOpen(false)}
+                      role="menuitem"
+                    >
+                      <div className="fn-sol-card-inner">
+                        <span className="fn-sol-role">{role}</span>
+                        <span className="fn-sol-title">{title}</span>
+                        <span className="fn-sol-desc">{desc}</span>
+                      </div>
+                      <span className="fn-sol-arrow" aria-hidden="true">→</span>
+                    </Link>
+                  ))}
+                </div>
+                <div className="fn-sol-footer">
+                  <Link to="/pricing" className="fn-feat-footer-link" onClick={() => setSolutionsOpen(false)}>
+                    See pricing <ArrowRight size={12} strokeWidth={2} className="inline ml-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Recorder dropdown */}
+            <div className="relative" ref={recorderDropdownRef} onMouseEnter={openRecorderDropdown} onMouseLeave={closeRecorderDropdown}>
+              <button
+                className="fn-nav-recorder-btn fn-nav-recorder-link flex items-center gap-1 text-[14px] font-semibold text-[var(--c-text)] transition-colors py-1"
+                onClick={() => setRecorderOpen((o) => !o)}
+                aria-expanded={recorderOpen}
+                aria-haspopup="true"
+              >
+                Recorder
+                <ChevronDown className="w-3 h-3 transition-transform duration-200" style={{ transform: recorderOpen ? "rotate(180deg)" : undefined }} />
+              </button>
+              <div
+                className={`fn-dropdown rec-dropdown${recorderOpen ? " is-open" : ""}`}
+                role="menu"
+                onMouseEnter={openRecorderDropdown}
+                onMouseLeave={closeRecorderDropdown}
+              >
+                <div className="rec-dd-cols">
+                  <div className="rec-dd-links">
+                    <span className="fn-dropdown-eyebrow">§ Recorder</span>
+                    <button className="rec-dd-item rec-dd-download" onClick={() => { setRecorderOpen(false); setDownloadOpen(true); }} role="menuitem">
+                      <div className="rec-dd-icon rec-dd-icon-accent"><Download size={14} strokeWidth={1.75} /></div>
+                      <div className="rec-dd-info">
+                        <span className="rec-dd-name">Download extension</span>
+                        <span className="rec-dd-desc">Free · Chrome · installs in 10 seconds</span>
+                      </div>
+                    </button>
+                    <Link to="/recorder" className="rec-dd-item" onClick={() => setRecorderOpen(false)} role="menuitem">
+                      <div className="rec-dd-icon"><FileText size={14} strokeWidth={1.75} /></div>
+                      <div className="rec-dd-info">
+                        <span className="rec-dd-name">What is Recorder?</span>
+                        <span className="rec-dd-desc">Chrome extension → Playwright tests</span>
+                      </div>
+                    </Link>
+                    <a href="/recorder#step-02" className="rec-dd-item" onClick={() => setRecorderOpen(false)} role="menuitem">
+                      <div className="rec-dd-icon"><Play size={14} strokeWidth={1.75} /></div>
+                      <div className="rec-dd-info">
+                        <span className="rec-dd-name">See it in action</span>
+                        <span className="rec-dd-desc">Step-by-step walkthrough</span>
+                      </div>
+                    </a>
+                    <a href="/recorder#setup" className="rec-dd-item" onClick={() => setRecorderOpen(false)} role="menuitem">
+                      <div className="rec-dd-icon"><BookOpen size={14} strokeWidth={1.75} /></div>
+                      <div className="rec-dd-info">
+                        <span className="rec-dd-name">Setup guide</span>
+                        <span className="rec-dd-desc">Install → record → import</span>
+                      </div>
+                    </a>
+                  </div>
+                  <div className="fn-dd-divider" aria-hidden="true" />
+                  <div className="rec-dd-preview" aria-hidden="true">
+                    <div className="rec-ext-popup-mini">
+                      <div className="rec-ext-mini-bar">
+                        <span className="rec-ext-mini-name">QA Recorder</span>
+                        <span className="rec-recording-dot" />
+                      </div>
+                      <div className="rec-ext-mini-timer">00:14</div>
+                      <div className="rec-ext-mini-events">
+                        {(["click #login-btn", 'type "user@…"', "navigate /db", "assert .msg"] as const).map((ev, i) => (
+                          <div key={i} className={`rec-ext-mini-ev rec-mini-ev-${i}`}>
+                            <span className="rec-mini-check">✓</span>{ev}
+                          </div>
+                        ))}
+                        <div className="rec-mini-importing">↓ importing…</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Resources dropdown */}
+            <div className="relative" ref={resourcesDropdownRef} onMouseEnter={openResourcesDropdown} onMouseLeave={closeResourcesDropdown}>
+              <button
+                className="landing-nav-link flex items-center gap-1 text-[14px] font-semibold text-[var(--c-text)] transition-colors py-1"
+                onClick={() => setResourcesOpen((o) => !o)}
+                aria-expanded={resourcesOpen}
+                aria-haspopup="true"
+              >
+                Resources
+                <ChevronDown className="w-3 h-3 transition-transform duration-200" style={{ transform: resourcesOpen ? "rotate(180deg)" : undefined }} />
+              </button>
+              <div
+                className={`fn-dropdown fn-res-dropdown${resourcesOpen ? " is-open" : ""}`}
+                role="menu"
+                onMouseEnter={openResourcesDropdown}
+                onMouseLeave={closeResourcesDropdown}
+              >
+                <div className="fn-res-header">
+                  <span className="fn-dropdown-eyebrow">§ Resources</span>
+                </div>
+                <div className="fn-res-list">
+                  <Link to="/changelog" className="fn-res-item fn-res-item-0" onClick={() => setResourcesOpen(false)} role="menuitem">
+                    <div className="fn-res-icon"><Clock size={14} strokeWidth={1.75} /></div>
+                    <div className="fn-res-info">
+                      <span className="fn-res-name">Changelog</span>
+                      <span className="fn-res-desc">What shipped. No roadmap theatre.</span>
+                    </div>
+                  </Link>
+                  <Link to="/how-it-works" className="fn-res-item fn-res-item-1" onClick={() => setResourcesOpen(false)} role="menuitem">
+                    <div className="fn-res-icon"><BookOpen size={14} strokeWidth={1.75} /></div>
+                    <div className="fn-res-info">
+                      <span className="fn-res-name">How it works</span>
+                      <span className="fn-res-desc">From spec to tested feature, step by step.</span>
+                    </div>
+                  </Link>
+                  <a
+                    href="#faq"
+                    className="fn-res-item fn-res-item-2"
+                    onClick={(e) => { scrollToSection(e, "faq"); setResourcesOpen(false); }}
+                    role="menuitem"
+                  >
+                    <div className="fn-res-icon"><HelpCircle size={14} strokeWidth={1.75} /></div>
+                    <div className="fn-res-info">
+                      <span className="fn-res-name">Help &amp; FAQ</span>
+                      <span className="fn-res-desc">Guides, common questions, and setup.</span>
+                    </div>
+                  </a>
+                  <div className="fn-res-item fn-res-item-3 fn-res-status" role="menuitem">
+                    <div className="fn-res-icon fn-res-icon-green"><span className="fn-res-status-dot" aria-hidden="true" /></div>
+                    <div className="fn-res-info">
+                      <span className="fn-res-name">Status</span>
+                      <span className="fn-res-desc fn-res-status-ok">All systems operational</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <Link
+              to="/pricing"
+              className="landing-nav-link text-[14px] font-semibold text-[var(--c-text)] transition-colors py-1"
+            >
+              Pricing
+            </Link>
+
+            {/* About */}
+            <a
+              href="#colophon"
+              onClick={(e) => scrollToSection(e, "colophon")}
+              className="fn-nav-about-link landing-nav-link text-[14px] font-semibold text-[var(--c-text)] transition-colors py-1"
+            >
+              About
+            </a>
+
             <div
               className="fn-nav-dot absolute bottom-0 h-[6px] w-[6px] rounded-full bg-[var(--c-accent)] transition-all duration-300"
               aria-hidden="true"
@@ -968,7 +1377,6 @@ function Welcome() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <ThemeToggle />
             {isAuthenticated ? (
               <>
                 <Link
@@ -1011,119 +1419,122 @@ function Welcome() {
         </div>
       </header>
 
+      {/* ─── Floating Pill Nav ────────────────────────────── */}
+      <div
+        className={`landing-pill-nav${pillVisible ? " is-visible" : ""}`}
+        data-pill-theme={pillTheme}
+        aria-hidden={!pillVisible}
+      >
+        <Link to="/" aria-label="QAMind AI home" className="landing-pill-logo">
+          <img
+            src={pillTheme === "light" ? "/brand/appicon-light.png" : "/brand/appicon-dark.png"}
+            alt="QAMind AI"
+            className="h-[30px] w-[30px] rounded-[7px]"
+          />
+        </Link>
+        <span className="landing-pill-sep" aria-hidden="true" />
+        <nav className="hidden items-center md:flex landing-pill-links" aria-label="Page sections">
+          <div
+            className="pill-active-indicator"
+            aria-hidden="true"
+            style={{
+              transform: `translateX(${pillIndicator.left}px)`,
+              width: `${pillIndicator.width}px`,
+              opacity: pillIndicator.opacity,
+            }}
+          />
+          {Object.entries(PILL_NAV).map(([key, label]) => (
+            <a
+              key={key}
+              href={`#${key}`}
+              onClick={(e) => scrollToSection(e, key)}
+              className={`landing-pill-link${activeNav === key ? " is-active" : ""}`}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+        <span className="landing-pill-sep hidden md:block" aria-hidden="true" />
+        <Link
+          to="/auth"
+          search={{ mode: "signup" }}
+          className="fn-nav-action is-primary landing-pill-cta"
+        >
+          Get started
+        </Link>
+      </div>
+
       <main>
         {/* ─── HERO ─────────────────────────────────────── */}
         <section
-          className="dim-target field-hero border-b border-[var(--c-border)]"
+          data-section-theme="dark"
+          className="dim-target field-hero relative overflow-hidden"
           onMouseMove={reduced ? undefined : handleHeroMouseMove}
           onMouseLeave={reduced ? undefined : handleHeroMouseLeave}
         >
-          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-14 px-6 pb-20 pt-28 md:grid-cols-[minmax(0,1fr)_430px] md:gap-20 md:pb-28 md:pt-36">
-            <div className="hero-copy">
-              {/* Tagline */}
-              <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--c-text-muted)]">
-                Quality, Slowly
-              </p>
+          {/* Particles Background */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.8] transition-opacity duration-300">
+            <Particles
+              className="absolute inset-0"
+              quantity={300}
+              ease={40}
+              staticity={20}
+              color="#C2552E"
+              refresh
+            />
+          </div>
+          <div className="mx-auto flex max-w-5xl flex-col items-center px-6 pb-28 pt-20 text-center md:pb-40 md:pt-32 relative z-10">
+            <p className="mb-8 font-mono text-xs uppercase tracking-[0.22em] text-[var(--c-text-muted)]">
+              {PAGE_TEXT.heroEyebrow}
+            </p>
 
-              {/* ENHANCED: Hero Typewriter | Edit text in content.ts */}
-              <HeroHeadline reduced={reduced} />
+            <HeroHeadline reduced={reduced} />
 
-              {/* ENHANCED: The Stillness Reward | Edit text in content.ts */}
-              <p className="hero-subtext mt-8 max-w-[460px] text-[16px] leading-[1.75] text-[var(--c-text-muted)]">
-                {PAGE_TEXT.stillnessQuotes[0]}
-                <br />
-                <br />
-                Bring your specs. Draft your cases. Run them when you're ready - not before.
-              </p>
-              <p className="stillness-reward-caption">Empty is a state, not a failure.</p>
+            <h2 className="hero-subtext mt-8 max-w-[660px] text-[17px] font-normal leading-[1.75] text-[var(--c-text-muted)]">
+              {PAGE_TEXT.heroSubtext}
+            </h2>
+            <p className="stillness-reward-caption">Empty is a state, not a failure.</p>
 
-              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                {isAuthenticated ? (
-                  <>
-                    <Link
-                      to={onboardingComplete ? "/dashboard" : "/onboarding"}
-                      data-magnetic
-                      className="hero-cta fn-button fn-hover-target bg-[var(--c-text)] text-[var(--c-bg)]"
-                    >
-                      Start a workspace
-                    </Link>
-                    <Link
-                      to={onboardingComplete ? "/dashboard" : "/onboarding"}
-                      data-magnetic
-                      className="hero-cta fn-button fn-hover-target border border-[var(--c-border-strong)] bg-transparent text-[var(--c-text)]"
-                    >
-                      Open an account
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <a
-                      href="/auth?mode=signup"
-                      data-magnetic
-                      className="hero-cta fn-button fn-hover-target bg-[var(--c-text)] text-[var(--c-bg)]"
-                    >
-                      Start a workspace
-                    </a>
-                    <Link
-                      to="/auth"
-                      search={{ mode: "signup" }}
-                      onClick={async () => {
-                        await signOut();
-                      }}
-                      data-magnetic
-                      className="hero-cta fn-button fn-hover-target border border-[var(--c-border-strong)] bg-transparent text-[var(--c-text)]"
-                    >
-                      Open an account
-                    </Link>
-                  </>
-                )}
-              </div>
-
-              <div className="mt-14 h-px w-full bg-[var(--c-border)] fn-hr-draw" />
-
-              <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--c-text-dim)]">
-                <span>10k+ test cases generated</span>
-                <span>Playwright native</span>
-                <span>No seat fees</span>
-              </div>
+            <div className="mt-10 flex flex-row items-center gap-4">
+              {isAuthenticated ? (
+                <Link
+                  to={onboardingComplete ? "/dashboard" : "/onboarding"}
+                  data-magnetic
+                  className="hero-cta fn-button fn-hover-target bg-[var(--c-accent)] text-white"
+                >
+                  Get started →
+                </Link>
+              ) : (
+                <Link
+                  to="/auth"
+                  search={{ mode: "signup" }}
+                  data-magnetic
+                  className="hero-cta fn-button fn-hover-target bg-[var(--c-accent)] text-white"
+                >
+                  Get started →
+                </Link>
+              )}
             </div>
 
-            <aside className="hero-quote-card rounded-[8px] border border-[var(--c-border)] bg-[var(--c-bg-card)] p-7 shadow-[var(--shadow-md)] md:sticky md:top-28 quote-card relative border-l-0">
-              {/* ENHANCED: Scroll Printed Footer & Quote Ruler | Edit text in content.ts */}
-              <div className="quote-progress-border">
-                <div className="quote-progress-fill"></div>
-              </div>
-              <p className="mb-4 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--c-text-dim)]">
-                From the colophon
-              </p>
-              <div className="quote-content pl-5">
-                <p className="font-display text-[17px] italic leading-[1.65] text-[var(--c-text)]">
-                  {PAGE_TEXT.quote.body}
-                </p>
-                <p className="mt-3 text-[12px] text-[var(--c-text-muted)]">
-                  {PAGE_TEXT.quote.attribution}
-                </p>
-              </div>
-
-              <div className="my-7 h-px bg-[var(--c-border)] fn-hr-draw" />
-
-              {/* ENHANCED: Feature Cards Grid | Edit text in content.ts */}
-              <div className="grid grid-cols-2 gap-3">
-                <FeatureCard n="01" featureKey="workspace" reduced={reduced} />
-                <FeatureCard n="02" featureKey="format" reduced={reduced} />
-                <FeatureCard n="03" featureKey="pace" reduced={reduced} />
-                <FeatureCard n="04" featureKey="cost" reduced={reduced} />
-              </div>
-            </aside>
+            <p className="mt-12 font-mono text-xs uppercase tracking-[0.15em] text-[var(--c-text-muted)]">
+              {PAGE_TEXT.heroStats.join(" · ")}
+            </p>
+            <div id="hero-sentinel" aria-hidden="true" style={{ height: 0 }} />
           </div>
         </section>
 
+        {/* ─── PROBLEMS ─────────────────────────────────── */}
+        <HowItWorks reduced={reduced} />
+
+        {/* ─── INTEGRATIONS ─────────────────────────────── */}
+        <IntegrationsLoop reduced={reduced} forceDark={true} />
+
         {/* ENHANCED: Practice Gestures | Edit text in content.ts */}
-        <EditorialSection id="practice" note="&rarr; see also: drafting notes">
+        <EditorialSection id="practice" note="&rarr; see also: drafting notes" sectionTheme="light">
           <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
             <div className="dim-target">
               {/* ENHANCED: Section Labels morphing | Edit text in content.ts */}
-              <SectionMarker label={PAGE_TEXT.nav.practice} />
+              <SectionMarker label="Practice" />
               <h2 className="section-heading max-w-[760px] font-display text-4xl leading-[1.04] md:text-6xl">
                 Three things we do, deliberately.
               </h2>
@@ -1134,41 +1545,131 @@ function Welcome() {
         </EditorialSection>
         {/* END EDITABLE */}
 
-        <EditorialSection id="pricing" note="&para; two tiers. that's it." subtle>
-          <div className="dim-target mx-auto grid max-w-7xl gap-10 px-6 py-24 md:grid-cols-3 md:py-32">
-            <div>
-              <SectionMarker label="Subscription" />
-              <h2 className="section-heading font-display text-4xl leading-[1.04] md:text-5xl">
-                A subscription, like a periodical.
-              </h2>
-              <p className="mt-5 max-w-[300px] text-[var(--c-text-muted)]">
-                Two tiers. Cancel any month.
-              </p>
+        {/* ─── RECORDER ─────────────────────────────────── */}
+        <section id="recorder" data-section-theme="dark" className="relative">
+          <div className="mx-auto max-w-7xl px-6 py-20 md:py-28">
+            <div className="grid grid-cols-1 items-center gap-12 md:grid-cols-2 md:gap-16">
+
+              {/* Copy */}
+              <div className="flex flex-col">
+                <p className="hiw-eyebrow mb-5">
+                  <span className="text-[var(--c-accent)]">&sect;</span> CHROME EXTENSION
+                </p>
+                <h2 className="font-display text-4xl leading-[1.04] tracking-[-0.02em] md:text-5xl mb-5">
+                  Record once.<br />Tests follow.
+                </h2>
+                <p className="text-[15px] text-[var(--c-text-muted)] leading-relaxed mb-6 max-w-[420px]">
+                  {PAGE_TEXT.recorder.body}
+                </p>
+
+                {/* Status pipeline */}
+                <div className="flex items-center gap-0 mb-8">
+                  {PAGE_TEXT.recorder.statusSteps.map((step, i) => (
+                    <span key={i} className="flex items-center gap-0">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[10px] tracking-[0.06em]
+                          ${i === 1
+                            ? "border-transparent bg-[var(--c-accent-soft)] text-[var(--c-accent)] font-semibold"
+                            : "border-[var(--c-border)] bg-[var(--c-bg-card)] text-[var(--c-text-dim)]"
+                          }`}
+                      >
+                        {i === 1 && (
+                          <span
+                            className="inline-block h-[5px] w-[5px] rounded-full bg-[var(--c-accent)]"
+                            style={{ animation: "recPulse 1.4s ease-in-out infinite" }}
+                            aria-hidden="true"
+                          />
+                        )}
+                        {step}
+                      </span>
+                      {i < PAGE_TEXT.recorder.statusSteps.length - 1 && (
+                        <span className="mx-1 font-mono text-[10px] text-[var(--c-text-dim)]">→</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => setDownloadOpen(true)}
+                    className="fn-nav-action is-primary flex items-center gap-2"
+                  >
+                    <Download size={14} strokeWidth={2} />
+                    Download extension
+                  </button>
+                  <Link to="/recorder" className="fn-nav-action">
+                    What is Recorder? →
+                  </Link>
+                </div>
+              </div>
+
+              {/* Extension popup mock */}
+              <div className="flex justify-center" aria-hidden="true">
+                <div
+                  className="w-[260px] overflow-hidden rounded-xl border shadow-2xl"
+                  style={{
+                    background: "#161210",
+                    borderColor: "#2e2520",
+                    boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  {/* titlebar */}
+                  <div
+                    className="flex items-center gap-2 border-b px-3 py-2.5"
+                    style={{ background: "#1e1914", borderColor: "#2e2520" }}
+                  >
+                    <div className="flex gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f56]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f]" />
+                    </div>
+                    <span className="flex-1 font-mono text-[10px] text-[#b5a898]">QA Recorder</span>
+                    <span className="rec-recording-dot" />
+                  </div>
+
+                  {/* body */}
+                  <div className="p-3">
+                    {/* status bar */}
+                    <div
+                      className="mb-3 flex items-center gap-2 rounded-md px-2.5 py-1.5"
+                      style={{ background: "rgba(239,68,68,0.1)" }}
+                    >
+                      <span className="rec-recording-dot" />
+                      <span className="flex-1 font-mono text-[9px] tracking-[0.12em] text-[#ef4444]">RECORDING</span>
+                      <span className="font-mono text-[10px] text-[#9e8e7e]">00:14</span>
+                    </div>
+
+                    {/* events */}
+                    <div className="mb-3 flex flex-col gap-1.5">
+                      {PAGE_TEXT.recorder.events.map((ev, i) => (
+                        <div key={i} className={`rec-ext-ev rec-ev-${i} flex items-start gap-2`}>
+                          <span className="mt-px font-mono text-[9px] text-[#6a9e5a]">✓</span>
+                          <span className="font-mono text-[9.5px] leading-[1.4] text-[#b5a898] break-all">{ev}</span>
+                        </div>
+                      ))}
+                      <div className="rec-ev-importing font-mono text-[9px] text-[var(--c-accent)]">↓ importing…</div>
+                    </div>
+
+                    {/* stop button */}
+                    <button
+                      className="w-full rounded-md py-2 font-mono text-[10px] font-semibold tracking-[0.03em] text-white"
+                      style={{ background: "var(--c-accent)" }}
+                      tabIndex={-1}
+                    >
+                      Stop &amp; Import →
+                    </button>
+                  </div>
+                </div>
+              </div>
+
             </div>
-
-            <PlanCard
-              name="Reader"
-              price="$0"
-              note="Free, forever"
-              items={["One workspace", "Up to 50 test cases", "Manual runs only", "Community help"]}
-            />
-            <PlanCard
-              name="Subscriber"
-              price="$24"
-              note="per workspace / month"
-              items={[
-                "Unlimited test cases",
-                "CI/CD connectors",
-                "Scheduled runs",
-                "Priority support",
-              ]}
-              featured
-              countPrice
-            />
           </div>
-        </EditorialSection>
+        </section>
 
-        <EditorialSection id="colophon" note="cf. print tradition, 1455">
+        {/* ─── FAQ ──────────────────────────────────────── */}
+        <FAQSection reduced={reduced} />
+
+        <EditorialSection id="colophon" note="cf. print tradition, 1455" sectionTheme="dark">
           <div className="dim-target mx-auto grid max-w-7xl gap-12 px-6 py-24 md:grid-cols-12 md:py-32">
             <div className="md:col-span-4">
               <SectionMarker label={PAGE_TEXT.nav.colophon} />
@@ -1198,80 +1699,127 @@ function Welcome() {
           </div>
         </EditorialSection>
 
-        {/* FALL WORD CONTAINER — sits above footer, catches fallen words */}
-        <div id="fall-word-pile" aria-hidden="true"></div>
       </main>
 
-      <footer id="contact" className="dim-target bg-[#1A1714] text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <QAMindLogo variant="onDark" size="xl" />
-            <p className="mt-2 text-sm text-[rgba(255,255,255,0.6)]">{TAGLINE}</p>
+      {/* ── Footer ── */}
+      <footer id="contact" data-section-theme="dark" className="ftr-root">
+
+        {/* Newsletter strip */}
+        <div className="ftr-newsletter">
+          <div className="mx-auto max-w-7xl px-6 py-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="ftr-nl-heading">Stay sharp.</p>
+              <p className="ftr-nl-sub">QAMind updates, once a month. No noise.</p>
+            </div>
+            <form className="ftr-nl-form" onSubmit={(e) => e.preventDefault()}>
+              <div className="ftr-nl-input-wrap">
+                <Mail size={14} strokeWidth={1.75} className="ftr-nl-icon" />
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  className="ftr-nl-input"
+                  aria-label="Email address"
+                />
+              </div>
+              <button type="submit" className="ftr-nl-btn">
+                <Send size={13} strokeWidth={2} />
+                Subscribe
+              </button>
+            </form>
           </div>
-          <FooterCol
-            title="Pages"
-            links={[
-              ["Practice", "#practice"],
-              ["Pricing", "#pricing"],
-              ["Colophon", "#colophon"],
-            ]}
-          />
+        </div>
+
+        {/* 4-col link grid */}
+        <div className="mx-auto max-w-7xl px-6 py-14 grid grid-cols-2 gap-10 md:grid-cols-4">
+
+          {/* Platform */}
           <div>
-            <p className="font-mono text-xs uppercase tracking-widest text-[rgba(255,255,255,0.4)] mb-4">
-              Office
-            </p>
-            <ul className="space-y-3 text-sm text-[rgba(255,255,255,0.6)]">
-              <li>
-                <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-white transition-colors">
-                  {CONTACT_EMAIL}
-                </a>
-              </li>
-              <li>
-                <a href="https://qamind.ai" className="hover:text-white transition-colors">
-                  qamind.ai
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="flex items-center gap-2 group fn-rss-link w-max hover:text-white transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4 stroke-[rgba(255,255,255,0.6)] group-hover:stroke-[var(--c-accent)] transition-colors overflow-visible"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path
-                      d="M4 11a9 9 0 0 1 9 9"
-                      className="fn-rss-draw opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ strokeDasharray: 20, strokeDashoffset: 20 }}
-                    />
-                    <path
-                      d="M4 4a16 16 0 0 1 16 16"
-                      className="fn-rss-draw opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ strokeDasharray: 30, strokeDashoffset: 30 }}
-                    />
-                    <circle
-                      cx="5"
-                      cy="19"
-                      r="1"
-                      className="fill-[rgba(255,255,255,0.6)] group-hover:fill-[var(--c-accent)] transition-colors stroke-none"
-                    />
-                  </svg>
-                  RSS
-                </a>
-              </li>
+            <p className="ftr-col-heading">Platform</p>
+            <ul className="ftr-col-list">
+              {([
+                ["Generate Tests",  "/app/generate"],
+                ["Test Suites",     "/app/suites"],
+                ["Run History",     "/app/runs"],
+                ["Bug Tracker",     "/app/bugs"],
+                ["Analytics",       "/app/analytics"],
+                ["Traceability",    "/app/traceability"],
+                ["Planner",         "/app/planner"],
+                ["QA Recorder",     "/recorder"],
+              ] as const).map(([label, href]) => (
+                <li key={label}>
+                  <Link to={href as any} className="ftr-col-link">{label}</Link>
+                </li>
+              ))}
             </ul>
           </div>
+
+          {/* Solutions */}
+          <div>
+            <p className="ftr-col-heading">Solutions</p>
+            <ul className="ftr-col-list">
+              {([
+                ["For QA Engineers",        "/for-qa"],
+                ["For Dev Teams",           "/for-devs"],
+                ["For Engineering Managers","/for-managers"],
+              ] as const).map(([label, href]) => (
+                <li key={label}>
+                  <Link to={href as any} className="ftr-col-link">{label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <p className="ftr-col-heading">Resources</p>
+            <ul className="ftr-col-list">
+              <li><Link to="/how-it-works" className="ftr-col-link">How it works</Link></li>
+              <li><Link to="/changelog" className="ftr-col-link">Changelog</Link></li>
+              <li><a href="#faq" onClick={(e) => scrollToSection(e, "faq")} className="ftr-col-link">Help &amp; FAQ</a></li>
+              <li><Link to="/pricing" className="ftr-col-link">Pricing</Link></li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <p className="ftr-col-heading">Company</p>
+            <ul className="ftr-col-list">
+              <li><a href="#colophon" onClick={(e) => scrollToSection(e, "colophon")} className="ftr-col-link">About</a></li>
+              <li><a href={`mailto:${CONTACT_EMAIL}`} className="ftr-col-link">{CONTACT_EMAIL}</a></li>
+              <li><Link to="/privacy" className="ftr-col-link">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="ftr-col-link">Terms of Service</Link></li>
+            </ul>
+          </div>
+
         </div>
-        <div className="border-t border-[rgba(255,255,255,0.1)] fn-hr-draw">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 text-xs text-[rgba(255,255,255,0.6)]">
-            <span>&copy; {new Date().getFullYear()} QAMind AI</span>
+
+        {/* Bottom bar */}
+        <div className="ftr-bottom">
+          <div className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between gap-4 relative overflow-hidden">
+
+            {/* Watermark */}
+            <span className="ftr-watermark" aria-hidden="true">QAMind</span>
+
+            {/* Copyright */}
+            <span className="ftr-copy relative z-10">
+              &copy; {new Date().getFullYear()} QAMind AI. All rights reserved.
+            </span>
+
+            {/* Social icons */}
+            <div className="flex items-center gap-3 relative z-10">
+              <a href="https://github.com/qamind-ai" target="_blank" rel="noopener noreferrer" className="ftr-social" aria-label="GitHub">
+                <Github size={16} strokeWidth={1.75} />
+              </a>
+              <a href="https://youtube.com/@qamind" target="_blank" rel="noopener noreferrer" className="ftr-social" aria-label="YouTube">
+                <Youtube size={16} strokeWidth={1.75} />
+              </a>
+              <a href="https://linkedin.com/company/qamind-ai" target="_blank" rel="noopener noreferrer" className="ftr-social" aria-label="LinkedIn">
+                <Linkedin size={16} strokeWidth={1.75} />
+              </a>
+            </div>
           </div>
         </div>
+
       </footer>
     </div>
   );
@@ -1393,7 +1941,7 @@ function HeroHeadline({ reduced }: { reduced: boolean }) {
   return (
     <h1
       className="hero-headline font-display text-[54px] leading-[0.94] text-[var(--c-text)] sm:text-[72px] lg:text-[104px]"
-      aria-label={text.replace(/\n/g, " ")}
+      aria-label={text.replace(/\n/g, " ") + " - AI Automated Testing & QA"}
     >
       {/* Before accent */}
       {renderText(before, "pre", false)}
@@ -1548,72 +2096,24 @@ function EditorialSection({
   id,
   note,
   subtle,
+  sectionTheme,
   children,
 }: {
   id: string;
   note: string;
   subtle?: boolean;
+  sectionTheme?: "dark" | "light";
   children: React.ReactNode;
 }) {
   return (
     <section
       id={id}
-      className={`editorial-section relative border-b border-[var(--c-border)] ${subtle ? "bg-[var(--c-bg-hover)]" : ""}`}
+      data-section-theme={sectionTheme}
+      className={`editorial-section relative ${!sectionTheme ? "border-b border-[var(--c-border)]" : ""} ${subtle ? "bg-[var(--c-bg-hover)]" : ""}`}
     >
       <span className="editorial-note" dangerouslySetInnerHTML={{ __html: note }} />
       {children}
     </section>
-  );
-}
-
-function PlanCard({
-  name,
-  price,
-  note,
-  items,
-  featured,
-  countPrice,
-}: {
-  name: string;
-  price: string;
-  note: string;
-  items: string[];
-  featured?: boolean;
-  countPrice?: boolean;
-}) {
-  return (
-    <article
-      data-tilt
-      className={`pricing-card fn-hover-target flex flex-col rounded-[8px] border p-7 shadow-[var(--shadow-sm)] ${
-        featured
-          ? "border-[var(--c-text)] bg-[var(--c-text)] text-[var(--c-bg)]"
-          : "border-[var(--c-border)] bg-[var(--c-bg-card)] text-[var(--c-text)]"
-      }`}
-    >
-      <p className="label-eyebrow !text-inherit opacity-70">{name}</p>
-      <p className="mt-5 font-display text-6xl" data-count-price={countPrice ? "24" : undefined}>
-        {price}
-      </p>
-      <p className="mt-1 text-xs opacity-70">{note}</p>
-      <ul className="mt-7 space-y-3 text-sm">
-        {items.map((item) => (
-          <li key={item} className="flex gap-3">
-            <span className="mt-[7px] h-[4px] w-[4px] shrink-0 bg-[var(--c-accent)]" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-      <a
-        href="/auth"
-        className={`mt-8 rounded-[4px] py-3 text-center text-sm transition-colors ${
-          featured
-            ? "bg-[var(--c-accent)] text-[var(--c-bg)] hover:bg-[#A34413]"
-            : "border border-[var(--c-text)] hover:bg-[var(--c-text)] hover:text-[var(--c-bg)]"
-        }`}
-      >
-        Subscribe
-      </a>
-    </article>
   );
 }
 

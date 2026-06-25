@@ -432,7 +432,7 @@ function SuperAdminPage() {
                 type="email"
                 disabled
                 value={verifyEmail}
-                className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)]/50 px-[12px] py-[8px] text-[13px] text-gray-400 outline-none"
+                className="w-full rounded-[6px] border border-[var(--c-border)] bg-[var(--c-bg-input)]/50 px-[12px] py-[8px] text-[13px] text-[var(--c-text-dim)] outline-none"
               />
             </div>
             <div className="space-y-1.5">
@@ -505,7 +505,7 @@ function SuperAdminPage() {
                   ✓ Approve request
                 </button>
               ) : (
-                <span className="text-[11px] text-green-400 font-semibold font-mono flex items-center gap-1">
+                <span className="text-[11px] text-[var(--c-pass)] font-semibold font-mono flex items-center gap-1">
                   <Check className="h-3 w-3" /> Already Approved
                 </span>
               )}
@@ -859,7 +859,7 @@ function SuperAdminPage() {
                                 <span
                                   className={`inline-flex items-center rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
                                     b.is_resolved
-                                      ? "bg-[rgba(46,125,50,0.15)] text-green-400 border border-green-500/20"
+                                      ? "bg-[var(--c-pass-soft)] text-[var(--c-pass)] border border-[var(--c-pass)]/20"
                                       : "bg-[var(--c-fail)]/15 text-[var(--c-fail)] border border-[var(--c-fail)]/20"
                                   }`}
                                 >
@@ -1007,7 +1007,7 @@ function SuperAdminPage() {
                                   <li
                                     key={a.email}
                                     className={
-                                      approved ? "text-green-400 font-semibold" : "text-gray-400"
+                                      approved ? "text-[var(--c-pass)] font-semibold" : "text-[var(--c-text-dim)]"
                                     }
                                   >
                                     {a.email} — {approved ? "Approved" : "Pending Approval"}

@@ -42,7 +42,7 @@ function HighlightedCode({ code }: { code: string }) {
   );
 
   return (
-    <pre className="font-mono text-xs leading-relaxed overflow-x-auto p-4 rounded-lg bg-[#181412] text-[#D4D4D4] border border-border select-text">
+    <pre className="font-mono text-xs leading-relaxed overflow-x-auto p-4 rounded-lg bg-[var(--c-bg-sidebar)] text-[var(--c-text)] border border-[var(--c-border)] select-text">
       <code>
         {parts.map((part, i) => {
           if (part.startsWith("//")) {
@@ -476,7 +476,7 @@ function BugsPage() {
                 [{ label: "Bugs" }, { label: "Create Ticket" }],
               )
             }
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#C25838] transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--c-accent)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--c-accent-hover)] transition-colors shadow-sm"
           >
             <Plus className="h-4 w-4" /> File Bug Ticket
           </button>

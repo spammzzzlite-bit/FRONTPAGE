@@ -2,7 +2,7 @@ import type { BriefingTrackConfig } from "./types";
 
 export const commandBrief: BriefingTrackConfig = {
   title: "Command Brief",
-  accentColor: "#F59E0B",
+  accentColor: "#C2552E",
   iconName: "Crown",
   steps: [
     {

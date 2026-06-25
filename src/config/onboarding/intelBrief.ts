@@ -2,7 +2,7 @@ import type { BriefingTrackConfig } from "./types";
 
 export const intelBrief: BriefingTrackConfig = {
   title: "Intel Brief",
-  accentColor: "#64748B",
+  accentColor: "#C2552E",
   iconName: "Eye",
   steps: [
     {

@@ -607,7 +607,7 @@ function RunsPage() {
                             <span className="font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--c-text-muted)]">
                               Raw Execution Logs
                             </span>
-                            <div className="bg-black border border-[#2C2825] font-mono text-[11px] p-3 text-green-400 max-h-[160px] overflow-y-auto rounded-md whitespace-pre-wrap leading-relaxed shadow-inner">
+                            <div className="bg-[var(--c-bg)] border border-[var(--c-border)] font-mono text-[11px] p-3 text-[var(--c-pass)] max-h-[160px] overflow-y-auto rounded-md whitespace-pre-wrap leading-relaxed shadow-inner">
                               {mockData.logs}
                             </div>
                           </div>

@@ -10,8 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as RecorderRouteImport } from './routes/recorder'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as GptRouteImport } from './routes/gpt'
+import { Route as ForQaRouteImport } from './routes/for-qa'
+import { Route as ForManagersRouteImport } from './routes/for-managers'
+import { Route as ForDevsRouteImport } from './routes/for-devs'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -44,14 +53,59 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecorderRoute = RecorderRouteImport.update({
+  id: '/recorder',
+  path: '/recorder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GptRoute = GptRouteImport.update({
   id: '/gpt',
   path: '/gpt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForQaRoute = ForQaRouteImport.update({
+  id: '/for-qa',
+  path: '/for-qa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForManagersRoute = ForManagersRouteImport.update({
+  id: '/for-managers',
+  path: '/for-managers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForDevsRoute = ForDevsRouteImport.update({
+  id: '/for-devs',
+  path: '/for-devs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -187,8 +241,17 @@ const AppAccountSuperAdminRoute = AppAccountSuperAdminRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/changelog': typeof ChangelogRoute
+  '/for-devs': typeof ForDevsRoute
+  '/for-managers': typeof ForManagersRoute
+  '/for-qa': typeof ForQaRoute
   '/gpt': typeof GptRouteWithChildren
+  '/how-it-works': typeof HowItWorksRoute
   '/onboarding': typeof OnboardingRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/recorder': typeof RecorderRoute
+  '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/analytics': typeof AppAnalyticsRoute
   '/bugs': typeof AppBugsRoute
@@ -217,7 +280,16 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/changelog': typeof ChangelogRoute
+  '/for-devs': typeof ForDevsRoute
+  '/for-managers': typeof ForManagersRoute
+  '/for-qa': typeof ForQaRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/onboarding': typeof OnboardingRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/recorder': typeof RecorderRoute
+  '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/analytics': typeof AppAnalyticsRoute
   '/bugs': typeof AppBugsRoute
@@ -248,8 +320,17 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/changelog': typeof ChangelogRoute
+  '/for-devs': typeof ForDevsRoute
+  '/for-managers': typeof ForManagersRoute
+  '/for-qa': typeof ForQaRoute
   '/gpt': typeof GptRouteWithChildren
+  '/how-it-works': typeof HowItWorksRoute
   '/onboarding': typeof OnboardingRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/recorder': typeof RecorderRoute
+  '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/bugs': typeof AppBugsRoute
@@ -280,8 +361,17 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/changelog'
+    | '/for-devs'
+    | '/for-managers'
+    | '/for-qa'
     | '/gpt'
+    | '/how-it-works'
     | '/onboarding'
+    | '/pricing'
+    | '/privacy'
+    | '/recorder'
+    | '/terms'
     | '/welcome'
     | '/analytics'
     | '/bugs'
@@ -310,7 +400,16 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/changelog'
+    | '/for-devs'
+    | '/for-managers'
+    | '/for-qa'
+    | '/how-it-works'
     | '/onboarding'
+    | '/pricing'
+    | '/privacy'
+    | '/recorder'
+    | '/terms'
     | '/welcome'
     | '/analytics'
     | '/bugs'
@@ -340,8 +439,17 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/auth'
+    | '/changelog'
+    | '/for-devs'
+    | '/for-managers'
+    | '/for-qa'
     | '/gpt'
+    | '/how-it-works'
     | '/onboarding'
+    | '/pricing'
+    | '/privacy'
+    | '/recorder'
+    | '/terms'
     | '/welcome'
     | '/_app/analytics'
     | '/_app/bugs'
@@ -372,8 +480,17 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  ChangelogRoute: typeof ChangelogRoute
+  ForDevsRoute: typeof ForDevsRoute
+  ForManagersRoute: typeof ForManagersRoute
+  ForQaRoute: typeof ForQaRoute
   GptRoute: typeof GptRouteWithChildren
+  HowItWorksRoute: typeof HowItWorksRoute
   OnboardingRoute: typeof OnboardingRoute
+  PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RecorderRoute: typeof RecorderRoute
+  TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
 }
 
@@ -386,6 +503,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recorder': {
+      id: '/recorder'
+      path: '/recorder'
+      fullPath: '/recorder'
+      preLoaderRoute: typeof RecorderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -393,11 +538,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gpt': {
       id: '/gpt'
       path: '/gpt'
       fullPath: '/gpt'
       preLoaderRoute: typeof GptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-qa': {
+      id: '/for-qa'
+      path: '/for-qa'
+      fullPath: '/for-qa'
+      preLoaderRoute: typeof ForQaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-managers': {
+      id: '/for-managers'
+      path: '/for-managers'
+      fullPath: '/for-managers'
+      preLoaderRoute: typeof ForManagersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-devs': {
+      id: '/for-devs'
+      path: '/for-devs'
+      fullPath: '/for-devs'
+      preLoaderRoute: typeof ForDevsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -659,8 +839,17 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  ChangelogRoute: ChangelogRoute,
+  ForDevsRoute: ForDevsRoute,
+  ForManagersRoute: ForManagersRoute,
+  ForQaRoute: ForQaRoute,
   GptRoute: GptRouteWithChildren,
+  HowItWorksRoute: HowItWorksRoute,
   OnboardingRoute: OnboardingRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
+  RecorderRoute: RecorderRoute,
+  TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
 }
 export const routeTree = rootRouteImport

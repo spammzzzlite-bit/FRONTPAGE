@@ -18,6 +18,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+.claude.md
+
 
 # VPS scripts with production secrets (keep local only)
 scripts/vps-rebuild-env.sh

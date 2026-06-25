@@ -882,20 +882,20 @@ ${systemLogs}`;
 
         {/* LLM Payload Interceptor Debugger */}
         {selectedProjectId && (
-          <div className="rounded-[12px] border border-[var(--c-border)] bg-[#161412] p-5 space-y-3 font-mono shadow-[var(--shadow-sm)]">
-            <div className="flex items-center justify-between border-b border-[#2C2825] pb-2">
+          <div className="rounded-[12px] border border-[var(--c-border)] bg-[var(--c-bg-sidebar)] p-5 space-y-3 font-mono shadow-[var(--shadow-sm)]">
+            <div className="flex items-center justify-between border-b border-[var(--c-border)] pb-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--c-accent)] flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-[var(--c-accent)] animate-ping" />
                 📡 LLM Payload Interceptor Active
               </span>
-              <span className="text-[10px] text-gray-500">
+              <span className="text-[10px] text-[var(--c-text-dim)]">
                 Status: Intercepting & Injecting Module Context
               </span>
             </div>
             <div className="space-y-2 text-[12px]">
               <div>
-                <span className="text-gray-500 font-bold block mb-1">SYSTEM PROMPT:</span>
-                <div className="bg-[#0C0A09] rounded-sm p-3 border border-[#2C2825] text-green-400 break-words whitespace-pre-wrap leading-relaxed">
+                <span className="text-[var(--c-text-dim)] font-bold block mb-1">SYSTEM PROMPT:</span>
+                <div className="bg-[var(--c-bg)] rounded-sm p-3 border border-[var(--c-border)] text-[var(--c-pass)] break-words whitespace-pre-wrap leading-relaxed">
                   {currentSystemPrompt ||
                     (selectedModuleName === "entire_project"
                       ? "Generate test cases for all modules of this project's test plan sequentially."
@@ -904,8 +904,8 @@ ${systemLogs}`;
               </div>
               {(featureDescription.trim() || file || url.trim()) && (
                 <div>
-                  <span className="text-gray-500 font-bold block mb-1">USER CONTEXT:</span>
-                  <div className="bg-[#0C0A09] rounded-sm p-3 border border-[#2C2825] text-gray-300 max-h-[120px] overflow-y-auto break-words leading-relaxed">
+                  <span className="text-[var(--c-text-dim)] font-bold block mb-1">USER CONTEXT:</span>
+                  <div className="bg-[var(--c-bg)] rounded-sm p-3 border border-[var(--c-border)] text-[var(--c-text-muted)] max-h-[120px] overflow-y-auto break-words leading-relaxed">
                     {featureDescription.trim() || (file ? `File: ${file.name}` : "") || url.trim()}
                   </div>
                 </div>
@@ -1132,30 +1132,30 @@ ${systemLogs}`;
 
       {/* Playwright Script Panel Overlay */}
       <div
-        className={`fixed right-0 top-0 bottom-0 z-50 w-[420px] border-l border-[var(--c-border)] bg-[#1E1A17] p-6 shadow-[var(--shadow-lg)] transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 bottom-0 z-50 w-[420px] border-l border-[var(--c-border)] bg-[var(--c-bg-card)] p-6 shadow-[var(--shadow-lg)] transition-transform duration-300 ease-in-out ${
           activeScriptCase ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {activeScriptCase && (
           <div className="flex flex-col h-full space-y-4 text-white">
-            <div className="flex items-center justify-between border-b border-[#2C2825] pb-4">
+            <div className="flex items-center justify-between border-b border-[var(--c-border)] pb-4">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#888]">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--c-text-dim)]">
                   PLAYWRIGHT SCRIPT
                 </p>
-                <h3 className="text-[14px] font-bold text-white mt-1 truncate max-w-[280px]">
+                <h3 className="text-[14px] font-bold text-[var(--c-text)] mt-1 truncate max-w-[280px]">
                   TC-{String(activeScriptCase.id + 1).padStart(3, "0")}
                 </h3>
               </div>
               <button
                 onClick={() => setActiveScriptCase(null)}
-                className="rounded-full p-1.5 text-gray-400 hover:bg-[#2D2825] hover:text-white transition-colors"
+                className="rounded-full p-1.5 text-[var(--c-text-dim)] hover:bg-[var(--c-bg-hover)] hover:text-[var(--c-text)] transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto bg-[#161412] rounded-[8px] border border-[#2C2825] p-4 font-mono text-[12px] text-[#D4D4D4] leading-relaxed relative">
+            <div className="flex-1 overflow-auto bg-[var(--c-bg-sidebar)] rounded-[8px] border border-[var(--c-border)] p-4 font-mono text-[12px] text-[var(--c-text)] leading-relaxed relative">
               <button
                 onClick={() => {
                   const scriptContent = `test('${activeScriptCase.title}', async ({ page }) => {\n  // ${activeScriptCase.steps.replace(/\n/g, "\n  // ")}\n  // Expected: ${activeScriptCase.expected}\n});`;
