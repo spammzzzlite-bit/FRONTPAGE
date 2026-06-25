@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, BookOpen, Zap, CreditCard, Clock, AlertTriangle, Boxes, Video, HelpCircle, Download, FileText, Play, History, Bug, BarChart3, GitBranch, ClipboardList, Layers, ArrowRight, Github, Youtube, Linkedin, Mail, Send } from "lucide-react";
+import { ChevronDown, BookOpen, Zap, CreditCard, Clock, AlertTriangle, Boxes, Video, HelpCircle, Download, FileText, Play, History, Bug, BarChart3, GitBranch, ClipboardList, Layers, ArrowRight, Github, Youtube, Linkedin, Mail, Send, TrendingDown, MessageSquare } from "lucide-react";
 import { PAGE_TEXT } from "../content";
 import { useAuth, signOut } from "@/frontend/store/store";
 import { QAMindLogo } from "@/frontend/components/brand";
@@ -1118,17 +1118,21 @@ function Welcome() {
                 <div className="fn-feat-header">
                   <span className="fn-dropdown-eyebrow">§ Everything in QAMind</span>
                 </div>
-                {/* 2-col grid */}
-                <div className="fn-feat-grid">
+                {/* 3-col grid — 12 features */}
+                <div className="fn-feat-grid-3col">
                   {([
-                    { icon: <Zap size={15} strokeWidth={1.75} />, name: "Generate", desc: "AI writes Playwright tests from requirements", href: "/app/generate" },
-                    { icon: <Layers size={15} strokeWidth={1.75} />, name: "Test Suites", desc: "Organise and run cases by feature or release", href: "/app/suites" },
-                    { icon: <History size={15} strokeWidth={1.75} />, name: "Run History", desc: "Every run, full pass / fail / skip context", href: "/app/runs" },
-                    { icon: <Bug size={15} strokeWidth={1.75} />, name: "Bug Tracker", desc: "Failed tests file bugs automatically", href: "/app/bugs" },
-                    { icon: <BarChart3 size={15} strokeWidth={1.75} />, name: "Analytics", desc: "Pass rate, flaky %, coverage trends at a glance", href: "/app/analytics" },
-                    { icon: <GitBranch size={15} strokeWidth={1.75} />, name: "Traceability", desc: "Requirements ↔ tests ↔ runs in one matrix", href: "/app/traceability" },
-                    { icon: <ClipboardList size={15} strokeWidth={1.75} />, name: "Planner", desc: "Plan test suites from specs and requirements with AI", href: "/app/planner" },
-                    { icon: <Video size={15} strokeWidth={1.75} />, name: "Recorder", desc: "Record browser sessions → Playwright tests", href: "/recorder" },
+                    { icon: <Zap size={15} strokeWidth={1.75} />, name: "AI Test Generation", desc: "Paste a spec — local AI drafts structured test cases in minutes", href: "/features/generate" },
+                    { icon: <Video size={15} strokeWidth={1.75} />, name: "QA Recorder", desc: "Record browser sessions → structured test cases", href: "/features/recorder" },
+                    { icon: <FileText size={15} strokeWidth={1.75} />, name: "Script Generator", desc: "Generate Playwright .spec.ts files from approved test cases", href: "/features/scripts" },
+                    { icon: <Layers size={15} strokeWidth={1.75} />, name: "Test Suites", desc: "Organise cases by feature or sprint. Draft → Ready → Approved.", href: "/features/suites" },
+                    { icon: <History size={15} strokeWidth={1.75} />, name: "Run History", desc: "Every run — per-case pass/fail/skip, full error output, flaky flag", href: "/features/runs" },
+                    { icon: <Bug size={15} strokeWidth={1.75} />, name: "Bug Tracker", desc: "One click files a tracked bug from any failed run", href: "/features/bugs" },
+                    { icon: <BarChart3 size={15} strokeWidth={1.75} />, name: "Analytics", desc: "Pass rate, flaky %, coverage trends — six cards, real numbers", href: "/features/analytics" },
+                    { icon: <GitBranch size={15} strokeWidth={1.75} />, name: "Traceability", desc: "Requirements ↔ tests ↔ runs — coverage gaps surface first", href: "/features/traceability" },
+                    { icon: <ClipboardList size={15} strokeWidth={1.75} />, name: "Sprint Planner", desc: "Auto-scaffold 14-day sprints. Assign testers, track coverage.", href: "/features/planner" },
+                    { icon: <TrendingDown size={15} strokeWidth={1.75} />, name: "Regression Analysis", desc: "Spot tests that passed last run and failed this one", href: "/features/regression" },
+                    { icon: <Download size={15} strokeWidth={1.75} />, name: "Reports & Exports", desc: ".xlsx · Jira · Qase · Xray · Zephyr — generated on demand", href: "/features/reports" },
+                    { icon: <MessageSquare size={15} strokeWidth={1.75} />, name: "GPT Console", desc: "Private AI chat at gpt.qamind.ai — local model, PDF upload", href: "/features/gpt" },
                   ] as const).map(({ icon, name, desc, href }, i) => (
                     <Link
                       key={name}
@@ -1147,8 +1151,8 @@ function Welcome() {
                 </div>
                 {/* Footer strip */}
                 <div className="fn-feat-footer">
-                  <Link to="/how-it-works" className="fn-feat-footer-link" onClick={() => setProductOpen(false)}>
-                    Explore the full product <ArrowRight size={12} strokeWidth={2} className="inline ml-1" />
+                  <Link to="/features" className="fn-feat-footer-link" onClick={() => setProductOpen(false)}>
+                    View all features <ArrowRight size={12} strokeWidth={2} className="inline ml-1" />
                   </Link>
                 </div>
               </div>
@@ -1699,6 +1703,221 @@ function Welcome() {
           </div>
         </EditorialSection>
 
+        {/* ─── SPOTLIGHT: AI GENERATION ─────────────────── */}
+        <section className="spotlight-section" data-section-theme="dark">
+          <div className="spotlight-block">
+            <div className="spotlight-copy">
+              <p className="spotlight-eyebrow">§ AI TEST GENERATION</p>
+              <h2 className="spotlight-headline">Paste a spec. Get test cases in minutes.</h2>
+              <p className="spotlight-body">
+                QAMind reads your requirement document and drafts structured test cases as editable rows — title, steps, expected result, priority. The AI runs on your own workstation via Ollama. Your specs are never sent to any external API.
+              </p>
+              <ul className="spotlight-bullets">
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />3–8 min generation on local GPU</li>
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />Qwen 3 Coder 30B — same model as GPT console</li>
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />Draft → Ready → Approved approval workflow</li>
+              </ul>
+              <Link to="/features/generate" className="spotlight-link">
+                See how generation works →
+              </Link>
+            </div>
+            <div className="spotlight-visual">
+              <div className="feat-mock-window">
+                <div className="feat-mock-chrome">
+                  <div className="feat-mock-dots">
+                    <span className="feat-mock-dot feat-mock-dot-r" />
+                    <span className="feat-mock-dot feat-mock-dot-y" />
+                    <span className="feat-mock-dot feat-mock-dot-g" />
+                  </div>
+                  <span className="feat-mock-path">generate</span>
+                  <span className="feat-mock-badge-tag">LOCAL AI</span>
+                </div>
+                <div className="feat-mock-body">
+                  <p className="feat-mock-label-sm mb-2">Generated — 4 cases from password reset spec</p>
+                  {[
+                    { id: "TC-041", title: "Valid reset — password updated", status: "Approved" },
+                    { id: "TC-042", title: "Link expires at 30 min boundary", status: "Ready" },
+                    { id: "TC-043", title: "Invalid token shows error", status: "Draft" },
+                    { id: "TC-044", title: "Unknown email — generic response", status: "Draft" },
+                  ].map((tc) => (
+                    <div key={tc.id} className="feat-mock-case-row">
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#7d6e62", minWidth: 44 }}>{tc.id}</span>
+                      <span style={{ flex: 1, color: "#c8bfb2", fontSize: 10 }}>{tc.title}</span>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, padding: "0.1rem 0.35rem", borderRadius: 4, border: "1px solid", borderColor: tc.status === "Approved" ? "rgba(74,163,84,0.3)" : "#2e2520", color: tc.status === "Approved" ? "#6ec47a" : tc.status === "Ready" ? "#d9b06a" : "#7d6e62" }}>{tc.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── SPOTLIGHT: TRACEABILITY ───────────────────── */}
+        <section className="spotlight-section" data-section-theme="light">
+          <div className="spotlight-block is-reversed">
+            <div className="spotlight-copy">
+              <p className="spotlight-eyebrow">§ TRACEABILITY MATRIX</p>
+              <h2 className="spotlight-headline">Requirement to result. One view.</h2>
+              <p className="spotlight-body">
+                Tag test cases with requirement IDs and the traceability matrix assembles itself. Coverage gaps — requirements with no test cases — surface before a run, not after. The full chain from requirement to bug is navigable in one workspace.
+              </p>
+              <ul className="spotlight-bullets">
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />Auto-assembled from requirement ID tags</li>
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />Coverage gaps visible before execution</li>
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />Requirement → test case → run → bug — one click deep</li>
+              </ul>
+              <Link to="/features/traceability" className="spotlight-link">
+                Traceability details →
+              </Link>
+            </div>
+            <div className="spotlight-visual">
+              <div className="feat-mock-window">
+                <div className="feat-mock-chrome">
+                  <div className="feat-mock-dots">
+                    <span className="feat-mock-dot feat-mock-dot-r" />
+                    <span className="feat-mock-dot feat-mock-dot-y" />
+                    <span className="feat-mock-dot feat-mock-dot-g" />
+                  </div>
+                  <span className="feat-mock-path">traceability</span>
+                  <span className="feat-mock-badge-tag">MATRIX</span>
+                </div>
+                <div className="feat-mock-body">
+                  <p className="feat-mock-label-sm mb-2">Auth module — requirement coverage</p>
+                  {[
+                    { req: "REQ-001", label: "User auth", cases: 5, status: "Covered" },
+                    { req: "REQ-002", label: "Password reset", cases: 4, status: "Partial" },
+                    { req: "REQ-003", label: "Session management", cases: 3, status: "Covered" },
+                    { req: "REQ-004", label: "Profile update", cases: 0, status: "Gap" },
+                  ].map((row) => (
+                    <div key={row.req} style={{ display: "flex", alignItems: "center", gap: 8, padding: "0.35rem 0", borderBottom: "1px solid #1e1914" }}>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#7d6e62", minWidth: 48 }}>{row.req}</span>
+                      <span style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 10, color: "#c8bfb2" }}>{row.label}</span>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#7d6e62" }}>{row.cases} cases</span>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, padding: "0.1rem 0.35rem", borderRadius: 4, border: "1px solid", borderColor: row.status === "Covered" ? "rgba(74,163,84,0.3)" : row.status === "Gap" ? "rgba(229,115,115,0.3)" : "rgba(217,176,106,0.3)", color: row.status === "Covered" ? "#6ec47a" : row.status === "Gap" ? "#e57373" : "#d9b06a" }}>{row.status}</span>
+                    </div>
+                  ))}
+                  <p style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#e57373", marginTop: 8 }}>⚠ REQ-004 — no test cases</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── SPOTLIGHT: GPT CONSOLE ────────────────────── */}
+        <section className="spotlight-section" data-section-theme="dark">
+          <div className="spotlight-block">
+            <div className="spotlight-copy">
+              <p className="spotlight-eyebrow">§ GPT CONSOLE</p>
+              <h2 className="spotlight-headline">Private AI chat for your QA work.</h2>
+              <p className="spotlight-body">
+                The GPT console at gpt.qamind.ai runs the same local Qwen model as test generation. Upload a requirement document as a PDF, ask about edge cases, draft Playwright assertions — without sending your data to any external AI service.
+              </p>
+              <ul className="spotlight-bullets">
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />PDF and DOCX upload for document context</li>
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />Conversations organised by project, persisted</li>
+                <li className="spotlight-bullet"><span className="spotlight-bullet-dot" />Same auth as your QAMind workspace</li>
+              </ul>
+              <Link to="/features/gpt" className="spotlight-link">
+                GPT console details →
+              </Link>
+            </div>
+            <div className="spotlight-visual">
+              <div className="feat-mock-window">
+                <div className="feat-mock-chrome">
+                  <div className="feat-mock-dots">
+                    <span className="feat-mock-dot feat-mock-dot-r" />
+                    <span className="feat-mock-dot feat-mock-dot-y" />
+                    <span className="feat-mock-dot feat-mock-dot-g" />
+                  </div>
+                  <span className="feat-mock-path">gpt.qamind.ai / auth-project</span>
+                  <span className="feat-mock-badge-tag">LOCAL AI</span>
+                </div>
+                <div className="feat-mock-body" style={{ padding: "0.75rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, padding: "0.35rem 0.6rem", background: "#1e1914", borderRadius: 6, border: "1px solid #2e2520" }}>
+                    <FileText size={10} style={{ color: "#7d6e62" }} />
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#9b8b7a" }}>auth-requirements.pdf</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "#6ec47a", marginLeft: "auto" }}>Loaded</span>
+                  </div>
+                  {[
+                    { role: "user", text: "What edge cases should I test for the password reset flow?" },
+                    { role: "ai", text: "Based on the PRD: 1) Link expiry at 30min boundary 2) Token reuse after reset 3) Email enumeration via error messages 4) Invalid token format handling" },
+                  ].map((msg, i) => (
+                    <div key={i} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                      <div style={{ width: 16, height: 16, borderRadius: "50%", background: msg.role === "user" ? "var(--c-accent-soft)" : "#2e2520", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: 7, fontWeight: 700, color: msg.role === "user" ? "var(--c-accent)" : "#b5a898", marginTop: 2 }}>
+                        {msg.role === "user" ? "U" : "AI"}
+                      </div>
+                      <p style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, lineHeight: 1.55, color: msg.role === "user" ? "#c8bfb2" : "#9e8e7e", flex: 1 }}>{msg.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── NUMBERS STRIP ─────────────────────────────── */}
+        <section data-section-theme="dark" style={{ borderTop: "1px solid var(--c-border)" }}>
+          <div className="mx-auto max-w-7xl">
+            <div className="numbers-strip">
+              {[
+                { value: "247", label: "Test cases\nin one workspace" },
+                { value: "93.5%", label: "Average\npass rate" },
+                { value: "14", label: "Day sprint\nauto-scaffolded" },
+                { value: "4", label: "Export formats\nfor third-party tools" },
+                { value: "0", label: "Cloud AI APIs\nreceiving your data" },
+              ].map((stat) => (
+                <div key={stat.label} className="numbers-strip-cell">
+                  <div className="numbers-strip-value">
+                    <span className="numbers-strip-accent">{stat.value}</span>
+                  </div>
+                  <div className="numbers-strip-label" style={{ whiteSpace: "pre-line" }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── PRICING PREVIEW ───────────────────────────── */}
+        <section data-section-theme="light" style={{ borderTop: "1px solid var(--c-border)" }}>
+          <div className="mx-auto max-w-5xl px-6 py-20">
+            <p className="feat-eyebrow mb-3" style={{ marginBottom: "1rem" }}>
+              <span style={{ color: "var(--c-accent)" }}>&sect;</span> PRICING
+            </p>
+            <h2 className="font-display text-[clamp(1.75rem,3.5vw,2.4rem)] font-semibold tracking-[-0.02em] text-[var(--c-text)] mb-3 max-w-[440px]">
+              Per workspace. Not per seat.
+            </h2>
+            <p className="text-[15px] text-[var(--c-text-muted)] leading-relaxed mb-10 max-w-[400px]">
+              One subscription per workspace. Invite your whole team without a per-user fee. Two plans based on AI usage volume.
+            </p>
+            <div className="pricing-preview-grid">
+              <div className="pricing-preview-card">
+                <p className="pricing-preview-plan">Plan</p>
+                <p className="pricing-preview-name">Standard</p>
+                <ul className="pricing-preview-bullets">
+                  <li className="pricing-preview-bullet">100 AI tokens per day — refills at midnight</li>
+                  <li className="pricing-preview-bullet">All features: generate, suites, runs, bugs, analytics</li>
+                  <li className="pricing-preview-bullet">Playwright script generation via MCP server</li>
+                  <li className="pricing-preview-bullet">GPT console access at gpt.qamind.ai</li>
+                  <li className="pricing-preview-bullet">Per workspace — unlimited team members</li>
+                </ul>
+                <Link to="/pricing" className="fn-nav-action" style={{ marginTop: "auto", display: "inline-flex" }}>View pricing →</Link>
+              </div>
+              <div className="pricing-preview-card is-featured">
+                <p className="pricing-preview-plan">Plan</p>
+                <p className="pricing-preview-name">Premium</p>
+                <ul className="pricing-preview-bullets">
+                  <li className="pricing-preview-bullet">Unlimited AI tokens — no daily cap</li>
+                  <li className="pricing-preview-bullet">Everything in Standard</li>
+                  <li className="pricing-preview-bullet">Priority generation queue</li>
+                  <li className="pricing-preview-bullet">Advanced analytics and regression reports</li>
+                  <li className="pricing-preview-bullet">Per workspace — unlimited team members</li>
+                </ul>
+                <Link to="/auth" search={{ mode: "signup" }} className="fn-nav-action is-primary" style={{ marginTop: "auto", display: "inline-flex" }}>Get started →</Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
 
       {/* ── Footer ── */}
@@ -1777,6 +1996,8 @@ function Welcome() {
               <li><Link to="/changelog" className="ftr-col-link">Changelog</Link></li>
               <li><a href="#faq" onClick={(e) => scrollToSection(e, "faq")} className="ftr-col-link">Help &amp; FAQ</a></li>
               <li><Link to="/pricing" className="ftr-col-link">Pricing</Link></li>
+              <li><Link to="/local-ai" className="ftr-col-link">Local AI</Link></li>
+              <li><Link to="/security" className="ftr-col-link">Security</Link></li>
             </ul>
           </div>
 
